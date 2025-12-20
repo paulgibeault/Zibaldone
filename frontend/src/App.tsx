@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DropZone } from './components/DropZone';
-import { getItems, ContentItem } from './api';
+import { getItems, type ContentItem } from './api';
 import './index.css';
 
 function App() {
