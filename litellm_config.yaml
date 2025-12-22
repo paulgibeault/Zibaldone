@@ -3,7 +3,7 @@ model_list:
   - model_name: zibaldone-model
     litellm_params:
       model: openai/gpt-oss-20b
-      api_base: "http://localhost:1234/v1"
+      api_base: "http://localhost:1234"
       api_key: "any-string"
 
   # Fallback

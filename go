@@ -55,8 +55,42 @@ if [ -z "$SKIP_LLM_CHECK" ]; then
     fi
 fi
 
+# Function to check if a port is in use and offer to kill the process
+check_port() {
+    local port=$1
+    local name=$2
+    
+    # Check if port is in use (lsof is more reliable on Mac than netstat/ss for this)
+    if lsof -i :$port -t >/dev/null 2>&1; then
+        local pid=$(lsof -i :$port -t | head -n 1)
+        # Get process name/command for better context
+        local cmd=$(ps -p $pid -o command= | head -n 1)
+        
+        echo -e "${RED}Error: Port $port ($name) is already in use by PID $pid:${NC}"
+        echo -e "${YELLOW}  $cmd${NC}"
+        
+        read -p "  Would you like to kill this process? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${BLUE}  Killing PID $pid...${NC}"
+            kill $pid 2>/dev/null || kill -9 $pid 2>/dev/null
+            sleep 1
+            if lsof -i :$port -t >/dev/null 2>&1; then
+                 echo -e "${RED}  Failed to kill process. Please manually free port $port.${NC}"
+                 exit 1
+            else
+                 echo -e "${GREEN}  ✓ Port $port freed.${NC}"
+            fi
+        else
+            echo -e "${RED}  Cannot start $name while port $port is in use.${NC}"
+            exit 1
+        fi
+    fi
+}
+
 # 2. Setup Backend Environment (First Run)
 echo -e "${BLUE}[2/4] Setting up Backend...${NC}"
+
 if [ ! -d "backend/.venv" ]; then
     echo -e "${YELLOW}Creating Python virtual environment...${NC}"
     python3 -m venv backend/.venv
@@ -78,6 +112,11 @@ fi
 
 # 4. Start Services
 echo -e "${GREEN}[4/4] Starting Services...${NC}"
+
+# Check ports before starting
+check_port 4000 "LiteLLM"
+check_port 8000 "Backend"
+check_port 5173 "Frontend"
 
 # Start LiteLLM Proxy
 litellm --config litellm_config.yaml --host 0.0.0.0 --port 4000 > /dev/null 2>&1 &

@@ -55,7 +55,7 @@ model_list:
   - model_name: lmstudio-model
     litellm_params:
       model: openai/gpt-oss-20b # Your specific loaded model
-      api_base: "http://localhost:1234/v1" 
+      api_base: "http://localhost:1234" 
       api_key: "any-string"
 
   # Option C: External OpenAI (for comparison/fallback)
