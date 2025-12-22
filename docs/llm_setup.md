@@ -54,9 +54,9 @@ model_list:
   # Option B: Connecting to LM Studio
   - model_name: lmstudio-model
     litellm_params:
-      model: openai/local-model # litellm uses 'openai/' prefix for generic compatible endpoints
-      api_base: "http://localhost:1234/v1" # Default LM Studio URL
-      api_key: "any-string" # LM Studio doesn't strictly enforce keys usually
+      model: openai/gpt-oss-20b # Your specific loaded model
+      api_base: "http://localhost:1234/v1" 
+      api_key: "any-string"
 
   # Option C: External OpenAI (for comparison/fallback)
   - model_name: gpt-3.5-turbo
@@ -66,10 +66,10 @@ model_list:
 ```
 
 ### Running LiteLLM Proxy
-Run the proxy server. This will standardize everything to a local URL (usually `http://0.0.0.0:4000`).
+Run the proxy server. This will standardize everything to a local URL. Note the `--host 0.0.0.0` flag, which is **required** for your remote devices to connect.
 
 ```bash
-litellm --config litellm_config.yaml
+litellm --config litellm_config.yaml --host 0.0.0.0
 ```
 Output should show: `Running on http://0.0.0.0:4000`.
 
@@ -82,52 +82,56 @@ Now point Zibaldone to the LiteLLM proxy. Zibaldone uses the `LLM_MODEL` environ
 ### Environment Variables
 You can set these in your shell or a `.env` file for the backend.
 
-**Common Setup (Connecting to LiteLLM Proxy):**
+**Mac Studio Host Setup:**
 
 ```bash
-# Point to your LiteLLM Proxy address
-export OPENAI_API_BASE="http://0.0.0.0:4000"
+# Point to your LiteLLM Proxy address (localhost is fine since Zibaldone is on the same Mac)
+export OPENAI_API_BASE="http://localhost:4000"
 export OPENAI_API_KEY="sk-1234" # value doesn't matter for local, but must be non-empty
 
 # Select the model name you defined in litellm_config.yaml
-export LLM_MODEL="ollama-llama3" 
-# OR
 export LLM_MODEL="lmstudio-model"
 ```
 
 ### Running Zibaldone
-With those variables passed to the backend:
+With those variables passed to the backend, run the server allowing external connections (`--host 0.0.0.0`):
 
 ```bash
 cd backend
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0
 ```
 
 ---
 
 ## 4. Deployment Scenarios
 
-### Scenario A: Everything on One Machine (Localhost)
-*   **Ollama/LM Studio**: binds to `localhost`.
-*   **LiteLLM**: binds to `localhost` or `0.0.0.0`.
-*   **Zibaldone**: Connects via `http://localhost:4000`.
-*   **Configuration**: Use the defaults above.
+### Mac Studio Host (M4 Pro) with Remote Access
 
-### Scenario B: Distributed (Local Network)
-*   **Machine 1 (GPU Server)**: Runs Ollama/LM Studio + LiteLLM.
-    *   **Ollama**: `OLLAMA_HOST=0.0.0.0` (to listen on all interfaces).
-    *   **LiteLLM**: Run with `--host 0.0.0.0`. 
-        *   Command: `litellm --config litellm_config.yaml --host 0.0.0.0`
-    *   *Firewall*: Ensure port `4000` (LiteLLM) is open.
-*   **Machine 2 (App Server)**: Runs Zibaldone.
-    *   **Configuration**:
-        ```bash
-        export OPENAI_API_BASE="http://<MACHINE_1_IP>:4000"
-        export OPENAI_API_KEY="sk-any"
-        export LLM_MODEL="ollama-llama3"
-        ```
+> [!CAUTION]
+> **Security Warning**: By running with `--host 0.0.0.0`, you are exposing these services to every device on your network (and potentially the internet if you have port forwarding). Zibaldone currently **DOES NOT** have built-in authentication.
+
+**Recommended Secure Setup:**
+Do **NOT** open ports 8000 (Zibaldone) or 4000 (LiteLLM) on your router firewall. Instead, use a VPN.
+
+#### 1. The Tailscale Method (Easiest & Safest)
+Install [Tailscale](https://tailscale.com) on your Mac Studio and on your phone/laptop.
+1.  **Mac Studio**: Install Tailscale and log in. API/Web runs on `0.0.0.0` or even just localhost if you trust Tailscale's magic DNS.
+2.  **Phone/Laptop**: Install Tailscale and log in to the same account.
+3.  **Connect**: Open `http://<tailscale-ip-of-mac-studio>:8000` from your phone.
+    *   This is secure, encrypted, and doesn't require opening router ports.
+
+#### 2. Local Network Only (Home Wi-Fi)
+If you trust everyone on your Wi-Fi:
+*   **Mac Studio**:
+    *   **LM Studio**: Ensure "Server Port" is `1234` and it's listening.
+    *   **LiteLLM**: `litellm --config litellm_config.yaml --host 0.0.0.0`
+    *   **Zibaldone**: `uvicorn app.main:app --reload --host 0.0.0.0`
+*   **Clients (Phone/Laptop)**:
+    *   Find your Mac's IP address (System Settings -> Wi-Fi -> Details, e.g., `192.168.1.50`).
+    *   Open `http://192.168.1.50:8000` in the browser.
 
 ### Troubleshooting
 *   **"Importing binding name..." error**: This was a frontend issue, unrelated to LLM.
 *   **Connection Refused**: Check if LiteLLM is actually running on port 4000. Check `curl http://localhost:4000/models` to verify.
 *   **Model Not Found**: Ensure `LLM_MODEL` matches exactly the `model_name` in `litellm_config.yaml`.
+*   **Cannot connect from phone**: Ensure your firewall is allowing incoming connections on ports 8000 and 4000, or use Tailscale (which bypasses this issue).
