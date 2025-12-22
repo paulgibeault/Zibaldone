@@ -1,0 +1,105 @@
+#!/bin/bash
+set -e
+
+# Colors for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+echo -e "${BLUE}=== Zibaldone Setup ===${NC}"
+
+# 1. Environment Checks
+echo -e "\n${BLUE}[1/5] Checking System Dependencies...${NC}"
+if ! command -v python3 &> /dev/null; then
+    echo -e "${RED}Error: python3 is not installed.${NC}"
+    exit 1
+fi
+if ! command -v node &> /dev/null; then
+    echo -e "${RED}Error: node is not installed.${NC}"
+    exit 1
+fi
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}Error: npm is not installed.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ System dependencies found.${NC}"
+
+# 2. Backend Setup
+echo -e "\n${BLUE}[2/5] Setting up Backend...${NC}"
+cd backend
+
+if [ ! -d ".venv" ]; then
+    echo "Creating virtual environment..."
+    python3 -m venv .venv
+fi
+
+source .venv/bin/activate
+
+echo "Installing Python dependencies..."
+pip install -U pip > /dev/null
+pip install -r requirements.txt
+pip install 'litellm[proxy]'
+
+# Create .env if missing
+if [ ! -f ".env" ]; then
+    echo "Creating .env file from default..."
+    cat > .env <<EOL
+# Zibaldone Backend Configuration
+LLM_MODEL=lmstudio-model
+OPENAI_API_BASE=http://localhost:4000
+OPENAI_API_KEY=sk-any
+EOL
+    echo -e "${GREEN}✓ Created backend/.env${NC}"
+fi
+
+cd ..
+
+# 3. Frontend Setup
+echo -e "\n${BLUE}[3/5] Setting up Frontend...${NC}"
+cd frontend
+if [ ! -d "node_modules" ]; then
+    echo "Installing Node modules..."
+    npm install
+else
+    echo "Node modules already installed."
+fi
+cd ..
+
+# 4. Configuration
+echo -e "\n${BLUE}[4/5] Generating Configuration...${NC}"
+
+# config for LiteLLM
+if [ ! -f "litellm_config.yaml" ]; then
+    echo "Creating litellm_config.yaml..."
+    cat > litellm_config.yaml <<EOL
+model_list:
+  # Mac Studio / LM Studio Default
+  - model_name: lmstudio-model
+    litellm_params:
+      model: openai/gpt-oss-20b
+      api_base: "http://localhost:1234/v1"
+      api_key: "any-string"
+
+  # Fallback
+  - model_name: gpt-3.5-turbo
+    litellm_params:
+      model: gpt-3.5-turbo
+      api_key: os.environ/OPENAI_API_KEY
+EOL
+    echo -e "${GREEN}✓ Created litellm_config.yaml${NC}"
+fi
+
+# 5. Readiness Check
+echo -e "\n${BLUE}[5/5] Checking Readiness...${NC}"
+source backend/.venv/bin/activate
+
+if command -v uvicorn &> /dev/null && command -v litellm &> /dev/null; then
+     echo -e "${GREEN}✓ Backend tools (uvicorn, litellm) are ready.${NC}"
+else
+     echo -e "${RED}Error: Backend tools not found in venv.${NC}"
+     exit 1
+fi
+
+echo -e "\n${GREEN}=== Setup Complete! ===${NC}"
+echo "You can now run: ./go"
