@@ -113,14 +113,31 @@ uvicorn app.main:app --reload --host 0.0.0.0
 **Recommended Secure Setup:**
 Do **NOT** open ports 8000 (Zibaldone) or 4000 (LiteLLM) on your router firewall. Instead, use a VPN.
 
-#### 1. The Tailscale Method (Easiest & Safest)
-Install [Tailscale](https://tailscale.com) on your Mac Studio and on your phone/laptop.
-1.  **Mac Studio**: Install Tailscale and log in. API/Web runs on `0.0.0.0` or even just localhost if you trust Tailscale's magic DNS.
-2.  **Phone/Laptop**: Install Tailscale and log in to the same account.
-3.  **Connect**: Open `http://<tailscale-ip-of-mac-studio>:8000` from your phone.
-    *   This is secure, encrypted, and doesn't require opening router ports.
+#### 1. SSH Port Forwarding (The Simplest OSS Way)
+If you can SSH into your Mac Studio, you can securely tunnel the Zibaldone web interface to your local device.
 
-#### 2. Local Network Only (Home Wi-Fi)
+**On your Laptop/Mac:**
+Run this command to forward your Mac Studio's port 8000 to your local machine:
+```bash
+ssh -L 8000:localhost:8000 user@<mac-studio-ip>
+```
+*   Now open `http://localhost:8000` on your laptop.
+*   Traffic is fully encrypted via SSH.
+
+**On Android (Termux) or iOS (a-Shell/iSH):**
+You can run the same command to tunnel from a mobile device.
+
+#### 2. WireGuard (The Robust VPN Way)
+[WireGuard](https://www.wireguard.com/) is a modern, high-performance, open-source VPN protocol.
+1.  **Server**: Install WireGuard on your Mac Studio (using `brew install wireguard-tools` or a UI like the open-source [WgCms](https://github.com/Place1/wg-access-server) for easier management).
+2.  **Client**: Install the WireGuard app on your phone/laptop.
+3.  **Connect**: Once connected, you can access the Mac Studio's local IP securely as if you were on the same Wi-Fi.
+
+#### 3. Headscale (Self-Hosted Mesh VPN)
+If you like the "mesh networking" features of Tailscale but want a fully open-source, self-hosted backend, use [Headscale](https://github.com/juanfont/headscale).
+*   It implements the Tailscale control protocol, allowing you to use standard clients without relying on their proprietary servers.
+
+#### 4. Local Network Only (Home Wi-Fi)
 If you trust everyone on your Wi-Fi:
 *   **Mac Studio**:
     *   **LM Studio**: Ensure "Server Port" is `1234` and it's listening.
