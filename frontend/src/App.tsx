@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DropZone } from './components/DropZone';
-import { getItems, type ContentItem } from './api';
+import { getItems, deleteItem, type ContentItem } from './api';
 import './index.css';
 
 function App() {
@@ -14,6 +14,19 @@ function App() {
       setItems(data);
     } catch (error) {
       console.error("Failed to fetch items:", error);
+    }
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this item?")) return;
+
+    try {
+      await deleteItem(id);
+      setItems(prev => prev.filter(item => item.id !== id));
+    } catch (error) {
+      console.error("Failed to delete item:", error);
+      alert("Failed to delete item");
     }
   };
 
@@ -39,6 +52,21 @@ function App() {
               <span className={`status-badge status-${item.status}`}>
                 {item.status}
               </span>
+              <button
+                onClick={(e) => handleDelete(item.id, e)}
+                style={{
+                  marginLeft: '10px',
+                  padding: '4px 8px',
+                  backgroundColor: '#fee2e2',
+                  color: '#991b1b',
+                  border: 'none',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem'
+                }}
+              >
+                Delete
+              </button>
             </div>
             <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>
               {new Date(item.created_at).toLocaleString()}

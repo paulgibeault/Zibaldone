@@ -11,9 +11,10 @@ export interface ContentItem {
     metadata_json: string;
 }
 
-export const uploadFile = async (file: File): Promise<ContentItem> => {
+export const uploadFile = async (file: File, metadata: Record<string, any> = {}): Promise<ContentItem> => {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('metadata', JSON.stringify(metadata));
 
     const response = await axios.post(`${API_URL}/upload`, formData, {
         headers: {
@@ -21,6 +22,10 @@ export const uploadFile = async (file: File): Promise<ContentItem> => {
         },
     });
     return response.data;
+};
+
+export const deleteItem = async (itemId: string): Promise<void> => {
+    await axios.delete(`${API_URL}/items/${itemId}`);
 };
 
 export const getItems = async (): Promise<ContentItem[]> => {

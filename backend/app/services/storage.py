@@ -17,5 +17,9 @@ class LocalObjectStore:
             
         return storage_path
 
+    def delete(self, storage_path: str):
+        if os.path.exists(storage_path):
+            os.remove(storage_path)
+
     def get_path(self, storage_path: str) -> str:
         return storage_path

@@ -10,7 +10,13 @@ export const DropZone: React.FC<DropZoneProps> = ({ onUploadComplete }) => {
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
         for (const file of acceptedFiles) {
             try {
-                await uploadFile(file);
+                const metadata = {
+                    size: file.size,
+                    type: file.type,
+                    lastModified: file.lastModified,
+                    lastModifiedDate: new Date(file.lastModified).toISOString()
+                };
+                await uploadFile(file, metadata);
                 console.log(`Uploaded ${file.name}`);
             } catch (error) {
                 console.error(`Error uploading ${file.name}:`, error);
