@@ -10,7 +10,7 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}=== Zibaldone Setup ===${NC}"
 
 # 1. Environment Checks
-echo -e "\n${BLUE}[1/5] Checking System Dependencies...${NC}"
+echo -e "\n${BLUE}[1/6] Checking System Dependencies...${NC}"
 if ! command -v python3 &> /dev/null; then
     echo -e "${RED}Error: python3 is not installed.${NC}"
     exit 1
@@ -25,8 +25,25 @@ if ! command -v npm &> /dev/null; then
 fi
 echo -e "${GREEN}✓ System dependencies found.${NC}"
 
-# 2. Backend Setup
-echo -e "\n${BLUE}[2/5] Setting up Backend...${NC}"
+# 2. Interactive Configuration
+echo -e "\n${BLUE}[2/6] Configuration Setup...${NC}"
+echo "Please enter your LLM Configuration (Press enter for defaults)"
+
+# Ask for Model ID
+DEFAULT_MODEL="openai/gpt-oss-20b"
+read -p "LM Studio Model ID [${DEFAULT_MODEL}]: " USER_MODEL
+USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
+
+# Ask for Base URL
+DEFAULT_URL="http://localhost:1234/v1"
+read -p "LM Studio Base URL [${DEFAULT_URL}]: " USER_URL
+USER_URL=${USER_URL:-$DEFAULT_URL}
+
+echo -e "Using Model: ${GREEN}${USER_MODEL}${NC}"
+echo -e "Using URL:   ${GREEN}${USER_URL}${NC}"
+
+# 3. Backend Setup
+echo -e "\n${BLUE}[3/6] Setting up Backend...${NC}"
 cd backend
 
 if [ ! -d ".venv" ]; then
@@ -41,22 +58,34 @@ pip install -U pip > /dev/null
 pip install -r requirements.txt
 pip install 'litellm[proxy]'
 
-# Create .env if missing
-if [ ! -f ".env" ]; then
-    echo "Creating .env file from default..."
-    cat > .env <<EOL
+# Create .env
+# Always recreate or update? For now, we'll only create if missing to avoid overwriting secrets,
+# BUT since we just asked for config, the user probably expects it to apply.
+# Let's simple check if file exists and warn, or just overwrite?
+# The safest interactive pattern is likely "If exists, ask to overwrite".
+# For simplicity in this v1 script, we'll backup existing .env if it exists and write new one.
+
+if [ -f ".env" ]; then
+    echo "Backing up existing .env to .env.bak"
+    cp .env .env.bak
+fi
+
+echo "Generating .env file..."
+# CRITICAL FIX: The LLM_MODEL must allow litellm to know the provider. 
+# We mapped the user's model to 'zibaldone-model' in litellm config (step 5).
+# Here we tell backend to use 'openai/zibaldone-model' so it treats the proxy as OpenAI compatible.
+cat > .env <<EOL
 # Zibaldone Backend Configuration
-LLM_MODEL=lmstudio-model
+LLM_MODEL=openai/zibaldone-model
 OPENAI_API_BASE=http://localhost:4000
 OPENAI_API_KEY=sk-any
 EOL
-    echo -e "${GREEN}✓ Created backend/.env${NC}"
-fi
+echo -e "${GREEN}✓ Created backend/.env${NC}"
 
 cd ..
 
-# 3. Frontend Setup
-echo -e "\n${BLUE}[3/5] Setting up Frontend...${NC}"
+# 4. Frontend Setup
+echo -e "\n${BLUE}[4/6] Setting up Frontend...${NC}"
 cd frontend
 if [ ! -d "node_modules" ]; then
     echo "Installing Node modules..."
@@ -66,19 +95,18 @@ else
 fi
 cd ..
 
-# 4. Configuration
-echo -e "\n${BLUE}[4/5] Generating Configuration...${NC}"
+# 5. Global Configuration
+echo -e "\n${BLUE}[5/6] Generating Proxy Configuration...${NC}"
 
-# config for LiteLLM
-if [ ! -f "litellm_config.yaml" ]; then
-    echo "Creating litellm_config.yaml..."
-    cat > litellm_config.yaml <<EOL
+# Generate litellm_config.yaml
+# We map the abstract name "zibaldone-model" to the specific user provided model/url.
+cat > litellm_config.yaml <<EOL
 model_list:
-  # Mac Studio / LM Studio Default
-  - model_name: lmstudio-model
+  # Configured via setup script
+  - model_name: zibaldone-model
     litellm_params:
-      model: openai/gpt-oss-20b
-      api_base: "http://localhost:1234/v1"
+      model: ${USER_MODEL}
+      api_base: "${USER_URL}"
       api_key: "any-string"
 
   # Fallback
@@ -87,11 +115,10 @@ model_list:
       model: gpt-3.5-turbo
       api_key: os.environ/OPENAI_API_KEY
 EOL
-    echo -e "${GREEN}✓ Created litellm_config.yaml${NC}"
-fi
+echo -e "${GREEN}✓ Created litellm_config.yaml${NC}"
 
-# 5. Readiness Check
-echo -e "\n${BLUE}[5/5] Checking Readiness...${NC}"
+# 6. Readiness Check
+echo -e "\n${BLUE}[6/6] Checking Readiness...${NC}"
 source backend/.venv/bin/activate
 
 if command -v uvicorn &> /dev/null && command -v litellm &> /dev/null; then

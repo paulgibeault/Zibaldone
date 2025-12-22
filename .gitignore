@@ -21,3 +21,8 @@ rad.json
 #Test results file
 TestResults.xml
 *.pyc
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
