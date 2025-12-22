@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DropZone } from './components/DropZone';
+import { FileCard } from './components/FileCard';
+import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { getItems, deleteItem, type ContentItem } from './api';
 import './index.css';
 
@@ -38,47 +40,18 @@ function App() {
 
   return (
     <div className="container">
+      <ThemeSwitcher />
       <h1>Zibaldone</h1>
 
       <DropZone onUploadComplete={fetchItems} />
 
       <div className="item-list">
         {items.map((item) => (
-          <div key={item.id} className="card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }} title={item.original_filename}>
-                {item.original_filename}
-              </h3>
-              <span className={`status-badge status-${item.status}`}>
-                {item.status}
-              </span>
-              <button
-                onClick={(e) => handleDelete(item.id, e)}
-                style={{
-                  marginLeft: '10px',
-                  padding: '4px 8px',
-                  backgroundColor: '#fee2e2',
-                  color: '#991b1b',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '0.8rem'
-                }}
-              >
-                Delete
-              </button>
-            </div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>
-              {new Date(item.created_at).toLocaleString()}
-            </div>
-            {item.metadata_json && item.metadata_json !== "{}" && (
-              <div className="metadata-preview">
-                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
-                  {JSON.stringify(JSON.parse(item.metadata_json), null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
+          <FileCard
+            key={item.id}
+            item={item}
+            onDelete={handleDelete}
+          />
         ))}
       </div>
     </div>

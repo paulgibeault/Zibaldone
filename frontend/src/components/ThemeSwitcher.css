@@ -1,0 +1,29 @@
+.theme-switcher {
+    position: absolute;
+    top: 1.5rem;
+    right: 2rem;
+    z-index: 100;
+}
+
+.theme-select {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    outline: none;
+    transition: all 0.2s;
+}
+
+.theme-select:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--color-primary);
+}
+
+.theme-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
