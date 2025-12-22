@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/data
+    environment:
+      - LLM_MODEL=gpt-3.5-turbo
+      # Point to litellm container
+      - LITELLM_URL=http://litellm:4000
+    depends_on:
+      - litellm
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml
+    command: [ "--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0" ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  data:

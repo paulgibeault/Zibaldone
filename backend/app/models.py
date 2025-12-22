@@ -17,7 +17,14 @@ class ContentItem(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     metadata_json: Optional[str] = Field(default="{}") # Storing simple JSON as string for SQLite simplicity initially
 
-sqlite_file_name = "../data/database.db"
+from pathlib import Path
+
+# Robust path handling
+BASE_DIR = Path(__file__).resolve().parent.parent # points to backend/
+DATA_DIR = BASE_DIR.parent / "data" # points to zibaldone/data
+DATA_DIR.mkdir(exist_ok=True) # Ensure data dir exists
+
+sqlite_file_name = DATA_DIR / "database.db"
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 connect_args = {"check_same_thread": False}

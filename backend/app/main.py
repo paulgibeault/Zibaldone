@@ -29,3 +29,21 @@ app.include_router(api_router, prefix="/api")
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Zibaldone"}
+
+from fastapi.responses import StreamingResponse
+from app.services.event_broadcaster import broadcaster
+import json
+
+@app.get("/api/events")
+async def sse_endpoint():
+    async def event_generator():
+        queue = await broadcaster.subscribe()
+        try:
+            while True:
+                data = await queue.get()
+                yield f"data: {data}\n\n"
+        except asyncio.CancelledError:
+            broadcaster.unsubscribe(queue)
+            
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+

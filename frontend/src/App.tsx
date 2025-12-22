@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { DropZone } from './components/DropZone';
 import { FileCard } from './components/FileCard';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
+import { WelcomeModal } from './components/WelcomeModal';
 import { getItems, deleteItem, type ContentItem } from './api';
 import './index.css';
 
@@ -34,12 +35,37 @@ function App() {
 
   useEffect(() => {
     fetchItems();
-    const interval = setInterval(fetchItems, 2000); // Poll every 2s for updates
-    return () => clearInterval(interval);
+
+    // Setup SSE
+    const eventSource = new EventSource('http://localhost:8000/api/events');
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'update') {
+          console.log("Received update event:", data);
+          fetchItems();
+        }
+      } catch (e) {
+        console.error("Error parsing SSE data", e);
+      }
+    };
+
+    eventSource.onerror = (e) => {
+      console.log("SSE Error (connection might be closed):", e);
+      eventSource.close();
+      // Optional: Retry logic is built-in to EventSource usually, but if closed explicitly we might need to reopen.
+      // For now, let's just log.
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, []);
 
   return (
     <div className="container">
+      <WelcomeModal />
       <ThemeSwitcher />
       <h1>Zibaldone</h1>
 

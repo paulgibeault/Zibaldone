@@ -15,12 +15,18 @@ llm_service = LLMService(model=llm_model)
 # Simple worker loop
 # Simple worker loop
 
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 async def process_item(item: ContentItem, session: Session, llm_service: LLMService):
     """
     Process a single item: extract content, generate metadata via LLM, 
     merge with existing metadata, and update status.
     """
-    print(f"Processing item: {item.original_filename}")
+    logger.info(f"Processing item: {item.original_filename}")
     
     # Read content (assuming text for now, or just tagging filename)
     try:
@@ -30,7 +36,8 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
             try:
                 with open(item.storage_path, "r") as f:
                     content_text += "\nContent:\n" + f.read()
-            except:
+            except Exception as e:
+                logger.warning(f"Could not read content of {item.storage_path}: {e}")
                 pass
         
         # Load existing metadata
@@ -39,7 +46,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
             try:
                 existing_metadata = json.loads(item.metadata_json)
             except json.JSONDecodeError:
-                print(f"Warning: Could not parse existing metadata for item {item.id}")
+                logger.warning(f"Warning: Could not parse existing metadata for item {item.id}")
                 pass
 
         # Generate new metadata from LLM
@@ -59,9 +66,15 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
         item.status = ContentStatus.TAGGED
         session.add(item)
         session.commit()
-        print(f"Item {item.id} tagged. Metadata: {merged_metadata}")
+        logger.info(f"Item {item.id} tagged. Metadata: {merged_metadata}")
+        
+        # Broadcast event
+        from app.services.event_broadcaster import broadcaster
+        await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
+
     except Exception as e:
-        print(f"Error processing item {item.id}: {e}")
+        logger.error(f"Error processing item {item.id}: {e}", exc_info=True)
+
 
 async def process_unprocessed_items():
     while True:

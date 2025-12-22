@@ -17,19 +17,29 @@ cleanup() {
 }
 trap cleanup SIGINT SIGTERM
 
-# 0. Check for Local LLM Server
+# 0. Check Dependencies
+echo -e "${BLUE}[0/4] Checking Dependencies...${NC}"
+
+if ! command -v python3 &> /dev/null; then
+    echo -e "${RED}Error: python3 is not installed.${NC}"
+    exit 1
+fi
+
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}Error: npm is not installed.${NC}"
+    exit 1
+fi
+
+# 1. Check for Local LLM Server
 if [ -z "$SKIP_LLM_CHECK" ]; then
-    echo -e "${BLUE}[0/3] Checking for Local LLM Server...${NC}"
+    echo -e "${BLUE}[1/4] Checking for Local LLM Server...${NC}"
     
     # Extract port from litellm_config.yaml (simple grep/cut)
-    # Looking for lines like: api_base: "http://localhost:1234/v1"
     LLM_URL=$(grep "api_base" litellm_config.yaml | head -n 1 | awk -F'"' '{print $2}')
     
     if [ -z "$LLM_URL" ]; then
-        # Fallback default
         LLM_PORT=1234
     else
-        # Extract port from URL (http://locahost:1234/v1 -> 1234)
         LLM_PORT=$(echo $LLM_URL | sed -E 's/.*:([0-9]+).*/\1/')
     fi
 
@@ -45,17 +55,36 @@ if [ -z "$SKIP_LLM_CHECK" ]; then
     fi
 fi
 
-# 1. Activate Backend Environment
-source backend/.venv/bin/activate
+# 2. Setup Backend Environment (First Run)
+echo -e "${BLUE}[2/4] Setting up Backend...${NC}"
+if [ ! -d "backend/.venv" ]; then
+    echo -e "${YELLOW}Creating Python virtual environment...${NC}"
+    python3 -m venv backend/.venv
+    source backend/.venv/bin/activate
+    echo -e "${YELLOW}Installing dependencies...${NC}"
+    pip install -r backend/requirements.txt
+else
+    source backend/.venv/bin/activate
+fi
 
-# 2. Start LiteLLM Proxy
-echo -e "${GREEN}[1/3] Starting LiteLLM Proxy...${NC}"
+# 3. Setup Frontend (First Run)
+echo -e "${BLUE}[3/4] Setting up Frontend...${NC}"
+if [ ! -d "frontend/node_modules" ]; then
+    echo -e "${YELLOW}Installing frontend dependencies...${NC}"
+    cd frontend
+    npm install
+    cd ..
+fi
+
+# 4. Start Services
+echo -e "${GREEN}[4/4] Starting Services...${NC}"
+
+# Start LiteLLM Proxy
 litellm --config litellm_config.yaml --host 0.0.0.0 --port 4000 > /dev/null 2>&1 &
 PID_LITELLM=$!
 echo -e "${BLUE}  -> LiteLLM running (PID: $PID_LITELLM)${NC}"
 
-# 3. Start Backend
-echo -e "${GREEN}[2/3] Starting Backend (Uvicorn)...${NC}"
+# Start Backend
 cd backend
 # Explicitly use 0.0.0.0 to match the remote access requirements
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
@@ -63,8 +92,7 @@ PID_BACKEND=$!
 echo -e "${BLUE}  -> Backend running (PID: $PID_BACKEND)${NC}"
 cd ..
 
-# 4. Start Frontend
-echo -e "${GREEN}[3/3] Starting Frontend (Vite)...${NC}"
+# Start Frontend
 cd frontend
 npm run dev -- --host &
 PID_FRONTEND=$!

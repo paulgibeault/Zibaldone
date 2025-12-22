@@ -4,3 +4,5 @@ sqlmodel
 python-multipart
 aiofiles
 litellm
+pytest
+httpx
