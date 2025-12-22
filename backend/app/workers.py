@@ -13,6 +13,56 @@ llm_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
 llm_service = LLMService(model=llm_model)
 
 # Simple worker loop
+# Simple worker loop
+
+async def process_item(item: ContentItem, session: Session, llm_service: LLMService):
+    """
+    Process a single item: extract content, generate metadata via LLM, 
+    merge with existing metadata, and update status.
+    """
+    print(f"Processing item: {item.original_filename}")
+    
+    # Read content (assuming text for now, or just tagging filename)
+    try:
+        # For MVP, if it's a text file, read it. Else just use filename.
+        content_text = f"Filename: {item.original_filename}"
+        if item.storage_path.endswith(".txt") or item.storage_path.endswith(".md"):
+            try:
+                with open(item.storage_path, "r") as f:
+                    content_text += "\nContent:\n" + f.read()
+            except:
+                pass
+        
+        # Load existing metadata
+        existing_metadata = {}
+        if item.metadata_json:
+            try:
+                existing_metadata = json.loads(item.metadata_json)
+            except json.JSONDecodeError:
+                print(f"Warning: Could not parse existing metadata for item {item.id}")
+                pass
+
+        # Generate new metadata from LLM
+        llm_metadata = await llm_service.generate_metadata(content_text)
+        
+        # Merge: existing metadata takes precedence? 
+        # Requirement: "not overwritten by the LLM, unless there is metadata key collisions, which LLM can overwrite"
+        # So: start with existing, update with LLM (LLM overwrites collisions).
+        # "Ensure the drop-time metadata is being sent with the file submission, and not overwritten by the LLM, 
+        # unless there is metadata key collisions, which LLM can overwrite"
+        # This means: merged = existing.copy(); merged.update(llm)
+        
+        merged_metadata = existing_metadata.copy()
+        merged_metadata.update(llm_metadata)
+        
+        item.metadata_json = json.dumps(merged_metadata)
+        item.status = ContentStatus.TAGGED
+        session.add(item)
+        session.commit()
+        print(f"Item {item.id} tagged. Metadata: {merged_metadata}")
+    except Exception as e:
+        print(f"Error processing item {item.id}: {e}")
+
 async def process_unprocessed_items():
     while True:
         with Session(engine) as session:
@@ -21,28 +71,6 @@ async def process_unprocessed_items():
             items = results.all()
             
             for item in items:
-                print(f"Processing item: {item.original_filename}")
-                
-                # Read content (assuming text for now, or just tagging filename)
-                # In real app, we'd extract text from files
-                try:
-                    # For MVP, if it's a text file, read it. Else just use filename.
-                    content_text = f"Filename: {item.original_filename}"
-                    if item.storage_path.endswith(".txt") or item.storage_path.endswith(".md"):
-                        try:
-                            with open(item.storage_path, "r") as f:
-                                content_text += "\nContent:\n" + f.read()
-                        except:
-                            pass
-                    
-                    metadata = await llm_service.generate_metadata(content_text)
-                    
-                    item.metadata_json = json.dumps(metadata)
-                    item.status = ContentStatus.TAGGED
-                    session.add(item)
-                    session.commit()
-                    print(f"Item {item.id} tagged. Metadata: {metadata}")
-                except Exception as e:
-                    print(f"Error processing item {item.id}: {e}")
+                await process_item(item, session, llm_service)
                 
         await asyncio.sleep(5) # Poll every 5 seconds
