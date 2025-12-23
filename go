@@ -9,10 +9,44 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}=== Starting Zibaldone ===${NC}"
 
+# Function to recursively kill descendants of a PID
+kill_descendants() {
+    local pid=$1
+    local children=$(pgrep -P "$pid")
+
+    for child in $children; do
+        kill_descendants "$child"
+    done
+
+    # Kill the process itself if it exists
+    if kill -0 "$pid" 2>/dev/null; then
+        kill "$pid" 2>/dev/null
+    fi
+}
+
 # Function to kill background processes on exit
 cleanup() {
     echo -e "\n${RED}Stopping all services...${NC}"
+    
+    # Kill specific PIDs if they were captured
+    if [ -n "$PID_LITELLM" ]; then
+        echo -e "${YELLOW}Stopping LiteLLM (PID $PID_LITELLM)...${NC}"
+        kill_descendants "$PID_LITELLM"
+    fi
+    
+    if [ -n "$PID_BACKEND" ]; then
+        echo -e "${YELLOW}Stopping Backend (PID $PID_BACKEND)...${NC}"
+        kill_descendants "$PID_BACKEND"
+    fi
+    
+    if [ -n "$PID_FRONTEND" ]; then
+         echo -e "${YELLOW}Stopping Frontend (PID $PID_FRONTEND)...${NC}"
+         kill_descendants "$PID_FRONTEND"
+    fi
+
+    # Fallback: kill any remaining direct children of this script
     kill $(jobs -p) 2>/dev/null
+    
     exit
 }
 trap cleanup SIGINT SIGTERM
