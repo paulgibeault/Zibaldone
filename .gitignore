@@ -28,3 +28,4 @@ __pycache__/
 *$py.class
 data/blob_storage/
 data/database.db
+litellm_config.yaml

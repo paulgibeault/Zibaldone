@@ -60,21 +60,161 @@ echo -e "${GREEN}✓ System dependencies found.${NC}"
 echo -e "\n${BLUE}[2/6] Configuration Setup...${NC}"
 echo "Please enter your LLM Configuration (Press enter for defaults)"
 
-# Ask for Model ID
-DEFAULT_MODEL="openai/gpt-oss-20b"
-read -p "LM Studio Model ID [${DEFAULT_MODEL}]: " USER_MODEL
-USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
+# Function to fetch models
+fetch_models() {
+    local url=$1
+    if [[ "$url" != */ ]]; then
+      url="${url}/"
+    fi
+    url="${url}v1/models"
 
-# Ask for Base URL
+    echo -e "  Fetching models from ${url}..." >&2
+
+    # Use python to fetch and parse models
+    python3 -c "
+import sys, json, urllib.request
+
+try:
+    url = '$url'
+    with urllib.request.urlopen(url, timeout=2) as response:
+        data = json.loads(response.read().decode())
+        models = [m['id'] for m in data['data']]
+        # Print valid JSON array for bash to read, or error
+        print(json.dumps(models))
+except Exception as e:
+    print(f'ERROR: {e}')
+"
+}
+
+# Ask for Base URL first to query models
 DEFAULT_URL="http://localhost:1234"
 read -p "LM Studio Base URL [${DEFAULT_URL}]: " USER_URL
 USER_URL=${USER_URL:-$DEFAULT_URL}
 
+# Try to fetch models
+echo -e "\n${BLUE}Querying available models...${NC}"
+MODELS_JSON=$(fetch_models "$USER_URL")
+
+USER_MODEL=""
+
+if [[ $MODELS_JSON == ERROR* ]]; then
+    echo -e "${YELLOW}Could not fetch models automatically ($MODELS_JSON).${NC}"
+    echo -e "${YELLOW}Please ensure your LM Studio server is running.${NC}"
+    DEFAULT_MODEL="openai/meta-llama-3.1-8b-instruct"
+    read -p "Enter Model ID [${DEFAULT_MODEL}]: " USER_MODEL
+    USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
+else
+    # Parse python list output
+    # Remove brackets and quotes to get a clean list for select
+    CLEAN_LIST=$(echo $MODELS_JSON | sed 's/[]["]//g' | tr ',' ' ')
+    
+    # Store in array
+    IFS=' ' read -r -a MODEL_ARRAY <<< "$CLEAN_LIST"
+    
+    if [ ${#MODEL_ARRAY[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No models found.${NC}"
+        DEFAULT_MODEL="openai/meta-llama-3.1-8b-instruct"
+        read -p "Enter Model ID [${DEFAULT_MODEL}]: " USER_MODEL
+        USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
+    else
+        echo -e "${GREEN}Found available models:${NC}"
+        PS3="Select a model (or enter number for 'Custom'): "
+        select opt in "${MODEL_ARRAY[@]}" "Custom"; do
+            if [[ "$opt" == "Custom" ]]; then
+                read -p "Enter Model ID: " USER_MODEL
+                break
+            elif [[ -n "$opt" ]]; then
+                USER_MODEL=$opt
+                break
+            else
+                echo "Invalid selection."
+            fi
+        done
+    fi
+fi
+
+# Ensure model has openai/ prefix if not provided (common convention for litellm with some providers, but maybe not strictly needed for proxy)
+# Actually, for litellm proxying to openai-compatible, we usually just pass the model ID.
+# But for the *backend* configuration, we might need a prefix if we are using specific providers.
+# In the original config, it was 'openai/gpt-oss-20b'.
+# If the user selected 'meta-llama-3.1-8b-instruct', we might want to store it as is for litellm_params.model
+# But in backend/.env it is set to LLM_MODEL=openai/zibaldone-model.
+# Wait, litellm_config.yaml has:
+# - model_name: zibaldone-model
+#   litellm_params:
+#     model: <USER_MODEL> 
+# So if USER_MODEL is 'meta-llama-3.1-8b-instruct', that goes there.
+# And backend asks for 'zibaldone-model'.
+# The 'openai/' prefix in 'openai/gpt-oss-20b' in the original file refers to the *provider* in litellm terms.
+# If connecting to LM Studio which is OpenAI compatible, we should use 'openai/<model_id>'.
+
+if [[ "$USER_MODEL" != openai/* ]]; then
+    # We'll prepend openai/ for the litellm config to ensure it uses the openai provider logic
+    # checking if it already has a provider prefix might be safer, but for now assuming local server is openai-compatible
+    LITELLM_MODEL_CONFIG="openai/${USER_MODEL}"
+else
+    LITELLM_MODEL_CONFIG="$USER_MODEL"
+fi
+
+# Ensure api_base ends with /v1
+if [[ "$USER_URL" == */v1 ]]; then
+    LITELLM_API_BASE="$USER_URL"
+elif [[ "$USER_URL" == */v1/ ]]; then
+    LITELLM_API_BASE="${USER_URL%/}"
+else
+    if [[ "$USER_URL" == */ ]]; then
+        LITELLM_API_BASE="${USER_URL}v1"
+    else
+        LITELLM_API_BASE="${USER_URL}/v1"
+    fi
+fi
+
 echo -e "Using Model: ${GREEN}${USER_MODEL}${NC}"
 echo -e "Using URL:   ${GREEN}${USER_URL}${NC}"
 
-# 3. Backend Setup
-echo -e "\n${BLUE}[3/6] Setting up Backend...${NC}"
+# 3. Generating Configuration
+echo -e "\n${BLUE}[3/6] Generating Configuration...${NC}"
+
+# Generate litellm_config.yaml
+# We map the abstract name "zibaldone-model" to the specific user provided model/url.
+cat > litellm_config.yaml <<EOL
+model_list:
+  # Configured via setup script
+  - model_name: zibaldone-model
+    litellm_params:
+      model: ${LITELLM_MODEL_CONFIG}
+      api_base: "${LITELLM_API_BASE}"
+      api_key: "any-string"
+
+  # Fallback
+  - model_name: gpt-3.5-turbo
+    litellm_params:
+      model: gpt-3.5-turbo
+      api_key: os.environ/OPENAI_API_KEY
+EOL
+echo -e "${GREEN}✓ Created litellm_config.yaml${NC}"
+
+# Generate backend/.env
+# We write this directly to backend/.env
+if [ -f "backend/.env" ]; then
+    echo "Backing up existing backend/.env to backend/.env.bak"
+    cp backend/.env backend/.env.bak
+fi
+
+# CRITICAL FIX: The LLM_MODEL must allow litellm to know the provider. 
+# We mapped the user's model to 'zibaldone-model' in litellm config.
+# Here we tell backend to use 'openai/zibaldone-model' so it treats the proxy as OpenAI compatible.
+cat > backend/.env <<EOL
+# Zibaldone Backend Configuration
+LLM_MODEL=openai/zibaldone-model
+OPENAI_API_BASE=http://localhost:4000
+OPENAI_API_KEY=sk-any
+EOL
+echo -e "${GREEN}✓ Created backend/.env${NC}"
+
+
+# 4. Backend Setup
+echo -e "\n${BLUE}[4/6] Setting up Backend Environment...${NC}"
 cd backend
 
 if [ ! -d ".venv" ]; then
@@ -89,34 +229,10 @@ pip install -U pip > /dev/null
 pip install -r requirements.txt
 pip install 'litellm[proxy]'
 
-# Create .env
-# Always recreate or update? For now, we'll only create if missing to avoid overwriting secrets,
-# BUT since we just asked for config, the user probably expects it to apply.
-# Let's simple check if file exists and warn, or just overwrite?
-# The safest interactive pattern is likely "If exists, ask to overwrite".
-# For simplicity in this v1 script, we'll backup existing .env if it exists and write new one.
-
-if [ -f ".env" ]; then
-    echo "Backing up existing .env to .env.bak"
-    cp .env .env.bak
-fi
-
-echo "Generating .env file..."
-# CRITICAL FIX: The LLM_MODEL must allow litellm to know the provider. 
-# We mapped the user's model to 'zibaldone-model' in litellm config (step 5).
-# Here we tell backend to use 'openai/zibaldone-model' so it treats the proxy as OpenAI compatible.
-cat > .env <<EOL
-# Zibaldone Backend Configuration
-LLM_MODEL=openai/zibaldone-model
-OPENAI_API_BASE=http://localhost:4000
-OPENAI_API_KEY=sk-any
-EOL
-echo -e "${GREEN}✓ Created backend/.env${NC}"
-
 cd ..
 
-# 4. Frontend Setup
-echo -e "\n${BLUE}[4/6] Setting up Frontend...${NC}"
+# 5. Frontend Setup
+echo -e "\n${BLUE}[5/6] Setting up Frontend...${NC}"
 cd frontend
 if [ ! -d "node_modules" ]; then
     echo "Installing Node modules..."
@@ -125,28 +241,6 @@ else
     echo "Node modules already installed."
 fi
 cd ..
-
-# 5. Global Configuration
-echo -e "\n${BLUE}[5/6] Generating Proxy Configuration...${NC}"
-
-# Generate litellm_config.yaml
-# We map the abstract name "zibaldone-model" to the specific user provided model/url.
-cat > litellm_config.yaml <<EOL
-model_list:
-  # Configured via setup script
-  - model_name: zibaldone-model
-    litellm_params:
-      model: ${USER_MODEL}
-      api_base: "${USER_URL}"
-      api_key: "any-string"
-
-  # Fallback
-  - model_name: gpt-3.5-turbo
-    litellm_params:
-      model: gpt-3.5-turbo
-      api_key: os.environ/OPENAI_API_KEY
-EOL
-echo -e "${GREEN}✓ Created litellm_config.yaml${NC}"
 
 # 6. Readiness Check
 echo -e "\n${BLUE}[6/6] Checking Readiness...${NC}"

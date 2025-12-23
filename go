@@ -73,8 +73,14 @@ check_port() {
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             echo -e "${BLUE}  Killing PID $pid...${NC}"
-            kill $pid 2>/dev/null || kill -9 $pid 2>/dev/null
+            kill $pid 2>/dev/null
             sleep 1
+            if ps -p $pid > /dev/null 2>&1; then
+                echo -e "${YELLOW}  Process still running. Sending SIGKILL...${NC}"
+                kill -9 $pid 2>/dev/null
+                sleep 1
+            fi
+
             if lsof -i :$port -t >/dev/null 2>&1; then
                  echo -e "${RED}  Failed to kill process. Please manually free port $port.${NC}"
                  exit 1

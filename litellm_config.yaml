@@ -2,8 +2,8 @@ model_list:
   # Configured via setup script
   - model_name: zibaldone-model
     litellm_params:
-      model: openai/gpt-oss-20b
-      api_base: "http://localhost:1234"
+      model: openai/meta-llama-3.1-8b-instruct
+      api_base: "http://localhost:1234/v1"
       api_key: "any-string"
 
   # Fallback
