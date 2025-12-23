@@ -21,9 +21,17 @@ export const DropZone: React.FC<DropZoneProps> = ({ onUploadComplete }) => {
                 };
                 await uploadFile(file, metadata);
                 console.log(`Uploaded ${file.name}`);
-            } catch (error) {
+            } catch (error: any) {
                 console.error(`Error uploading ${file.name}:`, error);
-                setUploadError(`Failed to upload ${file.name}. Please try again.`);
+                let errorMessage = `Failed to upload ${file.name}.`;
+                if (error.code === 'ECONNABORTED') {
+                    errorMessage += ' Request timed out. Backend may be unreachable.';
+                } else if (error.message) {
+                    errorMessage += ` ${error.message}`;
+                }
+                setUploadError(errorMessage);
+                // Also show alert to ensure visibility
+                alert(errorMessage);
             }
         }
         onUploadComplete();

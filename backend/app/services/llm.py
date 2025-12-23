@@ -1,5 +1,6 @@
-from litellm import completion
+from litellm import acompletion
 import json
+import os
 from typing import Dict, Any
 
 class LLMService:
@@ -22,9 +23,13 @@ class LLMService:
         {content_text[:1000]}... (truncated)
         """
         
+        # Use LITELLM_URL from environment if available (for Docker networking)
+        api_base = os.getenv("LITELLM_URL")
+        
         try:
-            response = completion(
+            response = await acompletion(
                 model=self.model,
+                api_base=api_base, # Route through the proxy
                 messages=[{"role": "user", "content": prompt}],
                 # mock_response="{'summary': 'Mock summary', 'tags': ['mock']}" # Uncomment for testing without API key
             )
