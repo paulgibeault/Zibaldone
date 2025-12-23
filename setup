@@ -47,12 +47,38 @@ check_and_install() {
     fi
 }
 
+# 1. System & Infrastructure Checks
 echo -e "\n${BLUE}[1/6] Checking System Dependencies...${NC}"
 
 check_and_install "python3" "python" "Python 3"
 check_and_install "node" "node" "Node.js"
-# npm usually comes with node, but good to check just in case
 check_and_install "npm" "node" "npm"
+
+# Container Infrastructure (Optional)
+USE_DOCKER=false
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo -e "\n${BLUE}Infrastructure Choice:${NC}"
+    read -p "  Would you like to use Docker (via Colima) for this project? [y/N] " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        USE_DOCKER=true
+        
+        echo -e "${BLUE}  Setting up Colima & Docker CLI...${NC}"
+        check_and_install "colima" "colima" "Colima"
+        check_and_install "docker" "docker" "Docker CLI"
+        
+        # Check if daemon is running
+        if ! docker info &> /dev/null; then
+            echo -e "${YELLOW}  Docker daemon is not reachable. Starting Colima...${NC}"
+            colima start
+            if ! docker info &> /dev/null; then
+                echo -e "${RED}  Error: Could not start Colima. Please check manually.${NC}"
+                exit 1
+            fi
+        fi
+        echo -e "${GREEN}  ✓ Docker (Colima) is active.${NC}"
+    fi
+fi
 
 echo -e "${GREEN}✓ System dependencies found.${NC}"
 
@@ -88,18 +114,31 @@ except Exception as e:
 
 # Ask for Base URL first to query models
 DEFAULT_URL="http://localhost:1234"
+if [ "$USE_DOCKER" = true ]; then
+    DEFAULT_URL="http://host.docker.internal:1234"
+    echo -e "${YELLOW}Note: Since you are using Docker, LM Studio must have 'Serve on Local Network' enabled.${NC}"
+fi
+
 read -p "LM Studio Base URL [${DEFAULT_URL}]: " USER_URL
 USER_URL=${USER_URL:-$DEFAULT_URL}
 
 # Try to fetch models
 echo -e "\n${BLUE}Querying available models...${NC}"
-MODELS_JSON=$(fetch_models "$USER_URL")
+
+# If using Docker host, we can't easily query from the Mac bash script if it's meant for the *container*
+# But we can try querying both localhost and host.docker.internal if we replace it with localhost for the sake of the setup script running on the host
+QUERY_URL=$USER_URL
+if [[ "$QUERY_URL" == *"host.docker.internal"* ]]; then
+    QUERY_URL=$(echo $QUERY_URL | sed 's/host.docker.internal/localhost/')
+fi
+
+MODELS_JSON=$(fetch_models "$QUERY_URL")
 
 USER_MODEL=""
 
 if [[ $MODELS_JSON == ERROR* ]]; then
     echo -e "${YELLOW}Could not fetch models automatically ($MODELS_JSON).${NC}"
-    echo -e "${YELLOW}Please ensure your LM Studio server is running.${NC}"
+    echo -e "${YELLOW}Please ensure your LM Studio server is running and 'Serve on Local Network' is ON.${NC}"
     DEFAULT_MODEL="openai/meta-llama-3.1-8b-instruct"
     read -p "Enter Model ID [${DEFAULT_MODEL}]: " USER_MODEL
     USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
@@ -210,6 +249,11 @@ LLM_MODEL=openai/zibaldone-model
 OPENAI_API_BASE=http://localhost:4000
 OPENAI_API_KEY=sk-any
 EOL
+
+if [ "$USE_DOCKER" = true ]; then
+    echo "LITELLM_URL=http://litellm:4000" >> backend/.env
+fi
+
 echo -e "${GREEN}✓ Created backend/.env${NC}"
 
 

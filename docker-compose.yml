@@ -7,9 +7,10 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/data
+    env_file:
+      - ./backend/.env
+    # Override LITELLM_URL to use the container name for intra-docker communication
     environment:
-      - LLM_MODEL=gpt-3.5-turbo
-      # Point to litellm container
       - LITELLM_URL=http://litellm:4000
     depends_on:
       - litellm
