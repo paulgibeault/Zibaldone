@@ -29,3 +29,4 @@ __pycache__/
 data/blob_storage/
 data/database.db
 litellm_config.yaml
+backend/.env
