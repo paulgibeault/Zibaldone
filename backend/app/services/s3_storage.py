@@ -26,6 +26,21 @@ class S3Storage(StorageInterface):
             region_name=self.region,
             config=s3_config
         )
+        self.public_url = os.getenv("S3_PUBLIC_URL")
+        
+        # If public_url is provided, we need a separate client for signing 
+        # to ensure the signature matches the host the browser will use.
+        if self.public_url:
+            self.signer_client = boto3.client(
+                's3',
+                endpoint_url=self.public_url,
+                aws_access_key_id=self.access_key,
+                aws_secret_access_key=self.secret_key,
+                region_name=self.region,
+                config=s3_config
+            )
+        else:
+            self.signer_client = self.s3_client
 
     async def save(self, file_content: bytes, original_filename: str) -> str:
         # Note: This is a fallback/simple upload. For efficient transfers, we use pre-signed URLs.
@@ -62,9 +77,9 @@ class S3Storage(StorageInterface):
         file_ext = os.path.splitext(filename)[1]
         storage_filename = f"{uuid.uuid4()}{file_ext}"
         
-        # In a real S3 scenario, we'd use generate_presigned_post
-        # For simple PUT, we can use generate_presigned_url
-        url = self.s3_client.generate_presigned_url(
+        # Use the signer_client which is configured with the public_url if available.
+        # This ensures the signature is valid for the browser's request.
+        url = self.signer_client.generate_presigned_url(
             'put_object',
             Params={
                 'Bucket': self.bucket_name,

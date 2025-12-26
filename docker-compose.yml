@@ -18,6 +18,7 @@ services:
       - S3_SECRET_KEY=zibaldonepassword
       - S3_BUCKET_NAME=zibaldone-blobs
       - S3_REGION=us-east-1
+      - S3_PUBLIC_URL=http://localhost:9000
     depends_on:
       - litellm
 
@@ -55,11 +56,9 @@ services:
     depends_on:
       - minio
     entrypoint: >
-      /bin/sh -c "
-      /usr/bin/mc alias set local http://minio:9000 zibaldoneadmin zibaldonepassword;
-      /usr/bin/mc mb local/zibaldone-blobs || true;
-      exit 0;
-      "
+      /bin/sh -c " echo 'Waiting for MinIO...' && until /usr/bin/mc alias set local http://minio:9000 zibaldoneadmin zibaldonepassword; do
+        sleep 1
+      done; /usr/bin/mc mb local/zibaldone-blobs || true; exit 0; "
 
 volumes:
   data:

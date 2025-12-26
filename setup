@@ -1,379 +1,181 @@
 #!/bin/bash
 set -e
 
-# Colors for output
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-RED='\033[0;31m'
-NC='\033[0m' # No Color
+# Source modular scripts
+source scripts/common.sh
+source scripts/config.sh
+source scripts/deps/python.sh
+source scripts/deps/node.sh
+source scripts/deps/docker.sh
+source scripts/deps/minio.sh
+source scripts/deps/litellm.sh
 
-echo -e "${BLUE}=== Zibaldone Setup ===${NC}"
+log_info "=== Zibaldone Setup ==="
 
-# Default values
-USE_DOCKER=false
+# Argument parsing
 FORCE=false
+USE_DOCKER_ARG=false
 
-# Simple argument parsing
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --docker) USE_DOCKER_ARG=true ;;
         -y|--force) FORCE=true ;;
-        *) echo "Unknown parameter passed: $1" ;;
+        --local) ZIB_MODE="local" ;;
+        --custom) ZIB_MODE="custom" ;;
+        *) log_error "Unknown parameter passed: $1"; exit 1 ;;
     esac
     shift
 done
 
-# 1. Environment Checks
-# Function to check and optionally install dependencies
-check_and_install() {
-    local cmd=$1
-    local package=$2
-    local pretty_name=$3
-
-    if ! command -v "$cmd" &> /dev/null; then
-        echo -e "${RED}Error: $pretty_name is not installed.${NC}"
-        
-        if command -v brew &> /dev/null; then
-            if [ "$FORCE" = true ]; then
-                REPLY="y"
-            else
-                read -p "  Would you like to try installing it via Homebrew? [y/N] " -n 1 -r
-                echo
-            fi
-            
-            if [[ $REPLY =~ ^[Yy]$ ]]; then
-                echo -e "${BLUE}  Installing $package...${NC}"
-                if brew install "$package"; then
-                    echo -e "${GREEN}  ✓ $pretty_name installed successfully.${NC}"
-                    return 0
-                else
-                    echo -e "${RED}  Failed to install $package.${NC}"
-                    exit 1
-                fi
-            else
-                echo -e "${RED}  Please install $pretty_name manually to continue.${NC}"
-                exit 1
-            fi
-        else
-            echo -e "${RED}  Homebrew not found. Please install $pretty_name manually.${NC}"
-            # Provide specific URLs for common tools
-            case $cmd in
-                node) echo -e "  Download at: https://nodejs.org/" ;;
-                python3) echo -e "  Download at: https://www.python.org/downloads/" ;;
-            esac
-            exit 1
-        fi
-    fi
-}
-
-# 1. System & Infrastructure Checks
-echo -e "\n${BLUE}[1/6] Checking System Dependencies...${NC}"
-
-check_and_install "python3" "python" "Python 3"
-check_and_install "node" "node" "Node.js"
-check_and_install "npm" "node" "npm"
-check_and_install "minio" "minio/stable/minio" "MinIO Server"
-check_and_install "mc" "minio/stable/mc" "MinIO Client"
-
-# Container Infrastructure (Optional)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    if [ "$USE_DOCKER_ARG" = true ]; then
-        USE_DOCKER=true
-    else
-        echo -e "\n${BLUE}Infrastructure Choice:${NC}"
-        read -p "  Would you like to use Docker (via Colima) for this project? [y/N] " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            USE_DOCKER=true
-        fi
-    fi
-
-    if [ "$USE_DOCKER" = true ]; then
-        echo -e "${BLUE}  Setting up Colima & Docker CLI...${NC}"
-        check_and_install "colima" "colima" "Colima"
-        check_and_install "docker" "docker" "Docker CLI"
-        
-        # Check if daemon is running
-        if ! docker info &> /dev/null; then
-            echo -e "${YELLOW}  Docker daemon is not reachable.${NC}"
-            
-            # Check if Colima is already running but unreachable
-            COLIMA_STATUS=$(colima status 2>&1 || true)
-            if [[ "$COLIMA_STATUS" == *"running"* ]]; then
-                echo -e "${YELLOW}  Colima is running but Docker cannot reach it. Performing full restart...${NC}"
-                colima stop || true
-                colima start || true
-                docker context use colima &>/dev/null || true
-            else
-                echo -e "${YELLOW}  Starting Colima...${NC}"
-                colima start || true
-                docker context use colima &>/dev/null || true
-            fi
-            
-            # Final check (with a bit of tolerance)
-            echo -e "${BLUE}  Waiting for Docker to be ready...${NC}"
-            for i in {1..10}; do
-                if docker info &> /dev/null; then
-                    break
-                fi
-                sleep 2
-            done
-            
-            if ! docker info &> /dev/null; then
-                echo -e "${RED}  Error: Still could not connect to Docker.${NC}"
-                echo -e "${YELLOW}  Check status: ${BLUE}colima status${NC}"
-                exit 1
-            fi
-        fi
-        echo -e "${GREEN}  ✓ Docker (Colima) is active.${NC}"
-    fi
+# If --docker was passed, set mode to docker
+if [ "$USE_DOCKER_ARG" = true ]; then
+    ZIB_MODE="docker"
 fi
 
-echo -e "${GREEN}✓ System dependencies found.${NC}"
+# 1. Mode Selection
+if [ -z "$ZIB_MODE" ]; then
+    echo -e "\nSelect configuration mode:"
+    echo "1) Full Local (Everything runs on this machine)"
+    echo "2) Docker (Uses Colima/Docker Compose)"
+    echo "3) Custom (Provide external dependency URLs)"
+    read -p "Selection [1-3]: " mode_choice
+    case $mode_choice in
+        1) ZIB_MODE="local" ;;
+        2) ZIB_MODE="docker" ;;
+        3) ZIB_MODE="custom" ;;
+        *) ZIB_MODE="local" ;;
+    esac
+fi
 
-# 2. Interactive Configuration
-echo -e "\n${BLUE}[2/6] Configuration Setup...${NC}"
-echo "Please enter your LLM Configuration (Press enter for defaults)"
+set_mode "$ZIB_MODE"
+log_info "Selected Mode: $ZIB_MODE"
 
-# Function to fetch models
-fetch_models() {
-    local url=$1
-    if [[ "$url" != */ ]]; then
-      url="${url}/"
+# 2. Dependency Check & Installation
+log_info "\n[1/3] Checking Dependencies..."
+
+if [ "$ZIB_MODE" = "docker" ]; then
+    if ! check_docker; then
+        install_docker
     fi
-    url="${url}v1/models"
-
-    echo -e "  Fetching models from ${url}..." >&2
-
-    # Use python to fetch and parse models
-    python3 -c "
-import sys, json, urllib.request
-
-try:
-    url = '$url'
-    with urllib.request.urlopen(url, timeout=2) as response:
-        data = json.loads(response.read().decode())
-        models = [m['id'] for m in data['data']]
-        # Print valid JSON array for bash to read, or error
-        print(json.dumps(models))
-except Exception as e:
-    print(f'ERROR: {e}')
-"
-}
-
-# Ask for Base URL first to query models
-DEFAULT_URL="http://localhost:1234"
-if [ "$USE_DOCKER" = true ]; then
-    DEFAULT_URL="http://host.docker.internal:1234"
-    echo -e "${YELLOW}Note: Since you are using Docker, LM Studio must have 'Serve on Local Network' enabled.${NC}"
-fi
-
-read -p "LM Studio Base URL [${DEFAULT_URL}]: " USER_URL
-USER_URL=${USER_URL:-$DEFAULT_URL}
-
-# Try to fetch models
-echo -e "\n${BLUE}Querying available models...${NC}"
-
-# If using Docker host, we can't easily query from the Mac bash script if it's meant for the *container*
-# But we can try querying both localhost and host.docker.internal if we replace it with localhost for the sake of the setup script running on the host
-QUERY_URL=$USER_URL
-if [[ "$QUERY_URL" == *"host.docker.internal"* ]]; then
-    QUERY_URL=$(echo $QUERY_URL | sed 's/host.docker.internal/localhost/')
-fi
-
-MODELS_JSON=$(fetch_models "$QUERY_URL")
-
-USER_MODEL=""
-
-if [[ $MODELS_JSON == ERROR* ]]; then
-    echo -e "${YELLOW}Could not fetch models automatically ($MODELS_JSON).${NC}"
-    echo -e "${YELLOW}Please ensure your LM Studio server is running and 'Serve on Local Network' is ON.${NC}"
-    DEFAULT_MODEL="openai/meta-llama-3.1-8b-instruct"
-    read -p "Enter Model ID [${DEFAULT_MODEL}]: " USER_MODEL
-    USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
+    start_docker_daemon
 else
-    # Parse python list output
-    # Remove brackets and quotes to get a clean list for select
-    CLEAN_LIST=$(echo $MODELS_JSON | sed 's/[]["]//g' | tr ',' ' ')
+    if ! check_python; then install_python; fi
+    if ! check_node; then install_node; fi
+    if ! check_minio && [ "$ZIB_MODE" = "local" ]; then install_minio; fi
+fi
+
+# 3. Environment Setup
+log_info "\n[2/3] Setting up environment components..."
+
+if [ "$ZIB_MODE" != "docker" ] || [ "$FORCE" = true ]; then
+    setup_backend_venv
+    setup_frontend_deps
+fi
+
+# 4. Configuration
+log_info "\n[3/3] Configuring Zibaldone..."
+
+# Default URLs
+LM_STUDIO_DEFAULT="http://localhost:1234"
+if [ "$ZIB_MODE" = "docker" ]; then
+    LM_STUDIO_DEFAULT="http://host.docker.internal:1234"
+fi
+
+# LiteLLM & LLM Configuration
+if [ "$ZIB_MODE" = "custom" ]; then
+    read -p "LiteLLM API Base URL: " LITELLM_API_BASE
+    read -p "LLM Model Name: " USER_MODEL
+else
+    echo "Please enter your LLM Configuration (Press enter for defaults)"
+    read -p "LM Studio Base URL [$LM_STUDIO_DEFAULT]: " USER_URL
+    USER_URL=${USER_URL:-$LM_STUDIO_DEFAULT}
     
-    # Store in array
-    IFS=' ' read -r -a MODEL_ARRAY <<< "$CLEAN_LIST"
+    # Simple model selection (could be more advanced like the old script, 
+    # but keeping it clean for now as per "simple and easy" requirement)
+    DEFAULT_MODEL="meta-llama-3.1-8b-instruct"
+    read -p "Enter Model ID [$DEFAULT_MODEL]: " USER_MODEL
+    USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
     
-    if [ ${#MODEL_ARRAY[@]} -eq 0 ]; then
-        echo -e "${YELLOW}No models found.${NC}"
-        DEFAULT_MODEL="openai/meta-llama-3.1-8b-instruct"
-        read -p "Enter Model ID [${DEFAULT_MODEL}]: " USER_MODEL
-        USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
+    # Ensure api_base ends with /v1
+    if [[ "$USER_URL" != */v1 ]]; then
+        LITELLM_API_BASE="${USER_URL%/}/v1"
     else
-        echo -e "${GREEN}Found available models:${NC}"
-        PS3="Select a model (or enter number for 'Custom'): "
-        select opt in "${MODEL_ARRAY[@]}" "Custom"; do
-            if [[ "$opt" == "Custom" ]]; then
-                read -p "Enter Model ID: " USER_MODEL
-                break
-            elif [[ -n "$opt" ]]; then
-                USER_MODEL=$opt
-                break
-            else
-                echo "Invalid selection."
-            fi
-        done
+        LITELLM_API_BASE="$USER_URL"
     fi
 fi
 
-# Ensure model has openai/ prefix if not provided (common convention for litellm with some providers, but maybe not strictly needed for proxy)
-# Actually, for litellm proxying to openai-compatible, we usually just pass the model ID.
-# But for the *backend* configuration, we might need a prefix if we are using specific providers.
-# In the original config, it was 'openai/gpt-oss-20b'.
-# If the user selected 'meta-llama-3.1-8b-instruct', we might want to store it as is for litellm_params.model
-# But in backend/.env it is set to LLM_MODEL=openai/zibaldone-model.
-# Wait, litellm_config.yaml has:
-# - model_name: zibaldone-model
-#   litellm_params:
-#     model: <USER_MODEL> 
-# So if USER_MODEL is 'meta-llama-3.1-8b-instruct', that goes there.
-# And backend asks for 'zibaldone-model'.
-# The 'openai/' prefix in 'openai/gpt-oss-20b' in the original file refers to the *provider* in litellm terms.
-# If connecting to LM Studio which is OpenAI compatible, we should use 'openai/<model_id>'.
-
+# Prepend openai/ if needed for LiteLLM
 if [[ "$USER_MODEL" != openai/* ]]; then
-    # We'll prepend openai/ for the litellm config to ensure it uses the openai provider logic
-    # checking if it already has a provider prefix might be safer, but for now assuming local server is openai-compatible
     LITELLM_MODEL_CONFIG="openai/${USER_MODEL}"
 else
     LITELLM_MODEL_CONFIG="$USER_MODEL"
 fi
 
-# Ensure api_base ends with /v1
-if [[ "$USER_URL" == */v1 ]]; then
-    LITELLM_API_BASE="$USER_URL"
-elif [[ "$USER_URL" == */v1/ ]]; then
-    LITELLM_API_BASE="${USER_URL%/}"
-else
-    if [[ "$USER_URL" == */ ]]; then
-        LITELLM_API_BASE="${USER_URL}v1"
-    else
-        LITELLM_API_BASE="${USER_URL}/v1"
-    fi
-fi
-
-echo -e "Using Model: ${GREEN}${USER_MODEL}${NC}"
-echo -e "Using URL:   ${GREEN}${USER_URL}${NC}"
-
-# 3. Generating Configuration
-echo -e "\n${BLUE}[3/6] Generating Configuration...${NC}"
-
-# Generate litellm_config.yaml
-# We map the abstract name "zibaldone-model" to the specific user provided model/url.
-cat > litellm_config.yaml <<EOL
-model_list:
-  # Configured via setup script
-  - model_name: zibaldone-model
-    litellm_params:
-      model: ${LITELLM_MODEL_CONFIG}
-      api_base: "${LITELLM_API_BASE}"
-      api_key: "any-string"
-
-  # Fallback
-  - model_name: gpt-3.5-turbo
-    litellm_params:
-      model: gpt-3.5-turbo
-      api_key: os.environ/OPENAI_API_KEY
-EOL
-echo -e "${GREEN}✓ Created litellm_config.yaml${NC}"
+configure_litellm "$LITELLM_MODEL_CONFIG" "$LITELLM_API_BASE"
 
 # Generate backend/.env
-# We write this directly to backend/.env
-if [ -f "backend/.env" ]; then
-    echo "Backing up existing backend/.env to backend/.env.bak"
-    cp backend/.env backend/.env.bak
+log_info "Generating backend/.env..."
+
+if [ "$ZIB_MODE" = "custom" ]; then
+    BACKEND_API_BASE=$LITELLM_API_BASE
+else
+    BACKEND_API_BASE="http://localhost:4000"
 fi
 
-# CRITICAL FIX: The LLM_MODEL must allow litellm to know the provider. 
-# We mapped the user's model to 'zibaldone-model' in litellm config.
-# Here we tell backend to use 'openai/zibaldone-model' so it treats the proxy as OpenAI compatible.
 cat > backend/.env <<EOL
 # Zibaldone Backend Configuration
 LLM_MODEL=openai/zibaldone-model
-OPENAI_API_BASE=http://localhost:4000
+OPENAI_API_BASE=$BACKEND_API_BASE
 OPENAI_API_KEY=sk-any
 EOL
 
-if [ "$USE_DOCKER" = true ]; then
-    echo "LITELLM_URL=http://litellm:4000" >> backend/.env
-    echo "STORAGE_TYPE=s3" >> backend/.env
-    echo "S3_ENDPOINT=http://minio:9000" >> backend/.env
-    echo "S3_ACCESS_KEY=zibaldoneadmin" >> backend/.env
-    echo "S3_SECRET_KEY=zibaldonepassword" >> backend/.env
-    echo "S3_BUCKET_NAME=zibaldone-blobs" >> backend/.env
-    echo "S3_REGION=us-east-1" >> backend/.env
-fi
-
-# Ask for storage choice for local run
-if [ "$USE_DOCKER" = false ]; then
-    echo -e "\n${BLUE}Storage Configuration:${NC}"
-    read -p "  Use S3-compatible storage (MinIO) for local run? [y/N] " -n 1 -r
+if [ "$ZIB_MODE" = "docker" ]; then
+    cat >> backend/.env <<EOL
+LITELLM_URL=http://litellm:4000
+STORAGE_TYPE=s3
+S3_ENDPOINT=http://minio:9000
+S3_ACCESS_KEY=zibaldoneadmin
+S3_SECRET_KEY=zibaldonepassword
+S3_BUCKET_NAME=zibaldone-blobs
+S3_REGION=us-east-1
+S3_PUBLIC_URL=http://localhost:9000
+EOL
+elif [ "$ZIB_MODE" = "local" ]; then
+    cat >> backend/.env <<EOL
+STORAGE_TYPE=s3
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=zibaldoneadmin
+S3_SECRET_KEY=zibaldonepassword
+S3_BUCKET_NAME=zibaldone-blobs
+S3_REGION=us-east-1
+EOL
+    mkdir -p data/minio_data
+elif [ "$ZIB_MODE" = "custom" ]; then
+    read -p "Storage Endpoint (e.g. https://s3.amazonaws.com): " S3_ENDPOINT
+    read -p "Storage Access Key: " S3_ACCESS_KEY
+    read -s -p "Storage Secret Key: " S3_SECRET_KEY
     echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        echo "STORAGE_TYPE=s3" >> backend/.env
-        echo "S3_ENDPOINT=http://localhost:9000" >> backend/.env
-        echo "S3_ACCESS_KEY=zibaldoneadmin" >> backend/.env
-        echo "S3_SECRET_KEY=zibaldonepassword" >> backend/.env
-        echo "S3_BUCKET_NAME=zibaldone-blobs" >> backend/.env
-        echo "S3_REGION=us-east-1" >> backend/.env
-        
-        # Create local MinIO data directory
-        mkdir -p data/minio_data
-        echo -e "${GREEN}  ✓ Created data/minio_data for local storage.${NC}"
-        echo -e "${YELLOW}Note: Local S3 mode will launch a local MinIO server during ./go.${NC}"
-    else
-        echo "STORAGE_TYPE=filesystem" >> backend/.env
-        echo "STORAGE_DIR=../data/blob_storage" >> backend/.env
-    fi
+    read -p "Storage Bucket Name: " S3_BUCKET_NAME
+    
+    cat >> backend/.env <<EOL
+STORAGE_TYPE=s3
+S3_ENDPOINT=$S3_ENDPOINT
+S3_ACCESS_KEY=$S3_ACCESS_KEY
+S3_SECRET_KEY=$S3_SECRET_KEY
+S3_BUCKET_NAME=$S3_BUCKET_NAME
+S3_REGION=us-east-1
+EOL
 fi
 
-echo -e "${GREEN}✓ Created backend/.env${NC}"
+log_success "Created backend/.env"
 
-
-# 4. Backend Setup
-echo -e "\n${BLUE}[4/6] Setting up Backend Environment...${NC}"
-cd backend
-
-if [ ! -d ".venv" ]; then
-    echo "Creating virtual environment..."
-    python3 -m venv .venv
-fi
-
-source .venv/bin/activate
-
-echo "Installing Python dependencies..."
-pip install -U pip > /dev/null
-pip install -r requirements.txt
-pip install 'litellm[proxy]'
-
-cd ..
-
-# 5. Frontend Setup
-echo -e "\n${BLUE}[5/6] Setting up Frontend...${NC}"
-cd frontend
-if [ ! -d "node_modules" ]; then
-    echo "Installing Node modules..."
-    npm install
+log_info "\n=== Setup Complete! ==="
+if [ "$ZIB_MODE" = "docker" ]; then
+    log_info "🚀 Running in Docker Mode"
+    log_info "Frontend UI will be at: http://localhost:3000"
+    log_info "Note: Ensure LM Studio has 'Serve on Local Network' enabled."
 else
-    echo "Node modules already installed."
+    log_info "🚀 Running in Local Mode"
+    log_info "Frontend UI will be at: http://localhost:5173"
 fi
-cd ..
-
-# 6. Readiness Check
-echo -e "\n${BLUE}[6/6] Checking Readiness...${NC}"
-source backend/.venv/bin/activate
-
-if command -v uvicorn &> /dev/null && command -v litellm &> /dev/null; then
-     echo -e "${GREEN}✓ Backend tools (uvicorn, litellm) are ready.${NC}"
-else
-     echo -e "${RED}Error: Backend tools not found in venv.${NC}"
-     exit 1
-fi
-
-echo -e "\n${GREEN}=== Setup Complete! ===${NC}"
-echo "You can now run: ./go"
+log_info "\nYou can now start the application with: ${GREEN}./go${NC}"
