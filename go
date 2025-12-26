@@ -3,6 +3,7 @@
 # Source modular scripts
 source scripts/common.sh
 source scripts/config.sh
+source scripts/services.sh
 source scripts/deps/python.sh
 source scripts/deps/node.sh
 source scripts/deps/docker.sh
@@ -37,46 +38,8 @@ fi
 
 log_info "=== Starting Zibaldone ($ZIB_MODE Mode) ==="
 
-# Cleanup function for local mode
-cleanup_local() {
-    log_info "\nStopping local services..."
-    
-    # Send SIGTERM to all known services
-    [ -n "$PID_LITELLM" ] && kill "$PID_LITELLM" 2>/dev/null
-    [ -n "$PID_BACKEND" ] && kill "$PID_BACKEND" 2>/dev/null
-    [ -n "$PID_FRONTEND" ] && kill "$PID_FRONTEND" 2>/dev/null
-    [ -n "$PID_MINIO" ] && kill "$PID_MINIO" 2>/dev/null
-    
-    # Wait up to 3 seconds for graceful exit
-    local count=0
-    while [ $count -lt 3 ]; do
-        alive=false
-        for pid in $PID_LITELLM $PID_BACKEND $PID_FRONTEND $PID_MINIO; do
-            if [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1; then
-                alive=true
-                break
-            fi
-        done
-        if [ "$alive" = false ]; then
-            break
-        fi
-        sleep 1
-        ((count++))
-    done
-    
-    # Force kill any remaining processes
-    for pid in $PID_LITELLM $PID_BACKEND $PID_FRONTEND $PID_MINIO; do
-        if [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1; then
-            kill -9 "$pid" 2>/dev/null
-        fi
-    done
-    
-    log_success "All services stopped."
-    exit 0
-}
-
 if [ "$ZIB_MODE" = "docker" ]; then
-    if [ "$(check_docker)" = "2" ]; then
+    if ! check_docker; then
         start_docker_daemon
     fi
     
@@ -85,7 +48,6 @@ if [ "$ZIB_MODE" = "docker" ]; then
     fi
     
     docker compose up --build -d
-    log_info "Streaming logs (Ctrl+C to stop services)..."
     
     echo -e "\n${GREEN}🚀 Zibaldone is running!${NC}"
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -94,10 +56,11 @@ if [ "$ZIB_MODE" = "docker" ]; then
     echo -e "${GREEN}  LiteLLM:      http://localhost:4000${NC}"
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
+    log_info "Streaming logs (Ctrl+C to stop services)..."
     docker compose logs -f
 else
-    # Register trap for cleanup
-    trap cleanup_local SIGINT SIGTERM
+    # Local mode
+    trap stop_local_services SIGINT SIGTERM
     
     # Check Ports
     if [ "$RESTART" = true ]; then
@@ -114,43 +77,18 @@ else
         fi
     done
 
-    # Start MinIO locally if needed
+    # Start Services
     STORAGE_TYPE=$(grep STORAGE_TYPE backend/.env | cut -d'=' -f2)
     if [ "$ZIB_MODE" = "local" ] && [ "$STORAGE_TYPE" = "s3" ] && [[ "$(grep S3_ENDPOINT backend/.env)" == *"localhost"* ]]; then
-        log_info "Starting local MinIO..."
-        export MINIO_ROOT_USER=$(grep S3_ACCESS_KEY backend/.env | cut -d'=' -f2)
-        export MINIO_ROOT_PASSWORD=$(grep S3_SECRET_KEY backend/.env | cut -d'=' -f2)
-        minio server data/minio_data --address :9000 --console-address :9001 > /dev/null 2>&1 &
-        PID_MINIO=$!
-        
-        # Ensure bucket exists
-        sleep 2
-        mc alias set local_zibaldone http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD >/dev/null 2>&1
-        mc mb local_zibaldone/zibaldone-blobs 2>/dev/null || true
+        start_minio_local
     fi
 
-    # Start LiteLLM Proxy if in local mode
     if [ "$ZIB_MODE" = "local" ]; then
-        log_info "Starting LiteLLM Proxy..."
-        source backend/.venv/bin/activate
-        litellm --config litellm_config.yaml --host 0.0.0.0 --port 4000 > /dev/null 2>&1 &
-        PID_LITELLM=$!
+        start_litellm_local
     fi
 
-    # Start Backend
-    log_info "Starting Backend..."
-    cd backend
-    export $(grep -v '^#' .env | xargs)
-    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
-    PID_BACKEND=$!
-    cd ..
-
-    # Start Frontend
-    log_info "Starting Frontend..."
-    cd frontend
-    npm run dev -- --host --port 5173 > /dev/null 2>&1 &
-    PID_FRONTEND=$!
-    cd ..
+    start_backend_local
+    start_frontend_local
 
     log_success "All services running!"
     echo -e "\n${GREEN}🚀 Zibaldone is running!${NC}"
