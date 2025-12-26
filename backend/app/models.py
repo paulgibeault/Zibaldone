@@ -12,9 +12,12 @@ class ContentStatus(str, Enum):
 class ContentItem(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     status: ContentStatus = Field(default=ContentStatus.UNPROCESSED)
-    original_filename: str
+    original_filename: str = Field(index=True)
+    version: int = Field(default=1, index=True)
+    content_type: Optional[str] = Field(default=None, index=True)
+    checksum: Optional[str] = Field(default=None, index=True) # SHA-256 for duplication detection
     storage_path: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
     metadata_json: Optional[str] = Field(default="{}") # Storing simple JSON as string for SQLite simplicity initially
 
 from pathlib import Path

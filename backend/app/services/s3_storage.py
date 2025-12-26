@@ -48,13 +48,17 @@ class S3Storage(StorageInterface):
         file_ext = os.path.splitext(original_filename)[1]
         storage_filename = f"{uuid.uuid4()}{file_ext}"
         
+        # Implement date-based hierarchy
+        date_prefix = self.get_date_prefix()
+        storage_key = f"{date_prefix}{storage_filename}"
+        
         self.s3_client.put_object(
             Bucket=self.bucket_name,
-            Key=storage_filename,
+            Key=storage_key,
             Body=file_content
         )
         
-        return storage_filename
+        return storage_key
 
     def delete(self, storage_path: str):
         # Gracefully handle legacy filesystem paths if they exist
@@ -77,13 +81,17 @@ class S3Storage(StorageInterface):
         file_ext = os.path.splitext(filename)[1]
         storage_filename = f"{uuid.uuid4()}{file_ext}"
         
+        # Implement date-based hierarchy
+        date_prefix = self.get_date_prefix()
+        storage_key = f"{date_prefix}{storage_filename}"
+        
         # Use the signer_client which is configured with the public_url if available.
         # This ensures the signature is valid for the browser's request.
         url = self.signer_client.generate_presigned_url(
             'put_object',
             Params={
                 'Bucket': self.bucket_name,
-                'Key': storage_filename,
+                'Key': storage_key,
             },
             ExpiresIn=3600
         )
@@ -91,6 +99,6 @@ class S3Storage(StorageInterface):
         return {
             "mode": "s3",
             "upload_url": url,
-            "storage_path": storage_filename,
+            "storage_path": storage_key,
             "method": "PUT"
         }

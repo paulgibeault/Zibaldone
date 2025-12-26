@@ -25,6 +25,12 @@ class StorageInterface(ABC):
         """Returns parameters for browser-side upload (e.g. pre-signed URL)."""
         pass
 
+    def get_date_prefix(self) -> str:
+        """Returns the date-based prefix YYYY/MM/DD/."""
+        from datetime import datetime
+        now = datetime.utcnow()
+        return now.strftime("%Y/%m/%d/")
+
 class FileSystemStorage(StorageInterface):
     def __init__(self, storage_dir: str):
         self.storage_dir = storage_dir
@@ -33,23 +39,34 @@ class FileSystemStorage(StorageInterface):
     async def save(self, file_content: bytes, original_filename: str) -> str:
         file_ext = os.path.splitext(original_filename)[1]
         storage_filename = f"{uuid.uuid4()}{file_ext}"
-        storage_path = os.path.join(self.storage_dir, storage_filename)
         
-        async with aiofiles.open(storage_path, 'wb') as out_file:
+        # Implement date-based hierarchy
+        date_prefix = self.get_date_prefix()
+        relative_path = os.path.join(date_prefix, storage_filename)
+        full_path = os.path.join(self.storage_dir, relative_path)
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        async with aiofiles.open(full_path, 'wb') as out_file:
             await out_file.write(file_content)
             
-        return storage_path
+        return relative_path # Return relative path for database storage
 
     def delete(self, storage_path: str):
-        if os.path.exists(storage_path):
-            os.remove(storage_path)
+        # Join with storage_dir since DB stores relative path now
+        full_path = os.path.join(self.storage_dir, storage_path) if not os.path.isabs(storage_path) else storage_path
+        if os.path.exists(full_path):
+            if os.path.isfile(full_path):
+                os.remove(full_path)
 
     def get_path(self, storage_path: str) -> str:
-        return storage_path
+        if os.path.isabs(storage_path):
+            return storage_path
+        return os.path.join(self.storage_dir, storage_path)
 
     async def get_upload_params(self, filename: str) -> Dict[str, Any]:
         # For local filesystem, we still use the /upload endpoint as fallback
-        # return a flag indicating local upload
         return {"mode": "local", "upload_url": "/api/upload"}
 
 def get_storage() -> StorageInterface:
