@@ -82,27 +82,33 @@ if [ "$ZIB_MODE" = "docker" ]; then
 fi
 
 # LiteLLM & LLM Configuration
+echo -e "\n[3/3] Configuring Zibaldone..."
+echo "Please enter your LLM Configuration (Press enter for defaults)"
+
 if [ "$ZIB_MODE" = "custom" ]; then
-    read -p "LiteLLM API Base URL: " LITELLM_API_BASE
-    read -p "LLM Model Name: " USER_MODEL
+    read -p "API Base URL (e.g. OpenAI/LiteLLM): " USER_URL
 else
-    echo "Please enter your LLM Configuration (Press enter for defaults)"
-    read -p "LM Studio Base URL [$LM_STUDIO_DEFAULT]: " USER_URL
+    read -p "LM Studio/Ollama Base URL [$LM_STUDIO_DEFAULT]: " USER_URL
     USER_URL=${USER_URL:-$LM_STUDIO_DEFAULT}
-    
-    # Simple model selection (could be more advanced like the old script, 
-    # but keeping it clean for now as per "simple and easy" requirement)
-    DEFAULT_MODEL="meta-llama-3.1-8b-instruct"
-    read -p "Enter Model ID [$DEFAULT_MODEL]: " USER_MODEL
-    USER_MODEL=${USER_MODEL:-$DEFAULT_MODEL}
-    
-    # Ensure api_base ends with /v1
-    if [[ "$USER_URL" != */v1 ]]; then
-        LITELLM_API_BASE="${USER_URL%/}/v1"
-    else
-        LITELLM_API_BASE="$USER_URL"
-    fi
 fi
+
+# Ensure api_base ends with /v1
+if [[ "$USER_URL" != */v1 ]]; then
+    LITELLM_API_BASE="${USER_URL%/}/v1"
+else
+    LITELLM_API_BASE="$USER_URL"
+fi
+
+# Host-aware querying for model selection
+# (host.docker.internal doesn't resolve on host Mac, so map to localhost for query)
+query_url="$LITELLM_API_BASE"
+if [[ "$query_url" == *"host.docker.internal"* ]]; then
+    query_url="${query_url/host.docker.internal/localhost}"
+fi
+
+# Interactive Model Selection
+DEFAULT_MODEL="meta-llama-3.1-8b-instruct"
+USER_MODEL=$(select_model "$query_url" "$DEFAULT_MODEL")
 
 # Prepend openai/ if needed for LiteLLM
 if [[ "$USER_MODEL" != openai/* ]]; then

@@ -40,12 +40,39 @@ log_info "=== Starting Zibaldone ($ZIB_MODE Mode) ==="
 # Cleanup function for local mode
 cleanup_local() {
     log_info "\nStopping local services..."
+    
+    # Send SIGTERM to all known services
     [ -n "$PID_LITELLM" ] && kill "$PID_LITELLM" 2>/dev/null
     [ -n "$PID_BACKEND" ] && kill "$PID_BACKEND" 2>/dev/null
     [ -n "$PID_FRONTEND" ] && kill "$PID_FRONTEND" 2>/dev/null
     [ -n "$PID_MINIO" ] && kill "$PID_MINIO" 2>/dev/null
-    wait 2>/dev/null
-    exit
+    
+    # Wait up to 3 seconds for graceful exit
+    local count=0
+    while [ $count -lt 3 ]; do
+        alive=false
+        for pid in $PID_LITELLM $PID_BACKEND $PID_FRONTEND $PID_MINIO; do
+            if [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1; then
+                alive=true
+                break
+            fi
+        done
+        if [ "$alive" = false ]; then
+            break
+        fi
+        sleep 1
+        ((count++))
+    done
+    
+    # Force kill any remaining processes
+    for pid in $PID_LITELLM $PID_BACKEND $PID_FRONTEND $PID_MINIO; do
+        if [ -n "$pid" ] && ps -p "$pid" >/dev/null 2>&1; then
+            kill -9 "$pid" 2>/dev/null
+        fi
+    done
+    
+    log_success "All services stopped."
+    exit 0
 }
 
 if [ "$ZIB_MODE" = "docker" ]; then
