@@ -69,6 +69,11 @@ cleanup() {
              echo -e "${YELLOW}Stopping Frontend (PID $PID_FRONTEND)...${NC}"
              kill_descendants "$PID_FRONTEND"
         fi
+        
+        if [ -n "$PID_MINIO" ]; then
+             echo -e "${YELLOW}Stopping MinIO (PID $PID_MINIO)...${NC}"
+             kill_descendants "$PID_MINIO"
+        fi
 
         # Fallback: kill any remaining direct children of this script
         kill $(jobs -p) 2>/dev/null
@@ -205,6 +210,8 @@ if [ "$USE_DOCKER" = true ]; then
     check_port 4000 "LiteLLM (Docker Proxy)"
     check_port 8000 "Backend (Docker Proxy)"
     check_port 3000 "Frontend (Docker Proxy)"
+    check_port 9000 "MinIO API (Docker Proxy)"
+    check_port 9001 "MinIO Console (Docker Proxy)"
 
     echo -e "${GREEN}[4/4] Starting Docker Services...${NC}"
     # Use --build to ensure changes are picked up, -d to run in background
@@ -246,10 +253,45 @@ else
     # 4. Start Services
     echo -e "${GREEN}[4/4] Starting Services...${NC}"
 
-    # Check ports before starting
     check_port 4000 "LiteLLM"
     check_port 8000 "Backend"
     check_port 5173 "Frontend"
+
+    # Check if S3 is configured and if MinIO needs to be started
+    STORAGE_TYPE=$(grep STORAGE_TYPE backend/.env | cut -d'=' -f2)
+    if [ "$STORAGE_TYPE" = "s3" ]; then
+        if ! nc -z localhost 9000 2>/dev/null; then
+            echo -e "${YELLOW}STORAGE_TYPE=s3 but local MinIO not found on port 9000.${NC}"
+            echo -e "${BLUE}Launching local MinIO server...${NC}"
+            
+            # Use data/minio_data as the storage backend
+            mkdir -p data/minio_data
+            
+            # Export credentials for MinIO
+            export MINIO_ROOT_USER=$(grep S3_ACCESS_KEY backend/.env | cut -d'=' -f2)
+            export MINIO_ROOT_PASSWORD=$(grep S3_SECRET_KEY backend/.env | cut -d'=' -f2)
+            
+            minio server data/minio_data --address :9000 --console-address :9001 > /dev/null 2>&1 &
+            PID_MINIO=$!
+            echo -e "${BLUE}  -> MinIO running (PID: $PID_MINIO)${NC}"
+            
+            # Wait for MinIO to be ready
+            echo -e "${BLUE}Waiting for MinIO...${NC}"
+            for i in {1..10}; do
+                if nc -z localhost 9000 2>/dev/null; then
+                    echo -e "${GREEN}✓ MinIO is ready.${NC}"
+                    break
+                fi
+                sleep 2
+            done
+            
+            # Setup bucket using mc
+            echo -e "${BLUE}Ensuring bucket existence...${NC}"
+            mc alias set local_zibaldone http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD > /dev/null 2>&1
+            mc mb local_zibaldone/zibaldone-blobs 2>/dev/null || true
+            echo -e "${GREEN}✓ Bucket 'zibaldone-blobs' ready.${NC}"
+        fi
+    fi
 
     # Start LiteLLM Proxy
     litellm --config litellm_config.yaml --host 0.0.0.0 --port 4000 > /dev/null 2>&1 &
@@ -258,6 +300,8 @@ else
 
     # Start Backend
     cd backend
+    # Export env vars from .env for local run to ensure boto3 finds them
+    export $(grep -v '^#' .env | xargs)
     uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
     PID_BACKEND=$!
     echo -e "${BLUE}  -> Backend running (PID: $PID_BACKEND)${NC}"

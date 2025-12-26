@@ -26,7 +26,6 @@ TestResults.xml
 __pycache__/
 *.py[cod]
 *$py.class
-data/blob_storage/
-data/database.db
+data/*
 litellm_config.yaml
 backend/.env

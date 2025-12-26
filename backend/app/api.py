@@ -5,12 +5,37 @@ import aiofiles
 import os
 import uuid
 
-from app.services.storage import LocalObjectStore
+from app.services.storage import get_storage
 
 router = APIRouter()
 
-# Initialize storage (could be dependency injected)
-storage = LocalObjectStore("../data/blob_storage")
+# Initialize storage
+storage = get_storage()
+
+@router.get("/upload/params")
+async def get_upload_params(filename: str):
+    params = await storage.get_upload_params(filename)
+    return params
+
+@router.post("/upload/finalize")
+async def finalize_upload(
+    original_filename: str = Form(...),
+    storage_path: str = Form(...),
+    metadata: str = Form("{}"),
+    session: Session = Depends(get_session)
+):
+    # Create DB record after direct S3 upload or local fallback
+    content_item = ContentItem(
+        original_filename=original_filename,
+        storage_path=storage_path,
+        status=ContentStatus.UNPROCESSED,
+        metadata_json=metadata
+    )
+    session.add(content_item)
+    session.commit()
+    session.refresh(content_item)
+    
+    return content_item
 
 @router.post("/upload")
 async def upload_content(
@@ -21,7 +46,7 @@ async def upload_content(
     content = await file.read()
     storage_path = await storage.save(content, file.filename)
         
-    # Create DB record
+    # Create DB record (legacy/fallback support)
     content_item = ContentItem(
         original_filename=file.filename,
         storage_path=storage_path,

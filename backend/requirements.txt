@@ -5,4 +5,6 @@ python-multipart
 aiofiles
 litellm
 pytest
+pytest-asyncio
 httpx
+boto3

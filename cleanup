@@ -45,11 +45,19 @@ if [ -d "frontend/node_modules" ]; then
     echo -e "Removed frontend/node_modules"
 fi
 
-# 3. Remove Global Config
-echo -e "\n${BLUE}[3/3] Cleaning Global Config...${NC}"
+# 3. Remove Global Config & Data
+echo -e "\n${BLUE}[3/3] Cleaning Global Config & Data...${NC}"
 if [ -f "litellm_config.yaml" ]; then
     rm litellm_config.yaml
     echo -e "Removed litellm_config.yaml"
+fi
+if [ -d "data" ]; then
+    rm -rf data
+    echo -e "Removed data/ directory"
+fi
+if [ -d ".pytest_cache" ]; then
+    rm -rf .pytest_cache
+    echo -e "Removed .pytest_cache"
 fi
 
 echo -e "\n${GREEN}=== Cleanup Complete ===${NC}"

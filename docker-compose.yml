@@ -12,6 +12,12 @@ services:
     # Override LITELLM_URL to use the container name for intra-docker communication
     environment:
       - LITELLM_URL=http://litellm:4000
+      - STORAGE_TYPE=s3
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=zibaldoneadmin
+      - S3_SECRET_KEY=zibaldonepassword
+      - S3_BUCKET_NAME=zibaldone-blobs
+      - S3_REGION=us-east-1
     depends_on:
       - litellm
 
@@ -32,5 +38,29 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      - MINIO_ROOT_USER=zibaldoneadmin
+      - MINIO_ROOT_PASSWORD=zibaldonepassword
+    command: server /data --console-address ":9001"
+
+  create-buckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set local http://minio:9000 zibaldoneadmin zibaldonepassword;
+      /usr/bin/mc mb local/zibaldone-blobs || true;
+      exit 0;
+      "
+
 volumes:
   data:
+  minio_data:
