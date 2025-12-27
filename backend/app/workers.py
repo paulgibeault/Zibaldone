@@ -30,16 +30,6 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
     
     # Read content (assuming text for now, or just tagging filename)
     try:
-        # For MVP, if it's a text file, read it. Else just use filename.
-        content_text = f"Filename: {item.original_filename}"
-        if item.storage_path.endswith(".txt") or item.storage_path.endswith(".md"):
-            try:
-                with open(item.storage_path, "r") as f:
-                    content_text += "\nContent:\n" + f.read()
-            except Exception as e:
-                logger.warning(f"Could not read content of {item.storage_path}: {e}")
-                pass
-        
         # Load existing metadata
         existing_metadata = {}
         if item.metadata_json:
@@ -50,7 +40,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
                 pass
 
         # Generate new metadata from LLM
-        llm_metadata = await llm_service.generate_metadata(content_text)
+        llm_metadata = await llm_service.generate_metadata(item.storage_path)
         
         # Merge: existing metadata takes precedence? 
         # Requirement: "not overwritten by the LLM, unless there is metadata key collisions, which LLM can overwrite"

@@ -27,6 +27,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 data/*
+backend/data/*
 litellm_config.yaml
 backend/.env
 .zibaldone.conf
