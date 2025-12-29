@@ -9,6 +9,8 @@ import uuid
 import hashlib
 
 from app.services.storage import get_storage
+from app.services.event_broadcaster import broadcaster
+import json
 
 router = APIRouter()
 
@@ -142,6 +144,8 @@ def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = De
         session.add(item)
         session.commit()
         session.refresh(item)
+        # Notify clients
+        broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
     return item
 
 @router.delete("/items/{item_id}/tags/{tag_id}")
@@ -156,6 +160,8 @@ def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session
         session.add(item)
         session.commit()
         session.refresh(item)
+        # Notify clients
+        broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
     return item
 
 @router.delete("/items/{item_id}")

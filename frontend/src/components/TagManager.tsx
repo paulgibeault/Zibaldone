@@ -162,8 +162,20 @@ const TagManager: React.FC = () => {
                                                 value={editColor}
                                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditColor(e.target.value)}
                                             />
-                                            <button onClick={() => handleUpdateTag(tag.id)} className="btn-save">Save</button>
-                                            <button onClick={() => setEditingId(null)} className="btn-cancel">Cancel</button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.preventDefault(); handleUpdateTag(tag.id); }}
+                                                className="btn-save"
+                                            >
+                                                Save
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.preventDefault(); setEditingId(null); }}
+                                                className="btn-cancel"
+                                            >
+                                                Cancel
+                                            </button>
                                         </div>
                                     ) : (
                                         <>
@@ -173,7 +185,9 @@ const TagManager: React.FC = () => {
                                             </div>
                                             <div className="item-actions">
                                                 <button
-                                                    onClick={() => {
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
                                                         setEditingId(tag.id);
                                                         setEditName(tag.name);
                                                         setEditColor(tag.color);
@@ -184,7 +198,11 @@ const TagManager: React.FC = () => {
                                                     <Edit2 size={14} />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDeleteTag(tag.id)}
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        handleDeleteTag(tag.id);
+                                                    }}
                                                     className="btn-icon-v2 danger"
                                                     title="Delete"
                                                 >

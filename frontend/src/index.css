@@ -613,65 +613,14 @@ h1 {
   background: rgba(239, 68, 68, 0.1);
 }
 
-/* Tag Picker Enhancements */
-.tag-picker-container {
-  display: flex;
-  flex-direction: column;
-}
+/* End of global styles */
 
-.current-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-
-.add-tag-btn-minimal {
-  background: var(--bg-canvas);
-  border: 1px dashed var(--border-subtle);
-  color: var(--text-muted);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.add-tag-btn-minimal:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--bg-card);
-}
-
-.picker-item-compact {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.picker-item-compact:hover {
-  background: var(--bg-card-hover);
-}
-
-.picker-item-compact.selected {
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--color-primary);
-}
-
-.picker-tag-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.remove-indicator {
-  margin-left: auto;
-  opacity: 0.6;
+.picker-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+  background: transparent;
 }

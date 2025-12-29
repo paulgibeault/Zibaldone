@@ -4,7 +4,6 @@ import {
     Trash2,
     Info,
     Database,
-    FileJson,
     Maximize2,
     X,
     FileImage,
@@ -14,7 +13,9 @@ import {
     Archive,
     File,
     Clock,
-    HardDrive
+    HardDrive,
+    Table,
+    Code
 } from 'lucide-react';
 import { type ContentItem } from '../api';
 import TagPicker from './TagPicker';
@@ -27,8 +28,9 @@ interface FileCardProps {
     onRefresh: () => void;
 }
 
-export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh }) => {
-    const [activeTab, setActiveTab] = useState<'info' | 'metadata' | 'json'>('info');
+export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
+    const [activeTab, setActiveTab] = useState<'info' | 'metadata'>('info');
+    const [metadataView, setMetadataView] = useState<'rendered' | 'raw'>('rendered');
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Parse metadata safely
@@ -66,108 +68,154 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh })
         return `${size.toFixed(1)} ${units[unitIndex]}`;
     };
 
-    const toggleExpand = (e: React.MouseEvent): void => {
-        e.stopPropagation();
+    const toggleExpand = (e?: React.MouseEvent): void => {
+        if (e) {
+            e.stopPropagation();
+        }
         setIsExpanded(!isExpanded);
     };
 
     const cardContent = (
         <div className={`file-card-inner ${isExpanded ? 'expanded-inner' : ''}`}>
-            <div className="card-header">
-                <div className="header-main">
+            <div className="card-header-v2">
+                <div className="header-left">
                     <div className="icon-wrapper">
                         {getFileIcon()}
-                    </div>
-                    <div className="title-area">
-                        <h3 className="filename" title={item.original_filename}>
-                            {item.original_filename}
-                        </h3>
-                        <div className="sub-details">
-                            <span className="detail-item"><HardDrive size={12} /> {formatSize(metadata.size)}</span>
-                            <span className="divider">•</span>
-                            <span className="detail-item"><Clock size={12} /> {new Date(item.created_at).toLocaleDateString()}</span>
-                        </div>
+                        <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
                     </div>
                 </div>
-                <div className="header-actions">
-                    <button className="action-btn expand-btn" onClick={toggleExpand} title={isExpanded ? "Close" : "Expand"}>
-                        {isExpanded ? <X size={18} /> : <Maximize2 size={18} />}
-                    </button>
-                    <button
-                        className="action-btn delete-btn"
-                        onClick={(e: React.MouseEvent) => onDelete(item.id, e)}
-                        title="Delete file"
-                    >
-                        <Trash2 size={18} />
-                    </button>
+                <div className="header-center">
+                    <h3 className="filename" title={item.original_filename}>
+                        {item.original_filename}
+                    </h3>
+                    <div className="sub-details">
+                        <span className="detail-item"><HardDrive size={12} /> {formatSize(metadata.size)}</span>
+                        <span className="divider">|</span>
+                        <span className="detail-item"><Clock size={12} /> {new Date(item.created_at).toLocaleDateString()}</span>
+                    </div>
+
+                    <div className="card-tabs-nav-compact">
+                        <button
+                            type="button"
+                            className={`tab-link ${activeTab === 'info' ? 'active' : ''}`}
+                            onClick={(e: React.MouseEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setActiveTab('info');
+                            }}
+                            title="Main Info"
+                        >
+                            <Info size={16} />
+                        </button>
+                        <button
+                            type="button"
+                            className={`tab-link ${activeTab === 'metadata' ? 'active' : ''}`}
+                            onClick={(e: React.MouseEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setActiveTab('metadata');
+                            }}
+                            title="Metadata & JSON"
+                        >
+                            <Database size={16} />
+                        </button>
+                    </div>
+                </div>
+                <div className="header-right">
+                    <div className="header-actions">
+                        <button
+                            type="button"
+                            className="action-btn-card expand-btn"
+                            onClick={(e: React.MouseEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleExpand(e);
+                            }}
+                            title={isExpanded ? "Close" : "Expand"}
+                        >
+                            {isExpanded ? <X size={20} /> : <Maximize2 size={20} />}
+                        </button>
+                        <button
+                            type="button"
+                            className="action-btn-card delete-btn-header"
+                            onClick={(e: React.MouseEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDelete(item.id, e);
+                            }}
+                            title="Delete file"
+                        >
+                            <Trash2 size={18} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div className="card-tabs-nav">
-                <button
-                    className={`tab-link ${activeTab === 'info' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('info')}
-                >
-                    <Info size={14} /> Main Info
-                </button>
-                <button
-                    className={`tab-link ${activeTab === 'metadata' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('metadata')}
-                >
-                    <Database size={14} /> Metadata
-                </button>
-                <button
-                    className={`tab-link ${activeTab === 'json' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('json')}
-                >
-                    <FileJson size={14} /> JSON
-                </button>
-            </div>
-
-            <div className="card-content-area">
+            <div className="card-content-area-v2">
                 {activeTab === 'info' && (
                     <div className="info-tab fade-in">
                         <div className="summary-section">
-                            <h4>LLM Summary</h4>
+                            <h4>SUMMARY</h4>
                             <p className="summary-text">
                                 {metadata.summary || "No summary available. Processing might still be in progress."}
                             </p>
                         </div>
-                        {metadata.sentiment && (
-                            <div className="sentiment-badge" data-sentiment={metadata.sentiment}>
-                                Sentiment: {metadata.sentiment}
-                            </div>
-                        )}
                     </div>
                 )}
 
                 {activeTab === 'metadata' && (
-                    <div className="metadata-tab fade-in">
-                        <div className="metadata-grid">
-                            {Object.entries(metadata).map(([key, value]) => {
-                                if (key === 'summary' || key === 'tags') return null;
-                                return (
-                                    <React.Fragment key={key}>
-                                        <div className="meta-key">{key}</div>
-                                        <div className="meta-value">{String(value)}</div>
-                                    </React.Fragment>
-                                );
-                            })}
+                    <div className="metadata-tab-container fade-in">
+                        <div className="metadata-view-toggle">
+                            <button
+                                type="button"
+                                className={`toggle-btn ${metadataView === 'rendered' ? 'active' : ''}`}
+                                onClick={(e: React.MouseEvent) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setMetadataView('rendered');
+                                }}
+                                title="Rendered View"
+                            >
+                                <Table size={14} />
+                            </button>
+                            <button
+                                type="button"
+                                className={`toggle-btn ${metadataView === 'raw' ? 'active' : ''}`}
+                                onClick={(e: React.MouseEvent) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setMetadataView('raw');
+                                }}
+                                title="Raw JSON"
+                            >
+                                <Code size={14} />
+                            </button>
                         </div>
-                    </div>
-                )}
 
-                {activeTab === 'json' && (
-                    <div className="json-tab fade-in">
-                        <JSONView data={metadata} />
+                        {metadataView === 'rendered' ? (
+                            <div className="metadata-tab">
+                                <div className="metadata-grid">
+                                    {(Object.entries(metadata) as [string, any][]).map(([key, value]) => {
+                                        if (key === 'summary' || key === 'tags') return null;
+                                        return (
+                                            <React.Fragment key={key}>
+                                                <div className="meta-key">{key}</div>
+                                                <div className="meta-value">{String(value)}</div>
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="json-tab">
+                                <JSONView data={metadata} />
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
-            <div className="card-footer-tags">
-                <TagPicker itemId={item.id} currentItemTags={item.tags || []} onRefresh={onRefresh} />
-                <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
-            </div>
+            <TagPicker itemId={item.id} currentItemTags={item.tags || []} onRefresh={onRefresh} />
         </div>
     );
 

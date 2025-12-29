@@ -72,14 +72,22 @@ function App() {
 
       <div className="nav-tabs">
         <button
+          type="button"
           className={`nav-link ${activeView === 'heap' ? 'active' : ''}`}
-          onClick={() => setActiveView('heap')}
+          onClick={(e) => {
+            e.preventDefault();
+            setActiveView('heap');
+          }}
         >
           The Heap
         </button>
         <button
+          type="button"
           className={`nav-link ${activeView === 'tags' ? 'active' : ''}`}
-          onClick={() => setActiveView('tags')}
+          onClick={(e) => {
+            e.preventDefault();
+            setActiveView('tags');
+          }}
         >
           Manage Tags
         </button>
