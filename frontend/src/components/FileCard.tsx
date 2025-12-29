@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { FileText, Trash2, Info, Database, Calendar, HardDrive, File as FileIcon } from 'lucide-react';
 import { type ContentItem } from '../api';
+import TagPicker from './TagPicker';
 import './FileCard.css';
 
 interface FileCardProps {
     item: ContentItem;
     onDelete: (id: string, e: React.MouseEvent) => void;
+    onRefresh: () => void;
 }
 
-export const FileCard: React.FC<FileCardProps> = ({ item, onDelete }) => {
+export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh }) => {
     const [activeTab, setActiveTab] = useState<'info' | 'metadata'>('info');
 
     // Parse metadata safely
@@ -41,7 +43,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete }) => {
                 </h3>
                 <button
                     className="delete-btn"
-                    onClick={(e) => onDelete(item.id, e)}
+                    onClick={(e: React.MouseEvent) => onDelete(item.id, e)}
                     title="Delete file"
                 >
                     <Trash2 size={18} />
@@ -98,6 +100,10 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete }) => {
                 <span className={`status-indicator status-${item.status}`}>
                     {item.status}
                 </span>
+            </div>
+
+            <div className="card-tags">
+                <TagPicker itemId={item.id} currentItemTags={item.tags || []} onRefresh={onRefresh} />
             </div>
         </div>
     );

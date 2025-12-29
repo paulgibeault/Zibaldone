@@ -6,8 +6,11 @@ import { WelcomeModal } from './components/WelcomeModal';
 import { getItems, deleteItem, type ContentItem } from './api';
 import './index.css';
 
+import TagManager from './components/TagManager';
+
 function App() {
   const [items, setItems] = useState<ContentItem[]>([]);
+  const [activeView, setActiveView] = useState<'heap' | 'tags'>('heap');
 
   const fetchItems = async () => {
     try {
@@ -26,7 +29,7 @@ function App() {
 
     try {
       await deleteItem(id);
-      setItems(prev => prev.filter(item => item.id !== id));
+      setItems((prev: ContentItem[]) => prev.filter((item: ContentItem) => item.id !== id));
     } catch (error) {
       console.error("Failed to delete item:", error);
       alert("Failed to delete item");
@@ -54,8 +57,6 @@ function App() {
     eventSource.onerror = (e) => {
       console.log("SSE Error (connection might be closed):", e);
       eventSource.close();
-      // Optional: Retry logic is built-in to EventSource usually, but if closed explicitly we might need to reopen.
-      // For now, let's just log.
     };
 
     return () => {
@@ -69,17 +70,39 @@ function App() {
       <ThemeSwitcher />
       <h1>Zibaldone</h1>
 
-      <DropZone onUploadComplete={fetchItems} />
-
-      <div className="item-list">
-        {items.map((item) => (
-          <FileCard
-            key={item.id}
-            item={item}
-            onDelete={handleDelete}
-          />
-        ))}
+      <div className="nav-tabs">
+        <button
+          className={`nav-link ${activeView === 'heap' ? 'active' : ''}`}
+          onClick={() => setActiveView('heap')}
+        >
+          The Heap
+        </button>
+        <button
+          className={`nav-link ${activeView === 'tags' ? 'active' : ''}`}
+          onClick={() => setActiveView('tags')}
+        >
+          Manage Tags
+        </button>
       </div>
+
+      {activeView === 'heap' ? (
+        <>
+          <DropZone onUploadComplete={fetchItems} />
+
+          <div className="item-list">
+            {items.map((item: ContentItem) => (
+              <FileCard
+                key={item.id}
+                item={item}
+                onDelete={handleDelete}
+                onRefresh={fetchItems}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <TagManager />
+      )}
     </div>
   );
 }

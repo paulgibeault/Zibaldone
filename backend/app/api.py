@@ -2,7 +2,7 @@ from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Session, select, desc
-from app.models import get_session, ContentItem, ContentStatus
+from app.models import get_session, ContentItem, ContentStatus, Tag, ContentItemTagLink
 import aiofiles
 import os
 import uuid
@@ -126,7 +126,37 @@ def read_items(
         statement = statement.where(~subquery.exists())
     
     items = session.exec(statement).all()
+    # Explicitly load tags if needed, though relationship should handle it if lazy load is tuned
+    # For now, SQLModel relationship should work
     return items
+
+@router.post("/items/{item_id}/tags/{tag_id}")
+def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
+    item = session.get(ContentItem, item_id)
+    tag = session.get(Tag, tag_id)
+    if not item or not tag:
+        raise HTTPException(status_code=404, detail="Item or Tag not found")
+    
+    if tag not in item.tags:
+        item.tags.append(tag)
+        session.add(item)
+        session.commit()
+        session.refresh(item)
+    return item
+
+@router.delete("/items/{item_id}/tags/{tag_id}")
+def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
+    item = session.get(ContentItem, item_id)
+    tag = session.get(Tag, tag_id)
+    if not item or not tag:
+        raise HTTPException(status_code=404, detail="Item or Tag not found")
+    
+    if tag in item.tags:
+        item.tags.remove(tag)
+        session.add(item)
+        session.commit()
+        session.refresh(item)
+    return item
 
 @router.delete("/items/{item_id}")
 def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session)):

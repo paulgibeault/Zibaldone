@@ -25,6 +25,12 @@ apiClient.interceptors.response.use(response => {
     return Promise.reject(error);
 });
 
+export interface Tag {
+    id: string;
+    name: string;
+    color: string;
+}
+
 export interface ContentItem {
     id: string;
     status: string;
@@ -32,7 +38,37 @@ export interface ContentItem {
     storage_path: string;
     created_at: string;
     metadata_json: string;
+    tags: Tag[];
 }
+
+export const getTags = async (): Promise<Tag[]> => {
+    const response = await apiClient.get('/tags');
+    return response.data;
+};
+
+export const createTag = async (name: string, color: string): Promise<Tag> => {
+    const response = await apiClient.post('/tags', { name, color });
+    return response.data;
+};
+
+export const updateTag = async (tagId: string, data: Partial<Tag>): Promise<Tag> => {
+    const response = await apiClient.patch(`/tags/${tagId}`, data);
+    return response.data;
+};
+
+export const deleteTag = async (tagId: string): Promise<void> => {
+    await apiClient.delete(`/tags/${tagId}`);
+};
+
+export const addTagToItem = async (itemId: string, tagId: string): Promise<ContentItem> => {
+    const response = await apiClient.post(`/items/${itemId}/tags/${tagId}`);
+    return response.data;
+};
+
+export const removeTagFromItem = async (itemId: string, tagId: string): Promise<ContentItem> => {
+    const response = await apiClient.delete(`/items/${itemId}/tags/${tagId}`);
+    return response.data;
+};
 
 export const uploadFile = async (file: File, metadata: Record<string, any> = {}): Promise<ContentItem> => {
     // 1. Get upload parameters from backend

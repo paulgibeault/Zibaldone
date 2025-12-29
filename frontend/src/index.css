@@ -191,3 +191,273 @@ h1 {
   gap: 1.5rem;
   margin-top: 3rem;
 }
+
+/* Tag Management & Badges */
+.tag-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  user-select: none;
+}
+
+.tag-badge:hover {
+  opacity: 0.85;
+}
+
+.card-tags {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.current-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.add-tag-btn {
+  padding: 0.1rem 0.5rem;
+  font-size: 0.7rem;
+  border-radius: 4px;
+}
+
+/* Tag Manager Dashboard */
+.tag-manager {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background: var(--bg-card);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.tag-manager h2 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+
+.create-tag-form,
+.edit-form {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  align-items: center;
+}
+
+.tag-input {
+  flex: 1;
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+}
+
+.tag-input.sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.color-picker {
+  width: 48px;
+  height: 40px;
+  padding: 2px;
+  border-radius: 0.5rem;
+  background: none;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.color-picker.sm {
+  width: 32px;
+  height: 32px;
+}
+
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tag-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--bg-canvas);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-subtle);
+}
+
+.tag-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.empty-state,
+.loading {
+  padding: 3rem;
+  text-align: center;
+  color: var(--text-secondary);
+  background: var(--bg-canvas);
+  border-radius: 0.5rem;
+  border: 1px dashed var(--border-subtle);
+  margin: 1rem 0;
+}
+
+.tag-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* Modal UI Overlay */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+}
+
+.tag-picker-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  z-index: 2001;
+  width: 90%;
+  max-width: 400px;
+}
+
+.tag-search-input {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+}
+
+.close-all-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.picker-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.picker-item:hover {
+  background: var(--bg-card-hover);
+}
+
+.btn-icon {
+  padding: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-secondary {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-danger {
+  color: var(--color-danger);
+  background: none;
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.btn-outline-secondary {
+  background: none;
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.btn-outline-secondary:hover {
+  background: var(--bg-card-hover);
+}
+
+.nav-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.nav-link {
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
