@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Plus, X } from 'lucide-react';
 import { type Tag, getTags, addTagToItem, removeTagFromItem } from '../api';
 
 interface TagPickerProps {
@@ -18,7 +19,7 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
         }
     }, [showPicker]);
 
-    const fetchAllTags = async () => {
+    const fetchAllTags = async (): Promise<void> => {
         try {
             const data = await getTags();
             setAllTags(data);
@@ -27,11 +28,11 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
         }
     };
 
-    const isTagApplied = (tagId: string) => {
+    const isTagApplied = (tagId: string): boolean => {
         return currentItemTags.some((t: Tag) => t.id === tagId);
     };
 
-    const handleToggleTag = async (tagId: string) => {
+    const handleToggleTag = async (tagId: string): Promise<void> => {
         try {
             if (isTagApplied(tagId)) {
                 await removeTagFromItem(itemId, tagId);
@@ -56,31 +57,41 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
                         key={tag.id}
                         className="tag-badge"
                         style={{ backgroundColor: tag.color }}
-                        onClick={() => handleToggleTag(tag.id)}
+                        onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            handleToggleTag(tag.id);
+                        }}
                         title="Click to remove"
                     >
-                        {tag.name} ×
+                        {tag.name} <X size={10} style={{ marginLeft: '4px' }} />
                     </span>
                 ))}
                 <button
-                    className="btn btn-sm btn-outline-secondary add-tag-btn"
-                    onClick={() => setShowPicker(!showPicker)}
+                    className="add-tag-btn-minimal"
+                    onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        setShowPicker(!showPicker);
+                    }}
+                    title="Add Tag"
                 >
-                    + Tag
+                    <Plus size={14} />
                 </button>
             </div>
 
             {showPicker && (
                 <>
-                    <div className="modal-backdrop" onClick={() => setShowPicker(false)}></div>
-                    <div className="tag-picker-modal">
+                    <div className="modal-backdrop" onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        setShowPicker(false);
+                    }}></div>
+                    <div className="tag-picker-modal glass-panel" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                         <div className="picker-header">
-                            <h3>Select Tags</h3>
-                            <button onClick={() => setShowPicker(false)} className="close-all-btn">&times;</button>
+                            <h3>Apply Tags</h3>
+                            <button onClick={() => setShowPicker(false)} className="close-all-btn"><X size={18} /></button>
                         </div>
                         <input
                             type="text"
-                            placeholder="Search tags..."
+                            placeholder="Find or filter tags..."
                             value={searchTerm}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                             className="tag-search-input"
@@ -88,19 +99,18 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
                         />
                         <div className="picker-list">
                             {filteredTags.map((tag: Tag) => (
-                                <label key={tag.id} className="picker-item">
-                                    <input
-                                        type="checkbox"
-                                        checked={isTagApplied(tag.id)}
-                                        onChange={() => handleToggleTag(tag.id)}
-                                    />
-                                    <span className="picker-tag-preview" style={{ backgroundColor: tag.color }}>
-                                        {tag.name}
-                                    </span>
-                                </label>
+                                <div
+                                    key={tag.id}
+                                    className={`picker-item-compact ${isTagApplied(tag.id) ? 'selected' : ''}`}
+                                    onClick={() => handleToggleTag(tag.id)}
+                                >
+                                    <span className="picker-tag-dot" style={{ backgroundColor: tag.color }} />
+                                    <span className="picker-tag-name">{tag.name}</span>
+                                    {isTagApplied(tag.id) && <X size={12} className="remove-indicator" />}
+                                </div>
                             ))}
                             {filteredTags.length === 0 && (
-                                <p className="empty-msg">No matching tags found.</p>
+                                <p className="empty-msg">No tags found.</p>
                             )}
                         </div>
                     </div>
