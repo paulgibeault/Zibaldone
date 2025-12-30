@@ -5,6 +5,7 @@ import {
     Info,
     Database,
     Maximize2,
+    Minimize2,
     X,
     FileImage,
     FileCode,
@@ -203,102 +204,95 @@ export const FileCard = ({ item, onDelete, onRefresh, isSelected, onSelect, onDe
     const renderStandardView = (isFull: boolean = false) => (
         <div className={`file-card-inner ${isFull ? 'expanded-inner' : ''}`}>
             <div className="card-header-v2">
-                <div className="header-left">
-                    <div className="icon-wrapper">
-                        {getFileIcon()}
-                        <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
-                    </div>
-                </div>
-                <div className="header-center">
-                    <h3 className="filename" title={item.original_filename}>
-                        {item.original_filename}
-                    </h3>
-                    <div className="sub-details">
-                        <span className="detail-item"><HardDrive size={12} /> {formatSize(metadata.size)}</span>
-                        <span className="divider">|</span>
-                        <span className="detail-item"><Clock size={12} /> {new Date(item.created_at).toLocaleDateString()}</span>
+                <div className="header-main-content">
+                    <div className="header-left">
+                        <div className="icon-wrapper">
+                            {getFileIcon()}
+                            <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
+                        </div>
                     </div>
 
-                    <div className="card-tabs-nav-compact">
-                        <button
-                            type="button"
-                            className={`tab-link ${activeTab === 'info' ? 'active' : ''}`}
-                            onClick={(e: React.MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setActiveTab('info');
-                            }}
-                            title="Main Info"
-                        >
-                            <Info size={16} />
-                        </button>
-                        <button
-                            type="button"
-                            className={`tab-link ${activeTab === 'preview' ? 'active' : ''}`}
-                            onClick={(e: React.MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setActiveTab('preview');
-                            }}
-                            title="Preview Content"
-                        >
-                            <Eye size={16} />
-                        </button>
-                        <button
-                            type="button"
-                            className={`tab-link ${activeTab === 'metadata' ? 'active' : ''}`}
-                            onClick={(e: React.MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setActiveTab('metadata');
-                            }}
-                            title="Metadata & JSON"
-                        >
-                            <Database size={16} />
-                        </button>
+                    <div className="header-info">
+                        <div className="title-row">
+                            <h3 className="filename" title={item.original_filename}>
+                                {item.original_filename}
+                            </h3>
+                            <div className="card-tabs-nav-compact">
+                                <button
+                                    type="button"
+                                    className={`tab-link ${activeTab === 'info' ? 'active' : ''}`}
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setActiveTab('info');
+                                    }}
+                                    title="Main Info"
+                                >
+                                    <Info size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`tab-link ${activeTab === 'preview' ? 'active' : ''}`}
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setActiveTab('preview');
+                                    }}
+                                    title="Preview Content"
+                                >
+                                    <Eye size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`tab-link ${activeTab === 'metadata' ? 'active' : ''}`}
+                                    onClick={(e: React.MouseEvent) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setActiveTab('metadata');
+                                    }}
+                                    title="Metadata & JSON"
+                                >
+                                    <Database size={16} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="sub-details">
+                            <span className="detail-item"><HardDrive size={12} /> {formatSize(metadata.size)}</span>
+                            <span className="divider">|</span>
+                            <span className="detail-item"><Clock size={12} /> {new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
                     </div>
                 </div>
-                <div className="header-right">
-                    <div className="header-actions">
-                        <button
-                            type="button"
-                            className="action-btn-card minimize-btn"
-                            onClick={(e: React.MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onDeselect();
-                            }}
-                            title="Minimize"
-                        >
-                            <Clock size={18} />
-                        </button>
-                        <button
-                            type="button"
-                            className="action-btn-card expand-btn"
-                            onClick={(e: React.MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                toggleFullscreen(e);
-                            }}
-                            title={isFull ? "Restore" : "Fullscreen"}
-                        >
-                            {isFull ? <X size={20} /> : <Maximize2 size={20} />}
-                        </button>
-                        <button
-                            type="button"
-                            className="action-btn-card delete-btn-header"
-                            onClick={(e: React.MouseEvent) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                onDelete(item.id, e);
-                            }}
-                            title="Delete file"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    </div>
+
+                <div className="header-actions">
+                    <button
+                        type="button"
+                        className="action-btn-card expand-btn"
+                        onClick={(e: React.MouseEvent) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleFullscreen(e);
+                        }}
+                        title={isFull ? "Restore View" : "Fullscreen"}
+                    >
+                        {isFull ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+                    </button>
+                    <button
+                        type="button"
+                        className="action-btn-card minimize-btn"
+                        onClick={(e: React.MouseEvent) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsFullscreen(false);
+                            onDeselect();
+                        }}
+                        title="Close Selection"
+                    >
+                        <X size={18} />
+                    </button>
                 </div>
             </div>
+
 
             <div className="card-content-area-v2">
                 {activeTab === 'info' && (
@@ -427,9 +421,24 @@ export const FileCard = ({ item, onDelete, onRefresh, isSelected, onSelect, onDe
                 )}
             </div>
 
-            <div className="inline-tag-picker-compact">
-                <TagPicker itemId={item.id} currentItemTags={item.tags || []} onRefresh={onRefresh} />
+            <div className="card-footer-v2">
+                <div className="inline-tag-picker-compact">
+                    <TagPicker itemId={item.id} currentItemTags={item.tags || []} onRefresh={onRefresh} />
+                </div>
+                <button
+                    type="button"
+                    className="action-btn-card delete-btn-footer"
+                    onClick={(e: React.MouseEvent) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onDelete(item.id, e);
+                    }}
+                    title="Delete file"
+                >
+                    <Trash2 size={18} />
+                </button>
             </div>
+
         </div>
     );
 

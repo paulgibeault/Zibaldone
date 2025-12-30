@@ -105,11 +105,14 @@
 /* Header Styles V2 */
 .card-header-v2 {
     display: flex;
-    gap: 1rem;
+    gap: 1.5rem;
     align-items: flex-start;
+    justify-content: space-between;
     margin-bottom: 0.75rem;
     flex-shrink: 0;
 }
+
+
 
 .header-left {
     flex-shrink: 0;
@@ -139,7 +142,15 @@
     border-radius: 50%;
 }
 
-.header-center {
+.header-main-content {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    flex: 1;
+    min-width: 0;
+}
+
+.header-info {
     flex: 1;
     min-width: 0;
     display: flex;
@@ -147,7 +158,14 @@
     gap: 0.25rem;
 }
 
-.header-center .filename {
+.title-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.title-row .filename {
     font-size: 1.15rem;
     font-weight: 800;
     margin: 0;
@@ -155,9 +173,10 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 0 1 auto;
 }
 
-.header-center .sub-details {
+.sub-details {
     display: flex;
     gap: 0.5rem;
     align-items: center;
@@ -165,12 +184,14 @@
     color: var(--text-muted);
 }
 
+
 /* Tabs Nav */
 .card-tabs-nav-compact {
     display: flex;
     gap: 0.5rem;
-    margin-top: 0.5rem;
+    flex-shrink: 0;
 }
+
 
 .card-tabs-nav-compact .tab-link {
     background: var(--bg-canvas);
@@ -217,11 +238,24 @@
 }
 
 /* Inline Tag Picker Styles */
-.inline-tag-picker-compact {
+.card-footer-v2 {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
     border-top: 1px solid var(--border-subtle);
     padding: 0.75rem 0.25rem 0.25rem;
     margin-top: auto;
 }
+
+.inline-tag-picker-compact {
+    flex: 1;
+}
+
+.delete-btn-footer {
+    padding: 8px !important;
+    margin-bottom: 2px;
+}
+
 
 .current-tags-row {
     display: flex;
@@ -452,7 +486,17 @@
     flex-shrink: 0;
 }
 
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+
 .action-btn-card {
+
     background: transparent;
     border: none;
     cursor: pointer;
@@ -573,6 +617,12 @@
 .expanded-inner .filename {
     font-size: 1.75rem !important;
 }
+
+.expanded-inner .header-actions .action-btn-card svg {
+    width: 24px;
+    height: 24px;
+}
+
 
 .expanded-inner .card-content-area-v2 {
     font-size: 1.1rem;

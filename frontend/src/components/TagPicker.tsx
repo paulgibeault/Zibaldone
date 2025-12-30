@@ -115,7 +115,7 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
                             style={{ color: getContrastColor(tag.color) }}
                             title="Remove tag"
                         >
-                            <X size={10} />
+                            <X size={12} />
                         </button>
                     </span>
                 ))}
