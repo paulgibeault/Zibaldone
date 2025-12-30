@@ -87,7 +87,7 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
             return <FileCode className="file-icon-code" />;
         }
         if (type.includes('zip') || type.includes('tar') || type.includes('gzip')) return <Archive className="file-icon-archive" />;
-        if (type.includes('text/') || type.includes('markdown')) return <FileText className="file-icon-text" />;
+        if (type.includes('text/') || type.includes('markdown') || item.original_filename.toLowerCase().endsWith('.txt') || item.original_filename.toLowerCase().endsWith('.md')) return <FileText className="file-icon-text" />;
         return <File className="file-icon-default" />;
     };
 
@@ -295,7 +295,7 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
                                     );
                                 }
 
-                                if (type.includes('text/') || type.includes('javascript') || type.includes('json') || type.includes('python') || type.includes('html') || type.includes('css')) {
+                                if (type.includes('text/') || type.includes('javascript') || type.includes('json') || type.includes('python') || type.includes('html') || type.includes('css') || item.original_filename.toLowerCase().endsWith('.txt')) {
                                     return (
                                         <div className="preview-text-wrapper">
                                             {isLoadingContent ? (
