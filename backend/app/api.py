@@ -1,7 +1,8 @@
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
 from typing import Optional, List
 from datetime import datetime
-from sqlmodel import Session, select, desc
+from sqlmodel import Session, select, desc, SQLModel
+from sqlalchemy.orm import selectinload
 from app.models import get_session, ContentItem, ContentStatus, Tag, ContentItemTagLink
 import aiofiles
 import os
@@ -11,6 +12,22 @@ import hashlib
 from app.services.storage import get_storage
 from app.services.event_broadcaster import broadcaster
 import json
+
+# --- Response Schemas ---
+class TagRead(SQLModel):
+    id: uuid.UUID
+    name: str
+    color: str
+
+class ContentItemRead(SQLModel):
+    id: uuid.UUID
+    status: ContentStatus
+    original_filename: str
+    storage_path: str
+    created_at: datetime
+    metadata_json: Optional[str]
+    tags: List[TagRead] = []
+# ------------------------
 
 router = APIRouter()
 
@@ -97,7 +114,7 @@ async def upload_content(
     
     return content_item
 
-@router.get("/items")
+@router.get("/items", response_model=List[ContentItemRead])
 def read_items(
     filename: Optional[str] = None,
     content_type: Optional[str] = None,
@@ -105,7 +122,7 @@ def read_items(
     show_all_versions: bool = False,
     session: Session = Depends(get_session)
 ):
-    statement = select(ContentItem)
+    statement = select(ContentItem).options(selectinload(ContentItem.tags))
     
     if filename:
         statement = statement.where(ContentItem.original_filename == filename)
@@ -117,7 +134,6 @@ def read_items(
     if not show_all_versions:
         # Show only the latest version of each filename using a correlated subquery
         from sqlalchemy.orm import aliased
-        from sqlmodel import func
         
         c2 = aliased(ContentItem)
         subquery = (
@@ -128,13 +144,11 @@ def read_items(
         statement = statement.where(~subquery.exists())
     
     items = session.exec(statement).all()
-    # Explicitly load tags if needed, though relationship should handle it if lazy load is tuned
-    # For now, SQLModel relationship should work
     return items
 
-@router.post("/items/{item_id}/tags/{tag_id}")
+@router.post("/items/{item_id}/tags/{tag_id}", response_model=ContentItemRead)
 def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
-    item = session.get(ContentItem, item_id)
+    item = session.exec(select(ContentItem).where(ContentItem.id == item_id).options(selectinload(ContentItem.tags))).first()
     tag = session.get(Tag, tag_id)
     if not item or not tag:
         raise HTTPException(status_code=404, detail="Item or Tag not found")
@@ -148,9 +162,9 @@ def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = De
         broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
     return item
 
-@router.delete("/items/{item_id}/tags/{tag_id}")
+@router.delete("/items/{item_id}/tags/{tag_id}", response_model=ContentItemRead)
 def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
-    item = session.get(ContentItem, item_id)
+    item = session.exec(select(ContentItem).where(ContentItem.id == item_id).options(selectinload(ContentItem.tags))).first()
     tag = session.get(Tag, tag_id)
     if not item or not tag:
         raise HTTPException(status_code=404, detail="Item or Tag not found")

@@ -10,21 +10,23 @@ interface TagPickerProps {
 
 const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefresh }) => {
     const [allTags, setAllTags] = useState<Tag[]>([]);
-    const [isAdding, setIsAdding] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isTagging, setIsTagging] = useState<string | null>(null);
 
     useEffect(() => {
-        if (isAdding) {
+        if (isOpen) {
             fetchAllTags();
         }
-    }, [isAdding]);
+    }, [isOpen]);
 
     const fetchAllTags = async (): Promise<void> => {
         try {
+            console.log('[TagPicker] Fetching all tags...');
             const data = await getTags();
             setAllTags(data);
         } catch (error) {
-            console.error('Error fetching all tags:', error);
+            console.error('[TagPicker] Error fetching all tags:', error);
         }
     };
 
@@ -33,17 +35,34 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
     };
 
     const handleToggleTag = async (tagId: string, e: React.MouseEvent): Promise<void> => {
-        e.preventDefault();
-        e.stopPropagation();
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (isTagging) return;
+
+        console.log(`[TagPicker] Toggling tag ${tagId} for item ${itemId}`);
+        setIsTagging(tagId);
+
         try {
-            if (isTagApplied(tagId)) {
+            const applied = isTagApplied(tagId);
+            if (applied) {
                 await removeTagFromItem(itemId, tagId);
+                console.log(`[TagPicker] Successfully removed tag ${tagId}`);
             } else {
                 await addTagToItem(itemId, tagId);
+                console.log(`[TagPicker] Successfully added tag ${tagId}`);
             }
+
+            console.log(`[TagPicker] Calling onRefresh() for item ${itemId}`);
             onRefresh();
-        } catch (error) {
-            console.error('Error toggling tag:', error);
+            setIsOpen(false);
+            setSearchTerm('');
+        } catch (error: any) {
+            console.error('[TagPicker] Error toggling tag:', error);
+        } finally {
+            setIsTagging(null);
         }
     };
 
@@ -51,11 +70,10 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
         tag.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Tags that are NOT currently applied
     const unappliedTags = filteredTags.filter(tag => !isTagApplied(tag.id));
 
     return (
-        <div className="inline-tag-picker">
+        <div className="tag-picker-container">
             <div className="current-tags-row">
                 {(currentItemTags || []).map((tag: Tag) => (
                     <span
@@ -77,49 +95,59 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
 
                 <button
                     type="button"
-                    className={`toggle-add-tag-btn ${isAdding ? 'active' : ''}`}
+                    className="toggle-add-tag-btn"
                     onClick={(e: React.MouseEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setIsAdding(!isAdding);
+                        setIsOpen(true);
                     }}
-                    title={isAdding ? "Close picker" : "Add tag"}
+                    title="Add tag"
                 >
-                    {isAdding ? <X size={14} /> : <Plus size={14} />}
+                    <Plus size={14} />
                 </button>
             </div>
 
-            {isAdding && (
-                <div className="inline-picker-panel fade-in" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                    <div className="picker-search-container">
-                        <input
-                            type="text"
-                            placeholder="Filter tags..."
-                            value={searchTerm}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                            onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
-                            autoFocus
-                        />
-                    </div>
-                    <div className="available-tags-grid">
-                        {unappliedTags.length > 0 ? (
-                            unappliedTags.map((tag: Tag) => (
-                                <button
-                                    key={tag.id}
-                                    type="button"
-                                    className="available-tag-item"
-                                    onClick={(e: React.MouseEvent) => handleToggleTag(tag.id, e)}
-                                    style={{ borderColor: tag.color }}
-                                >
-                                    <span className="tag-dot" style={{ backgroundColor: tag.color }} />
-                                    {tag.name}
-                                </button>
-                            ))
-                        ) : (
-                            <div className="no-tags-found">
-                                {searchTerm ? "No tags match" : "All tags applied"}
-                            </div>
-                        )}
+            {isOpen && (
+                <div className="picker-modal-overlay" onClick={() => setIsOpen(false)}>
+                    <div className="picker-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="picker-modal-header">
+                            <h3>Select a Tag</h3>
+                            <button type="button" className="close-modal-btn" onClick={() => setIsOpen(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="picker-search-container">
+                            <input
+                                type="text"
+                                placeholder="Filter tags..."
+                                value={searchTerm}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="available-tags-grid">
+                            {unappliedTags.length > 0 ? (
+                                unappliedTags.map((tag: Tag) => (
+                                    <button
+                                        key={tag.id}
+                                        type="button"
+                                        className={`available-tag-item ${isTagging === tag.id ? 'loading' : ''}`}
+                                        onClick={(e: React.MouseEvent) => handleToggleTag(tag.id, e)}
+                                        disabled={!!isTagging}
+                                    >
+                                        <span className="tag-dot" style={{ backgroundColor: tag.color }} />
+                                        {tag.name}
+                                        {isTagging === tag.id && <span className="tag-loading-spinner" />}
+                                    </button>
+                                ))
+                            ) : (
+                                <div className="no-tags-found">
+                                    {searchTerm ? "No tags match" : "All tags applied"}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
