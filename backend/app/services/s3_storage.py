@@ -1,7 +1,7 @@
 import os
 import boto3
 from botocore.config import Config
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from app.services.storage import StorageInterface
 
 class S3Storage(StorageInterface):
@@ -102,3 +102,19 @@ class S3Storage(StorageInterface):
             "storage_path": storage_key,
             "method": "PUT"
         }
+
+    def get_download_url(self, storage_path: str) -> Optional[str]:
+        # Gracefully handle legacy filesystem paths
+        if storage_path.startswith(".") or os.path.isabs(storage_path):
+            return None
+
+        # Generate a pre-signed URL for downloading/viewing the file
+        url = self.signer_client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': self.bucket_name,
+                'Key': storage_path,
+            },
+            ExpiresIn=3600
+        )
+        return url

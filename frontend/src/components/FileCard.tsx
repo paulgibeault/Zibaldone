@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     FileText,
     Trash2,
@@ -15,11 +15,15 @@ import {
     Clock,
     HardDrive,
     Table,
-    Code
+    Code,
+    Eye,
+    FileSearch
 } from 'lucide-react';
 import { type ContentItem } from '../api';
 import TagPicker from './TagPicker';
 import { JSONView } from './JSONView';
+import { MarkdownPreview } from './MarkdownPreview';
+import axios from 'axios';
 import './FileCard.css';
 
 interface FileCardProps {
@@ -29,9 +33,11 @@ interface FileCardProps {
 }
 
 export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
-    const [activeTab, setActiveTab] = useState<'info' | 'metadata'>('info');
+    const [activeTab, setActiveTab] = useState<'info' | 'preview' | 'metadata'>('info');
     const [metadataView, setMetadataView] = useState<'rendered' | 'raw'>('rendered');
     const [isExpanded, setIsExpanded] = useState(false);
+    const [textContent, setTextContent] = useState<string | null>(null);
+    const [isLoadingContent, setIsLoadingContent] = useState(false);
 
     // Parse metadata safely
     let metadata: Record<string, any> = {};
@@ -40,6 +46,36 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
     } catch (e) {
         console.error("Failed to parse metadata", e);
     }
+
+    // Effect to fetch content for text-based files when in preview tab
+    useEffect(() => {
+        const isTextBased = (metadata.type || '').includes('text/') ||
+            (metadata.type || '').includes('markdown') ||
+            (metadata.type || '').includes('javascript') ||
+            (metadata.type || '').includes('json') ||
+            (metadata.type || '').includes('python') ||
+            (metadata.type || '').includes('html') ||
+            (metadata.type || '').includes('css');
+
+        if (activeTab === 'preview' && isTextBased && item.download_url && !textContent && !isLoadingContent) {
+            const fetchContent = async () => {
+                setIsLoadingContent(true);
+                try {
+                    const url = item.download_url!.startsWith('http')
+                        ? item.download_url!
+                        : `http://${window.location.hostname}:8000${item.download_url!}`;
+                    const response = await axios.get(url, { responseType: 'text' });
+                    setTextContent(response.data);
+                } catch (err) {
+                    console.error("Failed to fetch file content", err);
+                    setTextContent("Error loading content.");
+                } finally {
+                    setIsLoadingContent(false);
+                }
+            };
+            fetchContent();
+        }
+    }, [activeTab, item.download_url, metadata.type, textContent, isLoadingContent]);
 
     // Determine Icon based on file type
     const getFileIcon = (): React.ReactNode => {
@@ -156,6 +192,18 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
                         </button>
                         <button
                             type="button"
+                            className={`tab-link ${activeTab === 'preview' ? 'active' : ''}`}
+                            onClick={(e: React.MouseEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setActiveTab('preview');
+                            }}
+                            title="Preview Content"
+                        >
+                            <Eye size={16} />
+                        </button>
+                        <button
+                            type="button"
                             className={`tab-link ${activeTab === 'metadata' ? 'active' : ''}`}
                             onClick={(e: React.MouseEvent) => {
                                 e.preventDefault();
@@ -206,6 +254,69 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
                             <p className="summary-text">
                                 {metadata.summary || "No summary available. Processing might still be in progress."}
                             </p>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'preview' && (
+                    <div className="preview-tab fade-in">
+                        <div className="preview-container">
+                            {(() => {
+                                const type = (metadata.type || '').toLowerCase();
+                                const url = item.download_url ? (item.download_url.startsWith('http') ? item.download_url : `http://${window.location.hostname}:8000${item.download_url}`) : null;
+
+                                if (!url) return <div className="preview-placeholder">No preview available</div>;
+
+                                if (type.startsWith('image/')) {
+                                    return <img src={url} alt={item.original_filename} className="preview-image" />;
+                                }
+
+                                if (type.startsWith('video/')) {
+                                    return <video src={url} controls className="preview-video" />;
+                                }
+
+                                if (type.startsWith('audio/')) {
+                                    return <audio src={url} controls className="preview-audio" />;
+                                }
+
+                                if (type === 'application/pdf') {
+                                    return <iframe src={url} className="preview-pdf" title="PDF Preview" />;
+                                }
+
+                                if (type.includes('markdown')) {
+                                    return (
+                                        <div className="preview-markdown-wrapper">
+                                            {isLoadingContent ? (
+                                                <div className="preview-loading">Loading content...</div>
+                                            ) : (
+                                                <MarkdownPreview content={textContent || ''} />
+                                            )}
+                                        </div>
+                                    );
+                                }
+
+                                if (type.includes('text/') || type.includes('javascript') || type.includes('json') || type.includes('python') || type.includes('html') || type.includes('css')) {
+                                    return (
+                                        <div className="preview-text-wrapper">
+                                            {isLoadingContent ? (
+                                                <div className="preview-loading">Loading content...</div>
+                                            ) : (
+                                                <pre className="raw-text-preview">{textContent}</pre>
+                                            )}
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div className="preview-fallback">
+                                        <FileSearch size={48} />
+                                        <p>No preview available for this file type.</p>
+                                        <a href={url} target="_blank" rel="noopener noreferrer" className="download-fallback-link">
+                                            Open in new tab
+                                        </a>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 )}

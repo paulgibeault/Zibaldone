@@ -1,4 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Response
+from fastapi.responses import FileResponse, RedirectResponse
 from typing import Optional, List
 from datetime import datetime
 from sqlmodel import Session, select, desc, SQLModel
@@ -26,6 +27,7 @@ class ContentItemRead(SQLModel):
     storage_path: str
     created_at: datetime
     metadata_json: Optional[str]
+    download_url: Optional[str] = None
     tags: List[TagRead] = []
 # ------------------------
 
@@ -36,6 +38,27 @@ storage = get_storage()
 
 def calculate_checksum(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+def enrich_item(item: ContentItem) -> ContentItemRead:
+    url = storage.get_download_url(item.storage_path)
+    if not url:
+        # Local file, point to our own download endpoint
+        url = f"/api/items/{item.id}/download"
+    
+    # Map to ContentItemRead
+    # We include tags by converting them to TagRead
+    tags = [TagRead(id=t.id, name=t.name, color=t.color) for t in item.tags]
+    
+    return ContentItemRead(
+        id=item.id,
+        status=item.status,
+        original_filename=item.original_filename,
+        storage_path=item.storage_path,
+        created_at=item.created_at,
+        metadata_json=item.metadata_json,
+        download_url=url,
+        tags=tags
+    )
 
 def get_next_version(session: Session, filename: str) -> int:
     statement = select(ContentItem).where(ContentItem.original_filename == filename).order_by(desc(ContentItem.version))
@@ -49,7 +72,7 @@ async def get_upload_params(filename: str):
     params = await storage.get_upload_params(filename)
     return params
 
-@router.post("/upload/finalize")
+@router.post("/upload/finalize", response_model=ContentItemRead)
 async def finalize_upload(
     original_filename: str = Form(...),
     storage_path: str = Form(...),
@@ -75,9 +98,9 @@ async def finalize_upload(
     session.commit()
     session.refresh(content_item)
     
-    return content_item
+    return enrich_item(content_item)
 
-@router.post("/upload")
+@router.post("/upload", response_model=ContentItemRead)
 async def upload_content(
     file: UploadFile = File(...), 
     metadata: str = Form("{}"),
@@ -112,7 +135,7 @@ async def upload_content(
     session.commit()
     session.refresh(content_item)
     
-    return content_item
+    return enrich_item(content_item)
 
 @router.get("/items", response_model=List[ContentItemRead])
 def read_items(
@@ -144,26 +167,40 @@ def read_items(
         statement = statement.where(~subquery.exists())
     
     items = session.exec(statement).all()
-    return items
+    
+    return [enrich_item(item) for item in items]
+
+@router.get("/items/{item_id}/download")
+async def download_item(item_id: uuid.UUID, session: Session = Depends(get_session)):
+    item = session.get(ContentItem, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    url = storage.get_download_url(item.storage_path)
+    if url:
+        return RedirectResponse(url=url)
+        
+    full_path = storage.get_path(item.storage_path)
+    if not os.path.exists(full_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+        
+    return FileResponse(full_path, filename=item.original_filename)
 
 @router.post("/items/{item_id}/tags/{tag_id}", response_model=ContentItemRead)
-def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
+async def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
     item = session.exec(select(ContentItem).where(ContentItem.id == item_id).options(selectinload(ContentItem.tags))).first()
     tag = session.get(Tag, tag_id)
-    if not item or not tag:
-        raise HTTPException(status_code=404, detail="Item or Tag not found")
-    
     if tag not in item.tags:
         item.tags.append(tag)
         session.add(item)
         session.commit()
         session.refresh(item)
         # Notify clients
-        broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
-    return item
+        await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
+    return enrich_item(item)
 
 @router.delete("/items/{item_id}/tags/{tag_id}", response_model=ContentItemRead)
-def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
+async def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
     item = session.exec(select(ContentItem).where(ContentItem.id == item_id).options(selectinload(ContentItem.tags))).first()
     tag = session.get(Tag, tag_id)
     if not item or not tag:
@@ -175,8 +212,8 @@ def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session
         session.commit()
         session.refresh(item)
         # Notify clients
-        broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
-    return item
+        await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
+    return enrich_item(item)
 
 @router.delete("/items/{item_id}")
 def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session)):

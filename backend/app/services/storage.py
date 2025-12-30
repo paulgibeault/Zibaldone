@@ -25,6 +25,11 @@ class StorageInterface(ABC):
         """Returns parameters for browser-side upload (e.g. pre-signed URL)."""
         pass
 
+    @abstractmethod
+    def get_download_url(self, storage_path: str) -> Optional[str]:
+        """Returns a URL to download/view the file, or None if handled by the server."""
+        pass
+
     def get_date_prefix(self) -> str:
         """Returns the date-based prefix YYYY/MM/DD/."""
         from datetime import datetime
@@ -68,6 +73,10 @@ class FileSystemStorage(StorageInterface):
     async def get_upload_params(self, filename: str) -> Dict[str, Any]:
         # For local filesystem, we still use the /upload endpoint as fallback
         return {"mode": "local", "upload_url": "/api/upload"}
+
+    def get_download_url(self, storage_path: str) -> Optional[str]:
+        # Local files are served via our API, so return None to indicate local serving
+        return None
 
 def get_storage() -> StorageInterface:
     storage_type = os.getenv("STORAGE_TYPE", "filesystem").lower()

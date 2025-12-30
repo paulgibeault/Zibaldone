@@ -38,6 +38,7 @@ export interface ContentItem {
     storage_path: string;
     created_at: string;
     metadata_json: string;
+    download_url?: string;
     tags: Tag[];
 }
 

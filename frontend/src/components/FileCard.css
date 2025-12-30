@@ -585,3 +585,122 @@
     background: var(--bg-canvas);
     color: var(--text-primary);
 }
+
+/* Preview Tab Styles */
+.preview-tab {
+    padding: 1rem;
+    height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    min-height: 300px;
+    overflow-y: auto;
+    position: relative;
+    color: var(--text-muted);
+}
+
+.preview-markdown-wrapper {
+    width: 100%;
+    height: 100%;
+}
+
+.preview-loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.raw-text-preview {
+    width: 100%;
+    padding: 1.5rem;
+    margin: 0;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.preview-image {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.preview-video {
+    max-width: 100%;
+    max-height: 500px;
+    border-radius: 8px;
+}
+
+.preview-audio {
+    width: 80%;
+}
+
+.preview-pdf,
+.preview-text-frame {
+    width: 100%;
+    height: 500px;
+    border: none;
+    background: white;
+}
+
+.preview-text-wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.preview-placeholder,
+.preview-fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2rem;
+}
+
+.download-fallback-link {
+    padding: 0.5rem 1rem;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 20px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.download-fallback-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Expanded mode adjustments */
+.expanded-inner .preview-image,
+.expanded-inner .preview-video {
+    max-height: 70vh;
+}
+
+.expanded-inner .preview-pdf,
+.expanded-inner .preview-text-frame {
+    height: 70vh;
+}
