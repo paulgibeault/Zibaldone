@@ -26,18 +26,25 @@ import { MarkdownPreview } from './MarkdownPreview';
 import axios from 'axios';
 import './FileCard.css';
 
+type ViewMode = 'minimal' | 'standard' | 'fullscreen';
+
 interface FileCardProps {
     item: ContentItem;
     onDelete: (id: string, e: React.MouseEvent) => void;
     onRefresh: () => void;
+    isSelected: boolean;
+    onSelect: () => void;
+    onDeselect: () => void;
 }
 
-export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
+export const FileCard = ({ item, onDelete, onRefresh, isSelected, onSelect, onDeselect }: FileCardProps) => {
     const [activeTab, setActiveTab] = useState<'info' | 'preview' | 'metadata'>('info');
     const [metadataView, setMetadataView] = useState<'rendered' | 'raw'>('rendered');
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const [textContent, setTextContent] = useState<string | null>(null);
     const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+    const viewMode: ViewMode = isFullscreen ? 'fullscreen' : (isSelected ? 'standard' : 'minimal');
 
     // Parse metadata safely
     let metadata: Record<string, any> = {};
@@ -151,15 +158,50 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
         return String(value);
     };
 
-    const toggleExpand = (e?: React.MouseEvent): void => {
+    const toggleFullscreen = (e?: React.MouseEvent): void => {
         if (e) {
             e.stopPropagation();
         }
-        setIsExpanded(!isExpanded);
+        setIsFullscreen(!isFullscreen);
     };
 
-    const cardContent = (
-        <div className={`file-card-inner ${isExpanded ? 'expanded-inner' : ''}`}>
+
+    const renderMinimalView = () => (
+        <div className="file-card-minimal" onClick={onSelect}>
+            <div className="minimal-icon">
+                {getFileIcon()}
+            </div>
+            <div className="minimal-info">
+                <div className="minimal-filename" title={item.original_filename}>
+                    {item.original_filename}
+                </div>
+                <div className="minimal-tags">
+                    {(item.tags || []).slice(0, 3).map(tag => (
+                        <span
+                            key={tag.id}
+                            className="minimal-tag-pill"
+                            style={{
+                                backgroundColor: `color-mix(in srgb, ${tag.color}, transparent 80%)`,
+                                borderColor: `color-mix(in srgb, ${tag.color}, transparent 60%)`,
+                                color: tag.color
+                            }}
+                        >
+                            {tag.name}
+                        </span>
+                    ))}
+                    {(item.tags || []).length > 3 && (
+                        <span className="minimal-tag-more">+{item.tags!.length - 3}</span>
+                    )}
+                </div>
+            </div>
+            <div className="minimal-actions">
+                <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
+            </div>
+        </div>
+    );
+
+    const renderStandardView = (isFull: boolean = false) => (
+        <div className={`file-card-inner ${isFull ? 'expanded-inner' : ''}`}>
             <div className="card-header-v2">
                 <div className="header-left">
                     <div className="icon-wrapper">
@@ -220,15 +262,27 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
                     <div className="header-actions">
                         <button
                             type="button"
+                            className="action-btn-card minimize-btn"
+                            onClick={(e: React.MouseEvent) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDeselect();
+                            }}
+                            title="Minimize"
+                        >
+                            <Clock size={18} />
+                        </button>
+                        <button
+                            type="button"
                             className="action-btn-card expand-btn"
                             onClick={(e: React.MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                toggleExpand(e);
+                                toggleFullscreen(e);
                             }}
-                            title={isExpanded ? "Close" : "Expand"}
+                            title={isFull ? "Restore" : "Fullscreen"}
                         >
-                            {isExpanded ? <X size={20} /> : <Maximize2 size={20} />}
+                            {isFull ? <X size={20} /> : <Maximize2 size={20} />}
                         </button>
                         <button
                             type="button"
@@ -379,19 +433,19 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
         </div>
     );
 
-    if (isExpanded) {
+    if (viewMode === 'fullscreen') {
         return (
-            <div className="fullscreen-overlay" onClick={toggleExpand}>
+            <div className="fullscreen-overlay" onClick={() => setIsFullscreen(false)}>
                 <div className="fullscreen-container" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-                    {cardContent}
+                    {renderStandardView(true)}
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="file-card">
-            {cardContent}
+        <div className={`file-card mode-${viewMode}`}>
+            {viewMode === 'minimal' ? renderMinimalView() : renderStandardView(false)}
         </div>
     );
 };

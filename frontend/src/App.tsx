@@ -11,6 +11,7 @@ import TagManager from './components/TagManager';
 function App() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [activeView, setActiveView] = useState<'heap' | 'tags'>('heap');
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const fetchItems = async () => {
     try {
@@ -104,6 +105,9 @@ function App() {
                 item={item}
                 onDelete={handleDelete}
                 onRefresh={fetchItems}
+                isSelected={selectedItemId === item.id}
+                onSelect={() => setSelectedItemId(item.id)}
+                onDeselect={() => setSelectedItemId(null)}
               />
             ))}
           </div>
