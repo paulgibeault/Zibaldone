@@ -68,6 +68,53 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
         return `${size.toFixed(1)} ${units[unitIndex]}`;
     };
 
+    const formatMetadataKey = (key: string): string => {
+        // Handle specific cases or convert camelCase/snake_case to Title Case
+        const specialCases: Record<string, string> = {
+            'size': 'File Size',
+            'lastModified': 'Last Modified',
+            'lastModifiedDate': 'Modified Date',
+            'type': 'Content Type',
+            'sentiment': 'Sentiment'
+        };
+
+        if (specialCases[key]) return specialCases[key];
+
+        return key
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/[_-]/g, ' ')
+            .replace(/^\w/, (c) => c.toUpperCase())
+            .trim();
+    };
+
+    const formatMetadataValue = (key: string, value: any): React.ReactNode => {
+        if (value === null || value === undefined) return 'N/A';
+
+        if (key === 'size') return formatSize(Number(value));
+
+        if (key === 'lastModified' || key === 'lastModifiedDate') {
+            try {
+                const date = new Date(typeof value === 'number' ? value : String(value));
+                if (!isNaN(date.getTime())) {
+                    return date.toLocaleString();
+                }
+            } catch (e) {
+                return String(value);
+            }
+        }
+
+        if (key === 'sentiment') {
+            const val = String(value).toLowerCase();
+            return (
+                <span className={`sentiment-pill sentiment-${val}`}>
+                    {val}
+                </span>
+            );
+        }
+
+        return String(value);
+    };
+
     const toggleExpand = (e?: React.MouseEvent): void => {
         if (e) {
             e.stopPropagation();
@@ -199,8 +246,8 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
                                         if (key === 'summary' || key === 'tags') return null;
                                         return (
                                             <React.Fragment key={key}>
-                                                <div className="meta-key">{key}</div>
-                                                <div className="meta-value">{String(value)}</div>
+                                                <div className="meta-key">{formatMetadataKey(key)}</div>
+                                                <div className="meta-value">{formatMetadataValue(key, value)}</div>
                                             </React.Fragment>
                                         );
                                     })}

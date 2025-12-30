@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X } from 'lucide-react';
 import { type Tag, getTags, addTagToItem, removeTagFromItem } from '../api';
 
@@ -133,7 +134,7 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
                 </button>
             </div>
 
-            {isOpen && (
+            {isOpen && createPortal(
                 <div className="picker-modal-overlay" onClick={() => setIsOpen(false)}>
                     <div className="picker-modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="picker-modal-header">
@@ -179,7 +180,8 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
