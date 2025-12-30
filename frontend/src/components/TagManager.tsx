@@ -12,6 +12,28 @@ const TagManager: React.FC = () => {
     const [editName, setEditName] = useState<string>('');
     const [editColor, setEditColor] = useState<string>('');
 
+    // Helper to determine text color based on background brightness and theme
+    const getContrastColor = (hexcolor: string) => {
+        if (!hexcolor) return 'var(--text-primary)';
+
+        // Get the current theme's tag opacity
+        const root = document.documentElement;
+        const opacity = parseFloat(getComputedStyle(root).getPropertyValue('--tag-bg-opacity').trim() || '0.9');
+
+        // If opacity is low (light mode), use primary text color
+        if (opacity < 0.4) {
+            return 'var(--text-primary)';
+        }
+
+        const hex = hexcolor.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+        return luminance > 0.6 ? '#0f172a' : '#ffffff';
+    };
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -102,9 +124,12 @@ const TagManager: React.FC = () => {
                                 key={tag.id}
                                 className="cloud-tag"
                                 style={{
-                                    backgroundColor: tag.color,
+                                    backgroundColor: `color-mix(in srgb, ${tag.color}, transparent calc(100% - (var(--tag-bg-opacity) * 100%)))`,
+                                    color: getContrastColor(tag.color),
                                     fontSize: getTagFontSize(tag.id),
-                                    opacity: tagUsage[tag.id] ? 1 : 0.6
+                                    opacity: tagUsage[tag.id] ? 1 : 0.6,
+                                    border: '1px solid var(--tag-border)',
+                                    boxShadow: 'var(--tag-shadow)'
                                 }}
                                 title={`${tagUsage[tag.id] || 0} items tagged`}
                             >
@@ -179,8 +204,16 @@ const TagManager: React.FC = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            <div className="tag-display">
-                                                <span className="dot" style={{ backgroundColor: tag.color }} />
+                                            <div className="tag-display" style={{
+                                                backgroundColor: `color-mix(in srgb, ${tag.color}, transparent calc(100% - (var(--tag-bg-opacity) * 100%)))`,
+                                                color: getContrastColor(tag.color),
+                                                padding: '4px 14px',
+                                                borderRadius: '99px',
+                                                fontSize: '0.85rem',
+                                                fontWeight: 'var(--tag-text-weight, 700)',
+                                                border: '1px solid var(--tag-border)',
+                                                boxShadow: 'var(--tag-shadow)'
+                                            }}>
                                                 <span className="name">{tag.name}</span>
                                             </div>
                                             <div className="item-actions">

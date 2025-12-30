@@ -14,6 +14,28 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
     const [searchTerm, setSearchTerm] = useState('');
     const [isTagging, setIsTagging] = useState<string | null>(null);
 
+    // Helper to determine text color based on background brightness and theme
+    const getContrastColor = (hexcolor: string) => {
+        if (!hexcolor) return 'var(--text-primary)';
+
+        // Get the current theme's tag opacity to see if it's "light mode style" (faded)
+        const root = document.documentElement;
+        const opacity = parseFloat(getComputedStyle(root).getPropertyValue('--tag-bg-opacity').trim() || '0.9');
+
+        // If opacity is very low, we are likely in light mode with faded tags, use dark text
+        if (opacity < 0.4) {
+            return 'var(--text-primary)';
+        }
+
+        const hex = hexcolor.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+        return luminance > 0.6 ? '#0f172a' : '#ffffff';
+    };
+
     useEffect(() => {
         if (isOpen) {
             fetchAllTags();
@@ -79,13 +101,17 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
                     <span
                         key={tag.id}
                         className="standard-tag"
-                        style={{ borderLeft: `3px solid ${tag.color}` }}
+                        style={{
+                            backgroundColor: `color-mix(in srgb, ${tag.color}, transparent calc(100% - (var(--tag-bg-opacity) * 100%)))`,
+                            color: getContrastColor(tag.color)
+                        }}
                     >
                         {tag.name}
                         <button
                             type="button"
                             className="remove-tag-mini"
                             onClick={(e: React.MouseEvent) => handleToggleTag(tag.id, e)}
+                            style={{ color: getContrastColor(tag.color) }}
                             title="Remove tag"
                         >
                             <X size={10} />
@@ -136,10 +162,14 @@ const TagPicker: React.FC<TagPickerProps> = ({ itemId, currentItemTags, onRefres
                                         className={`available-tag-item ${isTagging === tag.id ? 'loading' : ''}`}
                                         onClick={(e: React.MouseEvent) => handleToggleTag(tag.id, e)}
                                         disabled={!!isTagging}
+                                        style={{
+                                            backgroundColor: `color-mix(in srgb, ${tag.color}, transparent calc(100% - (var(--tag-bg-opacity) * 100%)))`,
+                                            color: getContrastColor(tag.color),
+                                            borderColor: 'transparent'
+                                        }}
                                     >
-                                        <span className="tag-dot" style={{ backgroundColor: tag.color }} />
                                         {tag.name}
-                                        {isTagging === tag.id && <span className="tag-loading-spinner" />}
+                                        {isTagging === tag.id && <span className="tag-loading-spinner" style={{ borderTopColor: getContrastColor(tag.color) }} />}
                                     </button>
                                 ))
                             ) : (

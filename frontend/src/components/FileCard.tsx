@@ -215,7 +215,9 @@ export const FileCard = ({ item, onDelete, onRefresh }: FileCardProps) => {
                 )}
             </div>
 
-            <TagPicker itemId={item.id} currentItemTags={item.tags || []} onRefresh={onRefresh} />
+            <div className="inline-tag-picker-compact">
+                <TagPicker itemId={item.id} currentItemTags={item.tags || []} onRefresh={onRefresh} />
+            </div>
         </div>
     );
 

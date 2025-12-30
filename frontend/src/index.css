@@ -66,6 +66,12 @@
   --syntax-number: #ea580c;
   --syntax-boolean: #2563eb;
   --syntax-null: #4b5563;
+
+  /* Tag Palette Adjustments (General Defaults) */
+  --tag-bg-opacity: 0.9;
+  --tag-border: rgba(255, 255, 255, 0.2);
+  --tag-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --tag-text-weight: 700;
 }
 
 /* Light Mode Overrides */
@@ -80,6 +86,12 @@
     --text-muted: var(--color-slate-500);
 
     --border-subtle: var(--color-slate-200);
+
+    /* Light Theme Tags */
+    --tag-bg-opacity: 0.15;
+    --tag-border: rgba(0, 0, 0, 0.1);
+    --tag-shadow: none;
+    --tag-text-weight: 800;
   }
 }
 
@@ -92,6 +104,12 @@
   --text-secondary: var(--color-slate-600);
   --text-muted: var(--color-slate-500);
   --border-subtle: var(--color-slate-200);
+
+  /* Light Theme Tags */
+  --tag-bg-opacity: 0.15;
+  --tag-border: rgba(0, 0, 0, 0.1);
+  --tag-shadow: none;
+  --tag-text-weight: 800;
 }
 
 [data-theme="dark"] {
@@ -102,6 +120,12 @@
   --text-secondary: var(--color-slate-300);
   --text-muted: var(--color-slate-400);
   --border-subtle: rgba(255, 255, 255, 0.1);
+
+  /* Dark Theme Tags */
+  --tag-bg-opacity: 0.85;
+  --tag-border: rgba(255, 255, 255, 0.1);
+  --tag-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --tag-text-weight: 700;
 }
 
 [data-theme="ocean"] {
@@ -117,6 +141,12 @@
   --border-subtle: rgba(255, 255, 255, 0.15);
   --color-primary: #38bdf8;
   --color-accent: #818cf8;
+
+  /* Ocean Theme Tags */
+  --tag-bg-opacity: 0.7;
+  --tag-border: rgba(255, 255, 255, 0.2);
+  --tag-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --tag-text-weight: 700;
 }
 
 [data-theme="forest"] {
@@ -131,6 +161,12 @@
   --border-subtle: rgba(255, 255, 255, 0.1);
   --color-primary: #34d399;
   --color-accent: #fcd34d;
+
+  /* Forest Theme Tags */
+  --tag-bg-opacity: 0.8;
+  --tag-border: rgba(255, 255, 255, 0.1);
+  --tag-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --tag-text-weight: 700;
 }
 
 
@@ -147,17 +183,17 @@ body {
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1.5rem 2rem;
 }
 
 h1 {
-  font-size: 3rem;
+  font-size: 2.5rem;
   font-weight: 800;
   background: linear-gradient(to right, var(--color-primary), var(--color-accent));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   text-align: center;
 }
 
@@ -188,7 +224,7 @@ h1 {
 .dropzone {
   border: 2px dashed var(--color-primary);
   border-radius: 1rem;
-  padding: 4rem;
+  padding: 2.5rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -212,7 +248,7 @@ h1 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
-  margin-top: 3rem;
+  margin-top: 2rem;
 }
 
 /* Tag Management & Badges */
