@@ -75,11 +75,23 @@ def get_tags(session: Session) -> List[Tag]:
 def get_tag(session: Session, tag_id: uuid.UUID) -> Optional[Tag]:
     return session.get(Tag, tag_id)
 
-def create_tag(session: Session, name: str, color: str) -> Tag:
-    tag = Tag(name=name, color=color)
+def create_tag(session: Session, name: str, color: str, is_autocreated: bool = False, is_approved: bool = True) -> Tag:
+    tag = Tag(name=name, color=color, is_autocreated=is_autocreated, is_approved=is_approved)
     session.add(tag)
     session.commit()
     session.refresh(tag)
+    return tag
+
+def get_tag_by_name(session: Session, name: str) -> Optional[Tag]:
+    return session.exec(select(Tag).where(Tag.name == name)).first()
+
+def approve_tag(session: Session, tag_id: uuid.UUID) -> Optional[Tag]:
+    tag = session.get(Tag, tag_id)
+    if tag:
+        tag.is_approved = True
+        session.add(tag)
+        session.commit()
+        session.refresh(tag)
     return tag
 
 def update_tag(session: Session, tag: Tag, name: Optional[str] = None, color: Optional[str] = None) -> Tag:

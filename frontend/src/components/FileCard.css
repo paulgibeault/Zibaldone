@@ -410,6 +410,35 @@
     backdrop-filter: blur(4px);
 }
 
+.standard-tag.unapproved {
+    opacity: 0.6;
+    border-style: dashed;
+    border-color: var(--text-muted);
+    filter: grayscale(0.5);
+    box-shadow: none;
+}
+
+.approve-tag-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 2px;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.approve-tag-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+}
+
 .standard-tag:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);

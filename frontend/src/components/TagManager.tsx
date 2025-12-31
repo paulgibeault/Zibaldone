@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Tag as TagIcon } from 'lucide-react';
-import { type Tag as TagType, createTag, deleteTag, updateTag, getItems, type ContentItem } from '../api';
+import { type Tag as TagType, createTag, deleteTag, updateTag, getItems, type ContentItem, approveTag } from '../api';
 import { useTags } from '../hooks/useTags';
 import { Tag } from './Tag';
 
@@ -47,6 +47,15 @@ const TagManager = () => {
             fetchData();
         } catch (error) {
             console.error('Error creating tag:', error);
+        }
+    };
+
+    const handleApproveTag = async (id: string): Promise<void> => {
+        try {
+            await approveTag(id);
+            fetchData();
+        } catch (error) {
+            console.error('Error approving tag:', error);
         }
     };
 
@@ -176,7 +185,11 @@ const TagManager = () => {
                                         </div>
                                     ) : (
                                         <>
-                                            <Tag tag={tag} />
+                                            <Tag
+                                                tag={tag}
+                                                onApprove={async (id) => handleApproveTag(id)}
+                                                showApproveIcon={true}
+                                            />
                                             <div className="item-actions">
                                                 <button
                                                     type="button"

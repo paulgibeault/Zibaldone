@@ -29,6 +29,8 @@ export interface Tag {
     id: string;
     name: string;
     color: string;
+    is_autocreated: boolean;
+    is_approved: boolean;
 }
 
 export interface ProcessingTask {
@@ -70,6 +72,11 @@ export const updateTag = async (tagId: string, data: Partial<Tag>): Promise<Tag>
 
 export const deleteTag = async (tagId: string): Promise<void> => {
     await apiClient.delete(`/tags/${tagId}`);
+};
+
+export const approveTag = async (tagId: string): Promise<Tag> => {
+    const response = await apiClient.post(`/tags/${tagId}/approve`);
+    return response.data;
 };
 
 export const addTagToItem = async (itemId: string, tagId: string): Promise<ContentItem> => {

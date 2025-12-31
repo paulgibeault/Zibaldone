@@ -92,6 +92,31 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
         merged_metadata.update(llm_metadata)
         
         item.metadata_json = json.dumps(merged_metadata)
+        
+        # Process tags from LLM metadata
+        # Expecting tags in llm_metadata['tags'] as a list of strings
+        llm_tags = llm_metadata.get('tags', [])
+        if isinstance(llm_tags, list):
+            for tag_name in llm_tags:
+                if not tag_name:
+                    continue
+                
+                # Check if tag already exists
+                tag = crud.get_tag_by_name(session, tag_name)
+                if not tag:
+                    # Create as unapproved autocreated tag
+                    tag = crud.create_tag(
+                        session, 
+                        name=tag_name, 
+                        color="#888888", 
+                        is_autocreated=True, 
+                        is_approved=False
+                    )
+                
+                # Link tag to item if not already linked
+                if tag not in item.tags:
+                    item.tags.append(tag)
+
         item.status = ContentStatus.TAGGED
         session.add(item)
         

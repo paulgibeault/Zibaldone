@@ -8,6 +8,8 @@ from app.models import ContentStatus, TaskStatus
 class TagBase(SQLModel):
     name: str
     color: str
+    is_autocreated: bool = False
+    is_approved: bool = True
 
 class TagCreate(TagBase):
     pass
@@ -18,6 +20,8 @@ class TagUpdate(SQLModel):
 
 class TagRead(TagBase):
     id: uuid.UUID
+    is_autocreated: bool
+    is_approved: bool
 
 # --- ProcessingTask Schemas ---
 class ProcessingTaskRead(SQLModel):

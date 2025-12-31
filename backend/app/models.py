@@ -19,6 +19,8 @@ class Tag(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str = Field(index=True, unique=True)
     color: str = Field(default="#888888")
+    is_autocreated: bool = Field(default=False)
+    is_approved: bool = Field(default=True)
     
     items: list["ContentItem"] = Relationship(back_populates="tags", link_model=ContentItemTagLink)
 

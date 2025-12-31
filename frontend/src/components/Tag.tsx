@@ -1,13 +1,15 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { type Tag as TagType } from '../api';
 
 interface TagProps {
     tag: TagType;
     onRemove?: (tagId: string, e: React.MouseEvent) => void;
+    onApprove?: (tagId: string, e: React.MouseEvent) => void;
     className?: string;
     style?: React.CSSProperties;
     showRemoveIcon?: boolean;
+    showApproveIcon?: boolean;
     key?: string | number;
 }
 
@@ -36,15 +38,18 @@ export const getContrastColor = (hexcolor: string) => {
 export const Tag = ({
     tag,
     onRemove,
+    onApprove,
     className = '',
     style = {},
-    showRemoveIcon = false
+    showRemoveIcon = false,
+    showApproveIcon = false
 }: TagProps) => {
     const contrastColor = getContrastColor(tag.color);
+    const isUnapproved = tag.is_autocreated && !tag.is_approved;
 
     return (
         <span
-            className={`standard-tag ${className}`}
+            className={`standard-tag ${isUnapproved ? 'unapproved' : ''} ${className}`}
             style={{
                 backgroundColor: `color-mix(in srgb, ${tag.color}, transparent calc(100% - (var(--tag-bg-opacity) * 100%)))`,
                 color: contrastColor,
@@ -52,6 +57,17 @@ export const Tag = ({
             }}
         >
             {tag.name}
+            {isUnapproved && (showApproveIcon || onApprove) && (
+                <button
+                    type="button"
+                    className="approve-tag-btn"
+                    onClick={(e) => onApprove?.(tag.id, e)}
+                    style={{ color: contrastColor }}
+                    title="Approve tag"
+                >
+                    <Check size={12} />
+                </button>
+            )}
             {showRemoveIcon && onRemove && (
                 <button
                     type="button"

@@ -39,3 +39,10 @@ def delete_tag(tag_id: uuid.UUID, session: Session = Depends(get_session)):
     
     crud.delete_tag(session, tag)
     return {"ok": True}
+@router.post("/tags/{tag_id}/approve", response_model=schemas.TagRead)
+def approve_tag(tag_id: uuid.UUID, session: Session = Depends(get_session)):
+    db_tag = crud.get_tag(session, tag_id)
+    if not db_tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    
+    return crud.approve_tag(session, tag_id)

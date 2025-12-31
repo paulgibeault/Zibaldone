@@ -16,20 +16,10 @@ def enrich_item(item: ContentItem) -> schemas.ContentItemRead:
         url = f"/api/items/{item.id}/download"
     
     # Map tags to TagRead
-    tags = [schemas.TagRead(id=t.id, name=t.name, color=t.color) for t in item.tags]
+    tags = [schemas.TagRead.model_validate(t) for t in item.tags]
     
     # Map tasks to ProcessingTaskRead
-    tasks = [
-        schemas.ProcessingTaskRead(
-            id=t.id,
-            item_id=t.item_id,
-            name=t.name,
-            status=t.status,
-            message=t.message,
-            start_time=t.start_time,
-            end_time=t.end_time
-        ) for t in item.tasks
-    ]
+    tasks = [schemas.ProcessingTaskRead.model_validate(t) for t in item.tasks]
     
     return schemas.ContentItemRead(
         id=item.id,

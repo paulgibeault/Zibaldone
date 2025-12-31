@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Plus, X } from 'lucide-react';
-import { type Tag as TagType } from '../api';
+import { approveTag, type Tag as TagType } from '../api';
 import { Tag } from './Tag';
 import { useTags } from '../hooks/useTags';
 
@@ -50,6 +50,20 @@ const TagPicker = ({
         setIsTagging(null);
     };
 
+    const handleApproveTag = async (tagId: string, e: React.MouseEvent): Promise<void> => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        try {
+            await approveTag(tagId);
+            onRefresh();
+        } catch (err) {
+            console.error("Failed to approve tag", err);
+        }
+    };
+
     const filteredTags = allTags.filter((tag: TagType) =>
         tag.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -64,7 +78,9 @@ const TagPicker = ({
                         key={tag.id}
                         tag={tag}
                         onRemove={handleToggleTag}
+                        onApprove={handleApproveTag}
                         showRemoveIcon={true}
+                        showApproveIcon={true}
                     />
                 ))}
 
