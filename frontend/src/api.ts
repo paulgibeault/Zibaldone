@@ -41,6 +41,7 @@ export interface ProcessingTask {
     message?: string;
     start_time: string;
     end_time?: string;
+    result_json?: string;
 }
 
 export interface ContentItem {

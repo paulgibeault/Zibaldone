@@ -32,6 +32,7 @@ class ProcessingTaskRead(SQLModel):
     message: Optional[str]
     start_time: datetime
     end_time: Optional[datetime]
+    result_json: Optional[str] = None
 
 # --- ContentItem Schemas ---
 class ContentItemBase(SQLModel):

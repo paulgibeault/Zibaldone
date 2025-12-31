@@ -38,6 +38,7 @@ class ProcessingTask(SQLModel, table=True):
     message: Optional[str] = None
     start_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     end_time: Optional[datetime] = None
+    result_json: Optional[str] = None
 
     item: "ContentItem" = Relationship(back_populates="tasks")
 

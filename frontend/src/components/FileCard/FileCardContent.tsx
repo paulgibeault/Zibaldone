@@ -27,6 +27,13 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     formatMetadataKey,
     formatMetadataValue
 }) => {
+    const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
+
+    const selectedTask = React.useMemo(() =>
+        item.tasks?.find(t => t.id === selectedTaskId),
+        [item.tasks, selectedTaskId]
+    );
+
     return (
         <div className="card-content-area-v2">
             {activeTab === 'info' && (
@@ -43,7 +50,12 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                             <h4>PROCESSING HISTORY</h4>
                             <div className="history-list">
                                 {item.tasks.map(task => (
-                                    <div key={task.id} className="history-item">
+                                    <div
+                                        key={task.id}
+                                        className={`history-item ${task.result_json ? 'clickable' : ''}`}
+                                        onClick={() => task.result_json && setSelectedTaskId(task.id)}
+                                        title={task.result_json ? "Click to view details" : ""}
+                                    >
                                         <div className="history-status">
                                             {task.status === 'COMPLETED' && <CheckCircle2 size={14} className="status-icon-completed" />}
                                             {task.status === 'RUNNING' && <Loader2 size={14} className="status-icon-running spin" />}
@@ -63,6 +75,22 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {selectedTask && (
+                        <div className="task-details-overlay fade-in" onClick={() => setSelectedTaskId(null)}>
+                            <div className="task-details-modal" onClick={e => e.stopPropagation()}>
+                                <div className="task-details-header">
+                                    <h4>{selectedTask.name} Result</h4>
+                                    <button className="close-btn" onClick={() => setSelectedTaskId(null)}>
+                                        <XCircle size={16} />
+                                    </button>
+                                </div>
+                                <div className="task-details-body">
+                                    <JSONView data={selectedTask.result_json} />
+                                </div>
                             </div>
                         </div>
                     )}

@@ -92,6 +92,20 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
         merged_metadata.update(llm_metadata)
         
         item.metadata_json = json.dumps(merged_metadata)
+
+        # Update task status
+        crud.update_task(
+            session, 
+            task.id, 
+            status=TaskStatus.COMPLETED, 
+            end_time=datetime.now(timezone.utc)
+            # Save the raw LLM output as the result of this task
+        )
+        # We need to update result_json separately or add it to update_task in crud.py
+        # For now, let's just update the object directly as crud.update_task might not have it yet
+        # Actually, let's check crud.py, but since we are in a session, we can just modify the object
+        task.result_json = json.dumps(llm_metadata, indent=2)
+        session.add(task)
         
         # Process tags from LLM metadata
         # Expecting tags in llm_metadata['tags'] as a list of strings
@@ -99,6 +113,15 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
         
         # --- Tag Alignment Step ---
         if isinstance(llm_tags, list) and len(llm_tags) > 0:
+            # Create a specific task for Tag Alignment
+            alignment_task = ProcessingTask(
+                item_id=item.id,
+                name="Tag Alignment",
+                status=TaskStatus.RUNNING,
+                start_time=datetime.now(timezone.utc)
+            )
+            alignment_task = crud.create_task(session, alignment_task)
+
             try:
                 # Fetch all existing tags names for alignment
                 all_tags = crud.get_tags(session)
@@ -108,16 +131,39 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
                 aligned_tags = await llm_service.align_tags(llm_tags, existing_tag_names)
                 
                 logger.info(f"Tags aligned. Original: {llm_tags} -> Aligned: {aligned_tags}")
-                llm_tags = aligned_tags
                 
-                # Update metadata with aligned tags
-                merged_metadata['tags'] = llm_tags
-                item.metadata_json = json.dumps(merged_metadata)
+                # Use the aligned tags
+                final_tags = aligned_tags
+                
+                # Update metadata with aligned tags if they changed
+                if final_tags != llm_tags:
+                    merged_metadata['tags'] = final_tags
+                    item.metadata_json = json.dumps(merged_metadata)
+                
+                # Record success for alignment task
+                alignment_task.status = TaskStatus.COMPLETED
+                alignment_task.end_time = datetime.now(timezone.utc)
+                alignment_task.result_json = json.dumps({
+                    "original_tags": llm_tags,
+                    "existing_tags_count": len(existing_tag_names),
+                    "aligned_tags": final_tags,
+                    "changes": [t for t in final_tags if t not in llm_tags]
+                }, indent=2)
+                session.add(alignment_task)
+                
+                # Use final_tags for linking
+                llm_tags = final_tags
                 
             except Exception as e:
                 logger.error(f"Error during tag alignment: {e}")
-                # Fallback to original tags on error
-                pass
+                # Mark alignment task as falied but don't fail the whole item processing?
+                # Or just mark it as failed but proceed with original tags?
+                alignment_task.status = TaskStatus.FAILED
+                alignment_task.message = str(e)
+                alignment_task.end_time = datetime.now(timezone.utc)
+                session.add(alignment_task)
+                # Fallback to original tags is implicit as llm_tags wasn't updated
+                
         # --------------------------
 
         if isinstance(llm_tags, list):
@@ -143,14 +189,6 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
 
         item.status = ContentStatus.TAGGED
         session.add(item)
-        
-        # Update task status
-        crud.update_task(
-            session, 
-            task.id, 
-            status=TaskStatus.COMPLETED, 
-            end_time=datetime.now(timezone.utc)
-        )
         
         session.commit()
         logger.info(f"Successfully processed and tagged {item.original_filename} (ID: {item.id})")
