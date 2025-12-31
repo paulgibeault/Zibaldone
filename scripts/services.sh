@@ -54,6 +54,13 @@ stop_local_services() {
     log_success "All services stopped."
 }
 
+# Function to stop docker services
+stop_docker_services() {
+    log_info "\nStopping Docker services..."
+    cleanup_docker false
+    log_success "Docker services stopped."
+}
+
 # Function to wait for a service to be healthy
 wait_for_service() {
     local url=$1

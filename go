@@ -57,6 +57,7 @@ if [ "$ZIB_MODE" = "docker" ]; then
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
     log_info "Streaming logs (Ctrl+C to stop services)..."
+    trap stop_docker_services SIGINT SIGTERM
     docker compose logs -f
 else
     # Local mode
