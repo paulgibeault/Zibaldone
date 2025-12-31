@@ -18,6 +18,19 @@ def enrich_item(item: ContentItem) -> schemas.ContentItemRead:
     # Map tags to TagRead
     tags = [schemas.TagRead(id=t.id, name=t.name, color=t.color) for t in item.tags]
     
+    # Map tasks to ProcessingTaskRead
+    tasks = [
+        schemas.ProcessingTaskRead(
+            id=t.id,
+            item_id=t.item_id,
+            name=t.name,
+            status=t.status,
+            message=t.message,
+            start_time=t.start_time,
+            end_time=t.end_time
+        ) for t in item.tasks
+    ]
+    
     return schemas.ContentItemRead(
         id=item.id,
         status=item.status,
@@ -26,7 +39,8 @@ def enrich_item(item: ContentItem) -> schemas.ContentItemRead:
         created_at=item.created_at,
         metadata_json=item.metadata_json,
         download_url=url,
-        tags=tags
+        tags=tags,
+        tasks=tasks
     )
 
 async def notify_item_update(item_id: uuid.UUID):

@@ -1,9 +1,11 @@
 from typing import List, Optional
+from datetime import datetime
 import uuid
 from sqlmodel import Session, select, desc
 from sqlalchemy.orm import selectinload
-from app.models import ContentItem, Tag, ContentItemTagLink
+from app.models import ContentItem, Tag, ContentItemTagLink, ProcessingTask, TaskStatus
 
+# Forced update to trigger rebuild
 def get_next_version(session: Session, filename: str) -> int:
     statement = select(ContentItem).where(ContentItem.original_filename == filename).order_by(desc(ContentItem.version))
     latest_item = session.exec(statement).first()
@@ -18,14 +20,16 @@ def get_items(
     after: Optional[str] = None,
     show_all_versions: bool = False
 ) -> List[ContentItem]:
-    statement = select(ContentItem).options(selectinload(ContentItem.tags))
+    statement = select(ContentItem).options(
+        selectinload(ContentItem.tags),
+        selectinload(ContentItem.tasks)
+    )
     
     if filename:
         statement = statement.where(ContentItem.original_filename == filename)
     if content_type:
         statement = statement.where(ContentItem.content_type == content_type)
     if after:
-        from datetime import datetime
         try:
             after_dt = datetime.fromisoformat(after)
             statement = statement.where(ContentItem.created_at >= after_dt)
@@ -48,7 +52,10 @@ def get_item(session: Session, item_id: uuid.UUID) -> Optional[ContentItem]:
     return session.exec(
         select(ContentItem)
         .where(ContentItem.id == item_id)
-        .options(selectinload(ContentItem.tags))
+        .options(
+            selectinload(ContentItem.tags),
+            selectinload(ContentItem.tasks)
+        )
     ).first()
 
 def create_item(session: Session, item: ContentItem) -> ContentItem:
@@ -88,3 +95,30 @@ def update_tag(session: Session, tag: Tag, name: Optional[str] = None, color: Op
 def delete_tag(session: Session, tag: Tag):
     session.delete(tag)
     session.commit()
+
+# Processing Task operations
+def create_task(session: Session, task: ProcessingTask) -> ProcessingTask:
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+def update_task(
+    session: Session, 
+    task_id: uuid.UUID, 
+    status: Optional[TaskStatus] = None, 
+    message: Optional[str] = None,
+    end_time: Optional[datetime] = None
+) -> Optional[ProcessingTask]:
+    task = session.get(ProcessingTask, task_id)
+    if task:
+        if status:
+            task.status = status
+        if message:
+            task.message = message
+        if end_time:
+            task.end_time = end_time
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+    return task

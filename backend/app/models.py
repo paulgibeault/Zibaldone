@@ -6,8 +6,10 @@ from enum import Enum
 
 class ContentStatus(str, Enum):
     UNPROCESSED = "UNPROCESSED"
+    PROCESSING = "PROCESSING"
     TAGGED = "TAGGED"
     INDEXED = "INDEXED"
+    FAILED = "FAILED"
 
 class ContentItemTagLink(SQLModel, table=True):
     item_id: uuid.UUID = Field(foreign_key="contentitem.id", primary_key=True)
@@ -16,9 +18,26 @@ class ContentItemTagLink(SQLModel, table=True):
 class Tag(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str = Field(index=True, unique=True)
-    color: str = Field(default="#6366f1") # Default Indigo
+    color: str = Field(default="#888888")
     
     items: list["ContentItem"] = Relationship(back_populates="tags", link_model=ContentItemTagLink)
+
+class TaskStatus(str, Enum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+class ProcessingTask(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    item_id: uuid.UUID = Field(foreign_key="contentitem.id", index=True)
+    name: str # e.g., "Metadata Extraction"
+    status: TaskStatus = Field(default=TaskStatus.PENDING)
+    message: Optional[str] = None
+    start_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    end_time: Optional[datetime] = None
+
+    item: "ContentItem" = Relationship(back_populates="tasks")
 
 class ContentItem(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -32,6 +51,7 @@ class ContentItem(SQLModel, table=True):
     metadata_json: Optional[str] = Field(default="{}") # Storing simple JSON as string for SQLite simplicity initially
     
     tags: list[Tag] = Relationship(back_populates="items", link_model=ContentItemTagLink)
+    tasks: list[ProcessingTask] = Relationship(back_populates="item", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 from pathlib import Path
 

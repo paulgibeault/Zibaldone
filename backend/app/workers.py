@@ -1,8 +1,10 @@
 import asyncio
 from sqlmodel import Session, select
-from app.models import engine, ContentItem, ContentStatus
+from app.models import engine, ContentItem, ContentStatus, ProcessingTask, TaskStatus
 import json
+from datetime import datetime, timezone
 from litellm import completion
+from app import crud
 
 from app.services.llm import LLMService
 from app.services.storage import get_storage
@@ -31,6 +33,24 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
     """
     logger.info(f"Processing item: {item.original_filename}")
     
+    # Update item status to PROCESSING
+    item.status = ContentStatus.PROCESSING
+    session.add(item)
+    session.commit()
+    
+    # Broadcast event
+    from app.services.event_broadcaster import broadcaster
+    await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
+
+    # Create a processing task record
+    task = ProcessingTask(
+        item_id=item.id,
+        name="Metadata Extraction",
+        status=TaskStatus.RUNNING,
+        start_time=datetime.now(timezone.utc)
+    )
+    task = crud.create_task(session, task)
+
     # Read content (assuming text for now, or just tagging filename)
     try:
         # Load existing metadata
@@ -74,6 +94,15 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
         item.metadata_json = json.dumps(merged_metadata)
         item.status = ContentStatus.TAGGED
         session.add(item)
+        
+        # Update task status
+        crud.update_task(
+            session, 
+            task.id, 
+            status=TaskStatus.COMPLETED, 
+            end_time=datetime.now(timezone.utc)
+        )
+        
         session.commit()
         logger.info(f"Successfully processed and tagged {item.original_filename} (ID: {item.id})")
         
@@ -83,6 +112,25 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
 
     except Exception as e:
         logger.error(f"Error processing item {item.id}: {e}", exc_info=True)
+        
+        # Update item status to FAILED
+        item.status = ContentStatus.FAILED
+        session.add(item)
+        
+        # Update task status to FAILED
+        crud.update_task(
+            session, 
+            task.id, 
+            status=TaskStatus.FAILED, 
+            message=str(e),
+            end_time=datetime.now(timezone.utc)
+        )
+        
+        session.commit()
+        
+        # Broadcast event
+        from app.services.event_broadcaster import broadcaster
+        await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
 
 
 async def process_unprocessed_items():

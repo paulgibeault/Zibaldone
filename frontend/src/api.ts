@@ -31,15 +31,26 @@ export interface Tag {
     color: string;
 }
 
+export interface ProcessingTask {
+    id: string;
+    item_id: string;
+    name: string;
+    status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+    message?: string;
+    start_time: string;
+    end_time?: string;
+}
+
 export interface ContentItem {
     id: string;
-    status: string;
+    status: 'UNPROCESSED' | 'PROCESSING' | 'TAGGED' | 'INDEXED' | 'FAILED';
     original_filename: string;
     storage_path: string;
     created_at: string;
     metadata_json: string;
     download_url?: string;
     tags: Tag[];
+    tasks: ProcessingTask[];
 }
 
 export const getTags = async (): Promise<Tag[]> => {

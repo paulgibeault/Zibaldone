@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List
 from sqlmodel import SQLModel
-from app.models import ContentStatus
+from app.models import ContentStatus, TaskStatus
 
 # --- Tag Schemas ---
 class TagBase(SQLModel):
@@ -18,6 +18,16 @@ class TagUpdate(SQLModel):
 
 class TagRead(TagBase):
     id: uuid.UUID
+
+# --- ProcessingTask Schemas ---
+class ProcessingTaskRead(SQLModel):
+    id: uuid.UUID
+    item_id: uuid.UUID
+    name: str
+    status: TaskStatus
+    message: Optional[str]
+    start_time: datetime
+    end_time: Optional[datetime]
 
 # --- ContentItem Schemas ---
 class ContentItemBase(SQLModel):
@@ -38,6 +48,7 @@ class ContentItemRead(SQLModel):
     metadata_json: Optional[str]
     download_url: Optional[str] = None
     tags: List[TagRead] = []
+    tasks: List[ProcessingTaskRead] = []
 
 class ContentItemUpdate(SQLModel):
     status: Optional[ContentStatus] = None

@@ -36,7 +36,7 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                 <div className="header-left">
                     <div className="icon-wrapper">
                         {getFileIcon()}
-                        <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
+                        <span className={`status-dot status-${item.status.toLowerCase()}`} title={`Status: ${item.status}`} />
                     </div>
                 </div>
 
@@ -53,6 +53,8 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                                 title="Main Info"
                             >
                                 <Info size={16} />
+                                {item.status === 'PROCESSING' && <span className="tab-indicator processing-indicator" />}
+                                {item.status === 'FAILED' && <span className="tab-indicator failed-indicator" />}
                             </button>
                             <button
                                 type="button"

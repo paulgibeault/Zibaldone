@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, Code } from 'lucide-react';
+import { Table, Code, CheckCircle2, Clock, XCircle, Loader2 } from 'lucide-react';
 import { type ContentItem } from '../../api';
 import { JSONView } from '../JSONView';
 import { FilePreview } from './FilePreview';
@@ -37,6 +37,35 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                             {metadata.summary || "No summary available. Processing might still be in progress."}
                         </p>
                     </div>
+
+                    {item.tasks && item.tasks.length > 0 && (
+                        <div className="history-section">
+                            <h4>PROCESSING HISTORY</h4>
+                            <div className="history-list">
+                                {item.tasks.map(task => (
+                                    <div key={task.id} className="history-item">
+                                        <div className="history-status">
+                                            {task.status === 'COMPLETED' && <CheckCircle2 size={14} className="status-icon-completed" />}
+                                            {task.status === 'RUNNING' && <Loader2 size={14} className="status-icon-running spin" />}
+                                            {task.status === 'FAILED' && <XCircle size={14} className="status-icon-failed" />}
+                                            {task.status === 'PENDING' && <Clock size={14} className="status-icon-pending" />}
+                                        </div>
+                                        <div className="history-details">
+                                            <div className="history-name-row">
+                                                <span className="history-name">{task.name}</span>
+                                                <span className="history-status-text">{task.status}</span>
+                                            </div>
+                                            {task.message && <div className="history-message">{task.message}</div>}
+                                            <div className="history-time">
+                                                {new Date(task.start_time).toLocaleString()}
+                                                {task.end_time && ` - ${new Date(task.end_time).toLocaleTimeString()}`}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
