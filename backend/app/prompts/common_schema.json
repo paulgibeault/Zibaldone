@@ -1,10 +1,7 @@
 {
-    "summary": "A brief, one-sentence summary of the content.",
+    "summary": "A brief, one-sentence summary of the content. Focus on the 'what' and 'why'.",
     "tags": [
-        "list",
-        "of",
-        "relevant",
-        "keywords"
+        "A list of 3-7 highly relevant keywords or categories. Use lowercase and hyphens for multi-word tags."
     ],
-    "sentiment": "positive, negative, or neutral"
+    "sentiment": "The overall tone: 'positive', 'negative', or 'neutral'."
 }

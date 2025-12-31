@@ -4,6 +4,17 @@ import os
 import base64
 from typing import Dict, Any, Optional
 from pathlib import Path
+import logging
+from datetime import datetime
+
+# Setup LLM Logger
+log_dir = Path(__file__).parent.parent.parent / "logs"
+log_dir.mkdir(exist_ok=True)
+llm_logger = logging.getLogger("llm_interaction")
+llm_logger.setLevel(logging.INFO)
+file_handler = logging.FileHandler(log_dir / "llm.log")
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+llm_logger.addHandler(file_handler)
 
 class LLMService:
     def __init__(self, model: str = "gpt-3.5-turbo"):
@@ -82,7 +93,7 @@ JSON Result:
             # Fallback to character-based heuristic
             return content[: available_tokens * 2]
 
-    async def generate_metadata(self, file_path: str, content_text: Optional[str] = None) -> Dict[str, Any]:
+    async def generate_metadata(self, file_path: str, content_text: Optional[str] = None, content_bytes: Optional[bytes] = None) -> Dict[str, Any]:
         """
         Generates metadata for the given file, using vision for images if supported.
         """
@@ -96,8 +107,11 @@ JSON Result:
         if file_type == "image":
             # Vision request
             try:
-                with open(file_path, "rb") as image_file:
-                    base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+                if content_bytes:
+                    base64_image = base64.b64encode(content_bytes).decode('utf-8')
+                else:
+                    with open(file_path, "rb") as image_file:
+                        base64_image = base64.b64encode(image_file.read()).decode('utf-8')
                 
                 messages = [
                     {
@@ -139,6 +153,12 @@ JSON Result:
             ]
 
         try:
+            # Log Request
+            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+                llm_logger.info(f"--- LLM REQUEST: {Path(file_path).name} ---")
+                llm_logger.info(f"Model: {self.model}")
+                llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
+
             response = await acompletion(
                 model=self.model,
                 api_base=api_base,
@@ -146,6 +166,11 @@ JSON Result:
             )
             
             content = response.choices[0].message.content.strip()
+            
+            # Log Response
+            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+                llm_logger.info(f"--- LLM RESPONSE: {Path(file_path).name} ---")
+                llm_logger.info(f"Raw Response: {content}")
             
             # Robust JSON extraction
             if "```json" in content:

@@ -30,6 +30,11 @@ class StorageInterface(ABC):
         """Returns a URL to download/view the file, or None if handled by the server."""
         pass
 
+    @abstractmethod
+    async def get_content(self, storage_path: str) -> bytes:
+        """Returns the raw bytes of the file."""
+        pass
+
     def get_date_prefix(self) -> str:
         """Returns the date-based prefix YYYY/MM/DD/."""
         from datetime import datetime
@@ -77,6 +82,11 @@ class FileSystemStorage(StorageInterface):
     def get_download_url(self, storage_path: str) -> Optional[str]:
         # Local files are served via our API, so return None to indicate local serving
         return None
+
+    async def get_content(self, storage_path: str) -> bytes:
+        full_path = self.get_path(storage_path)
+        async with aiofiles.open(full_path, 'rb') as f:
+            return await f.read()
 
 def get_storage() -> StorageInterface:
     storage_type = os.getenv("STORAGE_TYPE", "filesystem").lower()

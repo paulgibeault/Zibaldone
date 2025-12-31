@@ -5,7 +5,10 @@ import json
 from litellm import completion
 
 from app.services.llm import LLMService
+from app.services.storage import get_storage
 import os
+
+storage = get_storage()
 
 # Initialize LLM Service
 # User can configure model via env var, e.g. "ollama/llama2"
@@ -40,7 +43,23 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
                 pass
 
         # Generate new metadata from LLM
-        llm_metadata = await llm_service.generate_metadata(item.storage_path)
+        logger.info(f"Extracting metadata for {item.original_filename} using {llm_service.model}")
+        
+        # Fetch content for LLM processing
+        try:
+            content_bytes = await storage.get_content(item.storage_path)
+            content_text = content_bytes.decode('utf-8', errors='ignore')
+        except Exception as e:
+            logger.error(f"Error fetching content for {item.original_filename}: {e}")
+            content_bytes = None
+            content_text = None
+
+        llm_metadata = await llm_service.generate_metadata(
+            item.storage_path, 
+            content_text=content_text,
+            content_bytes=content_bytes
+        )
+        logger.info(f"LLM metadata extracted for {item.original_filename}")
         
         # Merge: existing metadata takes precedence? 
         # Requirement: "not overwritten by the LLM, unless there is metadata key collisions, which LLM can overwrite"
@@ -56,7 +75,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
         item.status = ContentStatus.TAGGED
         session.add(item)
         session.commit()
-        logger.info(f"Item {item.id} tagged. Metadata: {merged_metadata}")
+        logger.info(f"Successfully processed and tagged {item.original_filename} (ID: {item.id})")
         
         # Broadcast event
         from app.services.event_broadcaster import broadcaster
@@ -68,12 +87,16 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
 
 async def process_unprocessed_items():
     while True:
-        with Session(engine) as session:
-            statement = select(ContentItem).where(ContentItem.status == ContentStatus.UNPROCESSED)
-            results = session.exec(statement)
-            items = results.all()
-            
-            for item in items:
-                await process_item(item, session, llm_service)
+        try:
+            with Session(engine) as session:
+                statement = select(ContentItem).where(ContentItem.status == ContentStatus.UNPROCESSED)
+                results = session.exec(statement)
+                items = results.all()
+                
+                for item in items:
+                    print(f"Worker: Processing {item.original_filename}", flush=True)
+                    await process_item(item, session, llm_service)
+        except Exception as e:
+            logger.error(f"Worker: Error in loop: {e}", exc_info=True)
                 
         await asyncio.sleep(5) # Poll every 5 seconds

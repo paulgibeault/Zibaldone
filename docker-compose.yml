@@ -5,6 +5,7 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/data
+      - ./backend/logs:/app/logs
     env_file:
       - ./backend/.env
     depends_on:

@@ -118,3 +118,15 @@ class S3Storage(StorageInterface):
             ExpiresIn=3600
         )
         return url
+
+    async def get_content(self, storage_path: str) -> bytes:
+        # Gracefully handle legacy filesystem paths
+        if storage_path.startswith(".") or os.path.isabs(storage_path):
+            with open(storage_path, "rb") as f:
+                return f.read()
+
+        response = self.s3_client.get_object(
+            Bucket=self.bucket_name,
+            Key=storage_path
+        )
+        return response['Body'].read()

@@ -5,9 +5,9 @@ import uuid
 from enum import Enum
 
 class ContentStatus(str, Enum):
-    UNPROCESSED = "unprocessed"
-    TAGGED = "tagged"
-    INDEXED = "indexed"
+    UNPROCESSED = "UNPROCESSED"
+    TAGGED = "TAGGED"
+    INDEXED = "INDEXED"
 
 class ContentItemTagLink(SQLModel, table=True):
     item_id: uuid.UUID = Field(foreign_key="contentitem.id", primary_key=True)

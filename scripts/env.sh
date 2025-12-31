@@ -30,6 +30,7 @@ generate_backend_env() {
 LLM_MODEL=openai/zibaldone-model
 OPENAI_API_BASE=$backend_api_base
 OPENAI_API_KEY=sk-any
+ENABLE_LLM_LOGGING=true
 EOL
 
     if [ "$mode" = "docker" ]; then

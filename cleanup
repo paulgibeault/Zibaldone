@@ -47,8 +47,9 @@ rm -f backend/.env
 rm -f litellm_config.yaml
 
 if [ "$FULL_CLEANUP" = true ]; then
-    log_info "Removing data directory..."
+    log_info "Removing data directory and logs..."
     rm -rf data
+    rm -rf backend/logs
 fi
 
 log_success "Cleanup complete."
