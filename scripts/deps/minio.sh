@@ -36,9 +36,11 @@ cleanup_minio() {
     
     if [ "$full" = true ]; then
         if command_exists brew; then
-            if confirm "Uninstall MinIO Server and Client via Homebrew?"; then
-                brew uninstall minio/stable/minio minio/stable/mc
-                log_success "Uninstalled MinIO tools"
+            if brew list --formula minio/stable/minio &>/dev/null || brew list --formula minio/stable/mc &>/dev/null; then
+                if confirm "Uninstall MinIO Server and Client via Homebrew?"; then
+                    brew uninstall minio/stable/minio minio/stable/mc 2>/dev/null || true
+                    log_success "Uninstalled MinIO tools"
+                fi
             fi
         fi
     fi

@@ -34,11 +34,11 @@ if ! confirm "Are you sure you want to proceed?"; then
 fi
 
 # 1. Component Cleanup
-cleanup_python "$FULL_CLEANUP"
 cleanup_node "$FULL_CLEANUP"
 cleanup_litellm
 cleanup_minio "$FULL_CLEANUP"
 cleanup_docker "$FULL_CLEANUP"
+cleanup_python "$FULL_CLEANUP"
 
 # 2. Config & Data Removal
 log_info "\nCleaning configuration..."

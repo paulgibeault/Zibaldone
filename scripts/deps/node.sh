@@ -42,9 +42,11 @@ cleanup_node() {
     
     if [ "$full" = true ]; then
         if command_exists brew; then
-            if confirm "Uninstall Node.js via Homebrew?"; then
-                brew uninstall node
-                log_success "Uninstalled Node.js"
+            if brew list --formula node &>/dev/null; then
+                if confirm "Uninstall Node.js via Homebrew?"; then
+                    brew uninstall node
+                    log_success "Uninstalled Node.js"
+                fi
             fi
         fi
     fi
