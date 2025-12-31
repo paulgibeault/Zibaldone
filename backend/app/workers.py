@@ -97,7 +97,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
             # Create a specific task for Tag Alignment
             async with TaskContext(session, item.id, "Tag Alignment") as alignment_task:
                 # Fetch all existing tags names for alignment
-                all_tags = crud.get_tags(session)
+                all_tags = crud.get_tags(session, approved_only=True)
                 existing_tag_names = [t.name for t in all_tags]
                 
                 logger.info(f"Aligning {len(llm_tags)} tags against {len(existing_tag_names)} existing tags...")

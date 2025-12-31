@@ -77,8 +77,11 @@ def delete_item(session: Session, item: ContentItem):
     session.commit()
 
 # Tag operations
-def get_tags(session: Session) -> List[Tag]:
-    return session.exec(select(Tag)).all()
+def get_tags(session: Session, approved_only: bool = False) -> List[Tag]:
+    statement = select(Tag)
+    if approved_only:
+        statement = statement.where(Tag.is_approved == True)
+    return session.exec(statement).all()
 
 def get_tag(session: Session, tag_id: uuid.UUID) -> Optional[Tag]:
     return session.get(Tag, tag_id)
