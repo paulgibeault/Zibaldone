@@ -192,3 +192,81 @@ JSON Result:
                 "tags": ["processing-failed"],
                 "processing_notes": f"Attempted file: {Path(file_path).name}"
             }
+        if isinstance(llm_tags, list):
+            return llm_tags
+        return []
+
+    async def align_tags(self, new_tags: list[str], existing_tags: list[str]) -> list[str]:
+        """
+        Aligns new tags with existing tags to reduce fragmentation.
+        """
+        if not new_tags:
+            return []
+        
+        # If no existing tags, just return the new ones (cleaned)
+        if not existing_tags:
+            return new_tags
+
+        prompt = f"""
+You are a taxonomy expert helping to organize file tags.
+Your goal is to align a list of NEW TAGS with a list of EXISTING TAGS to prevent duplicates and fragmentation.
+
+Rules:
+1. For each NEW TAG, check if there is an EXISTING TAG that means the same thing (synonym, singular/plural difference, abbreviation).
+2. If a match is found, replace the NEW TAG with the EXACT EXISTING TAG.
+3. If no match is found, keep the NEW TAG as is.
+4. If a NEW TAG is completely redundant or generic (e.g. "file", "document"), you may drop it.
+5. Return ONLY a JSON array of specific strings.
+
+Example:
+Existing: ["python", "finance", "receipts"]
+New: ["py", "financial", "bills"]
+Result: ["python", "finance", "receipts"]
+
+Task:
+Existing: {existing_tags}
+New: {new_tags}
+
+Return JSON array of strings:
+"""
+        messages = [{"role": "user", "content": prompt}]
+        api_base = os.getenv("LITELLM_URL")
+        
+        try:
+            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+                llm_logger.info(f"--- LLM TAG ALIGNMENT ---")
+                llm_logger.info(f"New: {new_tags}")
+                llm_logger.info(f"Existing: {existing_tags}")
+
+            response = await acompletion(
+                model=self.model,
+                api_base=api_base,
+                messages=messages,
+            )
+            
+            content = response.choices[0].message.content.strip()
+            
+            # Robust JSON extraction
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            
+            if "{" in content and "}" in content: 
+                 # Sometimes models return {"tags": [...]} despite asking for array
+                 # But our prompt asks for array. Let's handle list return.
+                 pass
+
+            aligned_tags = json.loads(content)
+            
+            if isinstance(aligned_tags, dict) and "tags" in aligned_tags:
+                 aligned_tags = aligned_tags["tags"]
+            
+            if isinstance(aligned_tags, list):
+                return [str(t) for t in aligned_tags]
+            
+            return new_tags
+            
+        except Exception as e:
+            print(f"LLM Tag Alignment Error: {e}")
+            return new_tags

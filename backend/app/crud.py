@@ -89,6 +89,18 @@ def approve_tag(session: Session, tag_id: uuid.UUID) -> Optional[Tag]:
     tag = session.get(Tag, tag_id)
     if tag:
         tag.is_approved = True
+        
+        # If tag still has default color, assign a random one
+        if tag.color == "#888888":
+            import random
+            # Vibrant colors palette
+            colors = [
+                "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981", 
+                "#06b6d4", "#3b82f6", "#6366f1", "#8b5cf6", "#d946ef", 
+                "#f43f5e"
+            ]
+            tag.color = random.choice(colors)
+            
         session.add(tag)
         session.commit()
         session.refresh(tag)

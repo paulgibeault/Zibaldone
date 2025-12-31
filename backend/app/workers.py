@@ -96,6 +96,30 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
         # Process tags from LLM metadata
         # Expecting tags in llm_metadata['tags'] as a list of strings
         llm_tags = llm_metadata.get('tags', [])
+        
+        # --- Tag Alignment Step ---
+        if isinstance(llm_tags, list) and len(llm_tags) > 0:
+            try:
+                # Fetch all existing tags names for alignment
+                all_tags = crud.get_tags(session)
+                existing_tag_names = [t.name for t in all_tags]
+                
+                logger.info(f"Aligning {len(llm_tags)} tags against {len(existing_tag_names)} existing tags...")
+                aligned_tags = await llm_service.align_tags(llm_tags, existing_tag_names)
+                
+                logger.info(f"Tags aligned. Original: {llm_tags} -> Aligned: {aligned_tags}")
+                llm_tags = aligned_tags
+                
+                # Update metadata with aligned tags
+                merged_metadata['tags'] = llm_tags
+                item.metadata_json = json.dumps(merged_metadata)
+                
+            except Exception as e:
+                logger.error(f"Error during tag alignment: {e}")
+                # Fallback to original tags on error
+                pass
+        # --------------------------
+
         if isinstance(llm_tags, list):
             for tag_name in llm_tags:
                 if not tag_name:
