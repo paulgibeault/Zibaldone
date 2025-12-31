@@ -1,50 +1,41 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List
-from sqlmodel import Session, select
-from app.models import get_session, Tag
+from sqlmodel import Session
 import uuid
+from app.models import get_session
+from app import crud, schemas
 
 router = APIRouter()
 
-@router.get("/tags", response_model=List[Tag])
+@router.get("/tags", response_model=List[schemas.TagRead])
 def read_tags(session: Session = Depends(get_session)):
-    tags = session.exec(select(Tag)).all()
-    return tags
+    return crud.get_tags(session)
 
-@router.post("/tags", response_model=Tag)
-def create_tag(tag: Tag, session: Session = Depends(get_session)):
+@router.post("/tags", response_model=schemas.TagRead)
+def create_tag(tag: schemas.TagCreate, session: Session = Depends(get_session)):
     # Check if tag with same name already exists
+    from sqlmodel import select
+    from app.models import Tag
     statement = select(Tag).where(Tag.name == tag.name)
     existing_tag = session.exec(statement).first()
     if existing_tag:
         raise HTTPException(status_code=400, detail="Tag already exists")
     
-    session.add(tag)
-    session.commit()
-    session.refresh(tag)
-    return tag
+    return crud.create_tag(session, tag.name, tag.color)
 
-@router.patch("/tags/{tag_id}", response_model=Tag)
-def update_tag(tag_id: uuid.UUID, tag_data: dict, session: Session = Depends(get_session)):
-    db_tag = session.get(Tag, tag_id)
+@router.patch("/tags/{tag_id}", response_model=schemas.TagRead)
+def update_tag(tag_id: uuid.UUID, tag_data: schemas.TagUpdate, session: Session = Depends(get_session)):
+    db_tag = crud.get_tag(session, tag_id)
     if not db_tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     
-    for key, value in tag_data.items():
-        if hasattr(db_tag, key):
-            setattr(db_tag, key, value)
-            
-    session.add(db_tag)
-    session.commit()
-    session.refresh(db_tag)
-    return db_tag
+    return crud.update_tag(session, db_tag, tag_data.name, tag_data.color)
 
 @router.delete("/tags/{tag_id}")
 def delete_tag(tag_id: uuid.UUID, session: Session = Depends(get_session)):
-    tag = session.get(Tag, tag_id)
+    tag = crud.get_tag(session, tag_id)
     if not tag:
         raise HTTPException(status_code=404, detail="Tag not found")
     
-    session.delete(tag)
-    session.commit()
+    crud.delete_tag(session, tag)
     return {"ok": True}

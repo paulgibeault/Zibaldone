@@ -1,0 +1,44 @@
+import uuid
+from datetime import datetime
+from typing import Optional, List
+from sqlmodel import SQLModel
+from app.models import ContentStatus
+
+# --- Tag Schemas ---
+class TagBase(SQLModel):
+    name: str
+    color: str
+
+class TagCreate(TagBase):
+    pass
+
+class TagUpdate(SQLModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+
+class TagRead(TagBase):
+    id: uuid.UUID
+
+# --- ContentItem Schemas ---
+class ContentItemBase(SQLModel):
+    original_filename: str
+    status: ContentStatus
+    storage_path: str
+    metadata_json: Optional[str] = "{}"
+    version: int = 1
+    content_type: Optional[str] = None
+    checksum: Optional[str] = None
+
+class ContentItemRead(SQLModel):
+    id: uuid.UUID
+    status: ContentStatus
+    original_filename: str
+    storage_path: str
+    created_at: datetime
+    metadata_json: Optional[str]
+    download_url: Optional[str] = None
+    tags: List[TagRead] = []
+
+class ContentItemUpdate(SQLModel):
+    status: Optional[ContentStatus] = None
+    metadata_json: Optional[str] = None

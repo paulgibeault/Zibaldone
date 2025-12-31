@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlmodel import Field, SQLModel, create_engine, Session, Relationship
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 from enum import Enum
 
@@ -28,7 +28,7 @@ class ContentItem(SQLModel, table=True):
     content_type: Optional[str] = Field(default=None, index=True)
     checksum: Optional[str] = Field(default=None, index=True) # SHA-256 for duplication detection
     storage_path: str
-    created_at: datetime = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     metadata_json: Optional[str] = Field(default="{}") # Storing simple JSON as string for SQLite simplicity initially
     
     tags: list[Tag] = Relationship(back_populates="items", link_model=ContentItemTagLink)

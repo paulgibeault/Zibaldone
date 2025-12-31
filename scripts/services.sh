@@ -91,7 +91,7 @@ start_minio_local() {
 
 start_litellm_local() {
     log_info "Starting LiteLLM Proxy..."
-    source backend/.venv/bin/activate
+    source backend/venv/bin/activate
     litellm --config litellm_config.yaml --host 0.0.0.0 --port 4000 > /dev/null 2>&1 &
     PID_LITELLM=$!
 }
@@ -99,6 +99,7 @@ start_litellm_local() {
 start_backend_local() {
     log_info "Starting Backend..."
     cd backend
+    source venv/bin/activate
     export $(grep -v '^#' .env | xargs)
     uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
     PID_BACKEND=$!
