@@ -17,8 +17,8 @@ check_docker() {
 install_docker() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         if command_exists brew; then
-            log_info "Installing Docker CLI and Colima via Homebrew..."
-            brew install docker colima
+            log_info "Installing Docker CLI, Docker Compose, and Colima via Homebrew..."
+            brew install docker docker-compose colima
         else
             log_error "Homebrew not found. Please install Docker and Colima manually."
             exit 1
@@ -40,16 +40,32 @@ start_docker_daemon() {
     fi
 }
 
+determine_docker_compose() {
+    if command_exists docker && docker compose version >/dev/null 2>&1; then
+        export DOCKER_COMPOSE_CMD="docker compose"
+    elif command_exists docker-compose; then
+        export DOCKER_COMPOSE_CMD="docker-compose"
+    else
+        log_error "Neither 'docker compose' nor 'docker-compose' found. Please install one."
+        exit 1
+    fi
+}
+
 cleanup_docker() {
     local full=$1
     
+    # Ensure we have a command to use
+    if [ -z "$DOCKER_COMPOSE_CMD" ]; then
+         determine_docker_compose
+    fi
+
     if [ "$full" = true ]; then
         if command_exists brew; then
              if confirm "Uninstall Docker CLI and Colima via Homebrew (and remove ALL data)?"; then
                  log_info "Stopping services and removing Docker/Colima..."
-                 docker compose down --rmi all --volumes --remove-orphans 2>/dev/null || true
+                 $DOCKER_COMPOSE_CMD down --rmi all --volumes --remove-orphans 2>/dev/null || true
                  colima stop || true
-                 brew uninstall docker colima
+                 brew uninstall docker docker-compose colima
                  if [ -d "$HOME/.colima" ]; then
                      rm -rf "$HOME/.colima"
                      log_success "Removed Colima data (~/.colima)"
@@ -64,7 +80,7 @@ cleanup_docker() {
     if command_exists docker; then
         if docker info >/dev/null 2>&1; then
             log_info "Stopping Zibaldone containers..."
-            docker compose down 2>/dev/null || true
+            $DOCKER_COMPOSE_CMD down 2>/dev/null || true
         fi
     fi
 }

@@ -42,12 +42,14 @@ if [ "$ZIB_MODE" = "docker" ]; then
     if ! check_docker; then
         start_docker_daemon
     fi
+
+    determine_docker_compose
     
     if [ "$RESTART" = true ]; then
-        docker compose down
+        $DOCKER_COMPOSE_CMD down
     fi
     
-    docker compose up --build -d
+    $DOCKER_COMPOSE_CMD up --build -d
     
     echo -e "\n${GREEN}🚀 Zibaldone is running!${NC}"
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -58,7 +60,7 @@ if [ "$ZIB_MODE" = "docker" ]; then
     
     log_info "Streaming logs (Ctrl+C to stop services)..."
     trap stop_docker_services SIGINT SIGTERM
-    docker compose logs -f
+    $DOCKER_COMPOSE_CMD logs -f
 else
     # Local mode
     trap stop_local_services SIGINT SIGTERM
