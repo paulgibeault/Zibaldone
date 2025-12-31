@@ -139,3 +139,8 @@ export const getItems = async (): Promise<ContentItem[]> => {
     const response = await apiClient.get('/items');
     return response.data;
 };
+
+export const updateItemMetadata = async (itemId: string, metadata: any): Promise<ContentItem> => {
+    const response = await apiClient.put(`/items/${itemId}/metadata`, metadata);
+    return response.data;
+};

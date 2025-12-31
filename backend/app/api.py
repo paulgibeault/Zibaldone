@@ -77,6 +77,16 @@ async def download_item(item_id: uuid.UUID, session: Session = Depends(get_sessi
         
     return FileResponse(full_path, filename=item.original_filename)
 
+@router.put("/items/{item_id}/metadata", response_model=schemas.ContentItemRead)
+async def update_item_metadata(item_id: uuid.UUID, metadata: dict, session: Session = Depends(get_session)):
+    item = crud.get_item(session, item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+        
+    updated_item = crud.update_item_metadata(session, item, metadata)
+    await item_service.notify_item_update(item.id)
+    return item_service.enrich_item(updated_item)
+
 @router.post("/items/{item_id}/tags/{tag_id}", response_model=schemas.ContentItemRead)
 async def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
     item = crud.get_item(session, item_id)

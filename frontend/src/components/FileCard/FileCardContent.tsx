@@ -14,6 +14,7 @@ interface FileCardContentProps {
     isLoadingContent: boolean;
     formatMetadataKey: (key: string) => string;
     formatMetadataValue: (key: string, value: any) => React.ReactNode;
+    onRefresh: () => void;
 }
 
 export const FileCardContent: React.FC<FileCardContentProps> = ({
@@ -25,14 +26,93 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     textContent,
     isLoadingContent,
     formatMetadataKey,
-    formatMetadataValue
+    formatMetadataValue,
+    onRefresh
 }) => {
     const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editMetadata, setEditMetadata] = React.useState<Record<string, any>>({});
+    const [isSaving, setIsSaving] = React.useState(false);
 
     const selectedTask = React.useMemo(() =>
         item.tasks?.find(t => t.id === selectedTaskId),
         [item.tasks, selectedTaskId]
     );
+
+    const handleStartEdit = () => {
+        // Filter out tags from the editor
+        const { tags, ...rest } = metadata;
+        setEditMetadata(rest);
+        setIsEditing(true);
+        // Force raw view for editing if desired, or keep as is?
+        // Let's keep it in the "rendered" container but show inputs
+        onMetadataViewChange('rendered');
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setEditMetadata({});
+    };
+
+    const handleSaveEdit = async () => {
+        setIsSaving(true);
+        try {
+            // Re-merge with original tags if needed? No, backend handles it?
+            // Wait, we are sending the whole metadata object.
+            // If we send it without 'tags', and the backend just overwrites 'metadata_json',
+            // then 'tags' key will be lost from 'metadata_json'.
+            // This is INTENTIONAL as per the plan to unlink tags from metadata.
+
+            // However, we should be careful not to lose other things?
+            // The user sees what they edit.
+
+            await import('../../api').then(m => m.updateItemMetadata(item.id, editMetadata));
+            setIsEditing(false);
+            onRefresh();
+        } catch (e) {
+            console.error("Failed to save metadata", e);
+            alert("Failed to save metadata");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleMetadataChange = (key: string, value: string) => {
+        setEditMetadata(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleDeleteField = (keyToDelete: string) => {
+        const newMeta = { ...editMetadata };
+        delete newMeta[keyToDelete];
+        setEditMetadata(newMeta);
+    };
+
+    const handleAddField = () => {
+        let counter = 1;
+        while (editMetadata[`newField${counter}`] !== undefined) {
+            counter++;
+        }
+        setEditMetadata(prev => ({ ...prev, [`newField${counter}`]: "" }));
+    };
+
+    const handleRenameKey = (oldKey: string, newKey: string) => {
+        if (oldKey === newKey) return;
+        if (editMetadata[newKey] !== undefined) {
+            alert("Key already exists!");
+            return;
+        }
+
+        const newMeta: Record<string, any> = {};
+        // Preserve order
+        Object.keys(editMetadata).forEach(k => {
+            if (k === oldKey) {
+                newMeta[newKey] = editMetadata[oldKey];
+            } else {
+                newMeta[k] = editMetadata[k];
+            }
+        });
+        setEditMetadata(newMeta);
+    };
 
     return (
         <div className="card-content-area-v2">
@@ -113,42 +193,106 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
             {activeTab === 'metadata' && (
                 <div className="metadata-tab-container fade-in">
                     <div className="metadata-view-toggle">
-                        <button
-                            type="button"
-                            className={`toggle-btn ${metadataView === 'rendered' ? 'active' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); onMetadataViewChange('rendered'); }}
-                            title="Rendered View"
-                        >
-                            <Table size={14} />
-                        </button>
-                        <button
-                            type="button"
-                            className={`toggle-btn ${metadataView === 'raw' ? 'active' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); onMetadataViewChange('raw'); }}
-                            title="Raw JSON"
-                        >
-                            <Code size={14} />
-                        </button>
+                        {!isEditing && (
+                            <>
+                                <button
+                                    type="button"
+                                    className={`toggle-btn ${metadataView === 'rendered' ? 'active' : ''}`}
+                                    onClick={(e) => { e.stopPropagation(); onMetadataViewChange('rendered'); }}
+                                    title="Rendered View"
+                                >
+                                    <Table size={14} />
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`toggle-btn ${metadataView === 'raw' ? 'active' : ''}`}
+                                    onClick={(e) => { e.stopPropagation(); onMetadataViewChange('raw'); }}
+                                    title="Raw JSON"
+                                >
+                                    <Code size={14} />
+                                </button>
+                            </>
+                        )}
+                        {!isEditing ? (
+                            <button
+                                type="button"
+                                className="toggle-btn"
+                                onClick={(e) => { e.stopPropagation(); handleStartEdit(); }}
+                                style={{ marginLeft: 'auto' }}
+                            >
+                                Edit
+                            </button>
+                        ) : (
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                Editing Metadata
+                            </span>
+                        )}
                     </div>
 
-                    {metadataView === 'rendered' ? (
+                    {isEditing ? (
                         <div className="metadata-tab">
-                            <div className="metadata-grid">
-                                {(Object.entries(metadata) as [string, any][]).map(([key, value]) => {
-                                    if (key === 'summary' || key === 'tags') return null;
-                                    return (
-                                        <React.Fragment key={key}>
-                                            <div className="meta-key">{formatMetadataKey(key)}</div>
-                                            <div className="meta-value">{formatMetadataValue(key, value)}</div>
-                                        </React.Fragment>
-                                    );
-                                })}
+                            <div className="metadata-editor-form">
+                                {Object.entries(editMetadata).map(([key, value]) => (
+                                    <div key={key} className="metadata-edit-row">
+                                        <input
+                                            type="text"
+                                            value={key}
+                                            onChange={(e) => handleRenameKey(key, e.target.value)}
+                                            style={{ width: '120px', flex: '0 0 auto' }}
+                                        />
+                                        <input
+                                            type="text"
+                                            value={String(value)}
+                                            onChange={(e) => handleMetadataChange(key, e.target.value)}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="delete-btn"
+                                            onClick={() => handleDeleteField(key)}
+                                            title="Delete field"
+                                        >
+                                            <XCircle size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button type="button" className="btn-add-field" onClick={handleAddField}>
+                                    + Add Field
+                                </button>
+                                <div className="metadata-actions">
+                                    <button type="button" className="btn-primary-sm" onClick={handleSaveEdit} disabled={isSaving}>
+                                        {isSaving ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                    <button type="button" className="btn-secondary-sm" onClick={handleCancelEdit} disabled={isSaving}>
+                                        Cancel
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="json-tab">
-                            <JSONView data={metadata} />
-                        </div>
+                        metadataView === 'rendered' ? (
+                            <div className="metadata-tab">
+                                <div className="metadata-grid">
+                                    {(Object.entries(metadata) as [string, any][]).map(([key, value]) => {
+                                        if (key === 'tags') return null; // 'summary' is showed in rendered view if present?
+                                        // The original code hid 'summary' too, maybe that's fine.
+                                        // "if (key === 'summary' || key === 'tags') return null;"
+                                        // Let's stick to hiding summary in the grid if it's shown in info tab.
+                                        if (key === 'summary') return null;
+
+                                        return (
+                                            <React.Fragment key={key}>
+                                                <div className="meta-key">{formatMetadataKey(key)}</div>
+                                                <div className="meta-value">{formatMetadataValue(key, value)}</div>
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="json-tab">
+                                <JSONView data={metadata} />
+                            </div>
+                        )
                     )}
                 </div>
             )}

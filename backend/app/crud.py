@@ -64,6 +64,14 @@ def create_item(session: Session, item: ContentItem) -> ContentItem:
     session.refresh(item)
     return item
 
+def update_item_metadata(session: Session, item: ContentItem, metadata: dict) -> ContentItem:
+    import json
+    item.metadata_json = json.dumps(metadata)
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item
+
 def delete_item(session: Session, item: ContentItem):
     session.delete(item)
     session.commit()

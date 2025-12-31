@@ -161,6 +161,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                 isLoadingContent={isLoadingContent}
                 formatMetadataKey={formatMetadataKey}
                 formatMetadataValue={formatMetadataValue}
+                onRefresh={onRefresh}
             />
 
             <FileCardFooter
@@ -203,6 +204,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                             isLoadingContent={isLoadingContent}
                             formatMetadataKey={formatMetadataKey}
                             formatMetadataValue={formatMetadataValue}
+                            onRefresh={onRefresh}
                         />
 
                         <FileCardFooter
