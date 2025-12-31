@@ -8,6 +8,8 @@ from app import crud
 
 from app.services.llm import LLMService
 from app.services.storage import get_storage
+from app.services.task_runner import TaskContext
+from app.services.event_broadcaster import broadcaster
 import os
 
 storage = get_storage()
@@ -43,86 +45,57 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
     await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
 
     # Create a processing task record
-    task = ProcessingTask(
-        item_id=item.id,
-        name="Metadata Extraction",
-        status=TaskStatus.RUNNING,
-        start_time=datetime.now(timezone.utc)
-    )
-    task = crud.create_task(session, task)
-
+    # Create a processing task record
+    # Note: We replaced the manual assignment with TaskContext below
+    
     # Read content (assuming text for now, or just tagging filename)
     try:
-        # Load existing metadata
-        existing_metadata = {}
-        if item.metadata_json:
+        async with TaskContext(session, item.id, "Metadata Extraction") as task:
+            # Load existing metadata
+            existing_metadata = {}
+            if item.metadata_json:
+                try:
+                    existing_metadata = json.loads(item.metadata_json)
+                except json.JSONDecodeError:
+                    logger.warning(f"Warning: Could not parse existing metadata for item {item.id}")
+                    pass
+
+            # Generate new metadata from LLM
+            logger.info(f"Extracting metadata for {item.original_filename} using {llm_service.model}")
+            
+            # Fetch content for LLM processing
             try:
-                existing_metadata = json.loads(item.metadata_json)
-            except json.JSONDecodeError:
-                logger.warning(f"Warning: Could not parse existing metadata for item {item.id}")
-                pass
+                content_bytes = await storage.get_content(item.storage_path)
+                content_text = content_bytes.decode('utf-8', errors='ignore')
+            except Exception as e:
+                logger.error(f"Error fetching content for {item.original_filename}: {e}")
+                content_bytes = None
+                content_text = None
 
-        # Generate new metadata from LLM
-        logger.info(f"Extracting metadata for {item.original_filename} using {llm_service.model}")
-        
-        # Fetch content for LLM processing
-        try:
-            content_bytes = await storage.get_content(item.storage_path)
-            content_text = content_bytes.decode('utf-8', errors='ignore')
-        except Exception as e:
-            logger.error(f"Error fetching content for {item.original_filename}: {e}")
-            content_bytes = None
-            content_text = None
+            llm_metadata = await llm_service.generate_metadata(
+                item.storage_path, 
+                content_text=content_text,
+                content_bytes=content_bytes
+            )
+            logger.info(f"LLM metadata extracted for {item.original_filename}")
+            
+            merged_metadata = existing_metadata.copy()
+            merged_metadata.update(llm_metadata)
+            
+            item.metadata_json = json.dumps(merged_metadata)
 
-        llm_metadata = await llm_service.generate_metadata(
-            item.storage_path, 
-            content_text=content_text,
-            content_bytes=content_bytes
-        )
-        logger.info(f"LLM metadata extracted for {item.original_filename}")
-        
-        # Merge: existing metadata takes precedence? 
-        # Requirement: "not overwritten by the LLM, unless there is metadata key collisions, which LLM can overwrite"
-        # So: start with existing, update with LLM (LLM overwrites collisions).
-        # "Ensure the drop-time metadata is being sent with the file submission, and not overwritten by the LLM, 
-        # unless there is metadata key collisions, which LLM can overwrite"
-        # This means: merged = existing.copy(); merged.update(llm)
-        
-        merged_metadata = existing_metadata.copy()
-        merged_metadata.update(llm_metadata)
-        
-        item.metadata_json = json.dumps(merged_metadata)
-
-        # Update task status
-        crud.update_task(
-            session, 
-            task.id, 
-            status=TaskStatus.COMPLETED, 
-            end_time=datetime.now(timezone.utc)
-            # Save the raw LLM output as the result of this task
-        )
-        # We need to update result_json separately or add it to update_task in crud.py
-        # For now, let's just update the object directly as crud.update_task might not have it yet
-        # Actually, let's check crud.py, but since we are in a session, we can just modify the object
-        task.result_json = json.dumps(llm_metadata, indent=2)
-        session.add(task)
-        
-        # Process tags from LLM metadata
-        # Expecting tags in llm_metadata['tags'] as a list of strings
-        llm_tags = llm_metadata.get('tags', [])
+            # Save result to task
+            task.result_json = json.dumps(llm_metadata, indent=2)
+            session.add(task)
+            
+            # Process tags from LLM metadata
+            # Expecting tags in llm_metadata['tags'] as a list of strings
+            llm_tags = llm_metadata.get('tags', [])
         
         # --- Tag Alignment Step ---
         if isinstance(llm_tags, list) and len(llm_tags) > 0:
             # Create a specific task for Tag Alignment
-            alignment_task = ProcessingTask(
-                item_id=item.id,
-                name="Tag Alignment",
-                status=TaskStatus.RUNNING,
-                start_time=datetime.now(timezone.utc)
-            )
-            alignment_task = crud.create_task(session, alignment_task)
-
-            try:
+            async with TaskContext(session, item.id, "Tag Alignment") as alignment_task:
                 # Fetch all existing tags names for alignment
                 all_tags = crud.get_tags(session)
                 existing_tag_names = [t.name for t in all_tags]
@@ -140,9 +113,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
                     merged_metadata['tags'] = final_tags
                     item.metadata_json = json.dumps(merged_metadata)
                 
-                # Record success for alignment task
-                alignment_task.status = TaskStatus.COMPLETED
-                alignment_task.end_time = datetime.now(timezone.utc)
+                # Record result
                 alignment_task.result_json = json.dumps({
                     "original_tags": llm_tags,
                     "existing_tags_count": len(existing_tag_names),
@@ -153,16 +124,6 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
                 
                 # Use final_tags for linking
                 llm_tags = final_tags
-                
-            except Exception as e:
-                logger.error(f"Error during tag alignment: {e}")
-                # Mark alignment task as falied but don't fail the whole item processing?
-                # Or just mark it as failed but proceed with original tags?
-                alignment_task.status = TaskStatus.FAILED
-                alignment_task.message = str(e)
-                alignment_task.end_time = datetime.now(timezone.utc)
-                session.add(alignment_task)
-                # Fallback to original tags is implicit as llm_tags wasn't updated
                 
         # --------------------------
 
@@ -204,14 +165,9 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
         item.status = ContentStatus.FAILED
         session.add(item)
         
-        # Update task status to FAILED
-        crud.update_task(
-            session, 
-            task.id, 
-            status=TaskStatus.FAILED, 
-            message=str(e),
-            end_time=datetime.now(timezone.utc)
-        )
+        # Note: Individual tasks are handled by TaskContext so we don't need to fails them manually here
+        # unless the error happened outside a TaskContext, in which case we might lose tracking.
+        # But generally, TaskContext handles its own failure.
         
         session.commit()
         
