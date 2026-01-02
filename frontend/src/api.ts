@@ -46,7 +46,7 @@ export interface ProcessingTask {
 
 export interface ContentItem {
     id: string;
-    status: 'UNPROCESSED' | 'PROCESSING' | 'TAGGED' | 'INDEXED' | 'FAILED';
+    status: 'QUEUED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
     original_filename: string;
     storage_path: string;
     created_at: string;

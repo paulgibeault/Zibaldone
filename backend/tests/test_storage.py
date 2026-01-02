@@ -19,10 +19,11 @@ async def test_filesystem_storage(temp_storage):
     filename = "test.txt"
     
     path = await storage.save(content, filename)
-    assert os.path.exists(path)
-    assert open(path, 'rb').read() == content
+    full_path = os.path.join(temp_storage, path)
+    assert os.path.exists(full_path)
+    assert open(full_path, 'rb').read() == content
     
-    assert storage.get_path(path) == path
+    assert storage.get_path(path) == full_path
     
     params = await storage.get_upload_params(filename)
     assert params["mode"] == "local"

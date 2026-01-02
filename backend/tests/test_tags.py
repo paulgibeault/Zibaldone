@@ -3,12 +3,7 @@ from sqlmodel import Session, select
 from app.models import Tag, ContentItem, engine
 import uuid
 
-@pytest.fixture(name="session")
-def session_fixture():
-    from app.models import create_db_and_tables
-    create_db_and_tables()
-    with Session(engine) as session:
-        yield session
+
 
 def test_create_tag(session: Session):
     tag = Tag(name="Test Tag", color="#ff0000")

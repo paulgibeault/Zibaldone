@@ -148,7 +148,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
                 if tag not in item.tags:
                     item.tags.append(tag)
 
-        item.status = ContentStatus.TAGGED
+        item.status = ContentStatus.COMPLETED
         session.add(item)
         
         session.commit()
@@ -180,7 +180,7 @@ async def process_unprocessed_items():
     while True:
         try:
             with Session(engine) as session:
-                statement = select(ContentItem).where(ContentItem.status == ContentStatus.UNPROCESSED)
+                statement = select(ContentItem).where(ContentItem.status == ContentStatus.QUEUED)
                 results = session.exec(statement)
                 items = results.all()
                 

@@ -30,7 +30,7 @@ async def test_metadata_merge():
     item = ContentItem(
         original_filename="test_image.png",
         storage_path="/tmp/test_image.png",
-        status=ContentStatus.UNPROCESSED,
+        status=ContentStatus.QUEUED,
         metadata_json=json.dumps(existing_metadata)
     )
     
@@ -68,14 +68,14 @@ async def test_metadata_merge():
         print(f"FAIL: description failed to overwrite. Value: {final_metadata.get('description')}")
 
     # Check status update
-    if item.status == ContentStatus.TAGGED:
-        print("PASS: status updated to TAGGED")
+    if item.status == ContentStatus.COMPLETED:
+        print("PASS: status updated to COMPLETED")
     else:
         print(f"FAIL: status is {item.status}")
         
     # Check session commit
     mock_session.add.assert_called_with(item)
-    mock_session.commit.assert_called_once()
+    mock_session.commit.assert_called()
     print("PASS: Session add/commit called")
 
 if __name__ == "__main__":

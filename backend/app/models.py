@@ -5,10 +5,9 @@ import uuid
 from enum import Enum
 
 class ContentStatus(str, Enum):
-    UNPROCESSED = "UNPROCESSED"
+    QUEUED = "QUEUED"
     PROCESSING = "PROCESSING"
-    TAGGED = "TAGGED"
-    INDEXED = "INDEXED"
+    COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 
 class ContentItemTagLink(SQLModel, table=True):
@@ -44,7 +43,7 @@ class ProcessingTask(SQLModel, table=True):
 
 class ContentItem(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    status: ContentStatus = Field(default=ContentStatus.UNPROCESSED)
+    status: ContentStatus = Field(default=ContentStatus.QUEUED)
     original_filename: str = Field(index=True)
     version: int = Field(default=1, index=True)
     content_type: Optional[str] = Field(default=None, index=True)

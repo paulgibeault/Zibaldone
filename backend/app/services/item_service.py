@@ -49,7 +49,7 @@ async def finalize_upload(
     content_item = ContentItem(
         original_filename=original_filename,
         storage_path=storage_path,
-        status=ContentStatus.UNPROCESSED,
+        status=ContentStatus.QUEUED,
         metadata_json=metadata,
         version=version,
         content_type=content_type,

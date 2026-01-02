@@ -785,20 +785,21 @@
 }
 
 /* Status Colors */
-.status-completed {
+/* Status Colors */
+.status-COMPLETED {
     background: var(--color-success);
 }
 
-.status-processing {
+.status-PROCESSING {
     background: var(--color-primary);
     animation: pulse 2s infinite;
 }
 
-.status-pending {
+.status-QUEUED {
     background: #f59e0b;
 }
 
-.status-failed {
+.status-FAILED {
     background: var(--color-danger);
 }
 
