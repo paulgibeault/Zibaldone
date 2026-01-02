@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Tag as TagIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Tag as TagIcon, ArrowDownAZ, TrendingUp, Calendar } from 'lucide-react';
 import { type Tag as TagType, createTag, deleteTag, updateTag, getItems, type ContentItem, approveTag } from '../api';
 import { useTags } from '../hooks/useTags';
 import { Tag } from './Tag';
@@ -13,6 +13,9 @@ const TagManager = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editName, setEditName] = useState<string>('');
     const [editColor, setEditColor] = useState<string>('');
+
+    const [filterText, setFilterText] = useState<string>('');
+    const [sortMode, setSortMode] = useState<'alphabetical' | 'popularity' | 'date'>('alphabetical');
 
     useEffect(() => {
         fetchData();
@@ -86,6 +89,35 @@ const TagManager = () => {
         return `${size}rem`;
     };
 
+    // Filter and Sort Tags
+    const getProcessedTags = () => {
+        // 1. Filter by text and approval (for cloud, maybe show all in list?)
+        // The requirement is: "unapproved tags should not be displayed in the tag cloud"
+        // But for "The list of tags", we might want to see them all?
+        // Let's assume list view shows all but supports filtering. Cloud hides unapproved.
+
+        return tags
+            .filter(tag => tag.name.toLowerCase().includes(filterText.toLowerCase()))
+            .sort((a, b) => {
+                if (sortMode === 'alphabetical') {
+                    return a.name.localeCompare(b.name);
+                } else if (sortMode === 'popularity') {
+                    const countA = tagUsage[a.id] || 0;
+                    const countB = tagUsage[b.id] || 0;
+                    return countB - countA;
+                } else if (sortMode === 'date') {
+                    // Fallback if created_at is missing (old tags)
+                    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                    return dateB - dateA;
+                }
+                return 0;
+            });
+    };
+
+    const processedTags = getProcessedTags();
+    const cloudTags = tags.filter(t => t.is_approved && t.name.toLowerCase().includes(filterText.toLowerCase()));
+
     return (
         <div className="tag-manager-dashboard fade-in">
             <div className="manager-header">
@@ -102,12 +134,11 @@ const TagManager = () => {
             </div>
 
             <section className="word-cloud-section glass-panel">
-                <h3>Word Cloud</h3>
                 <div className="word-cloud">
-                    {tags.length === 0 ? (
-                        <p className="empty-msg">No tags found. Start by creating one below!</p>
+                    {cloudTags.length === 0 ? (
+                        <p className="empty-msg">No approved tags match your filter.</p>
                     ) : (
-                        tags.map((tag: TagType) => (
+                        cloudTags.map((tag: TagType) => (
                             <Tag
                                 key={tag.id}
                                 tag={tag}
@@ -148,12 +179,47 @@ const TagManager = () => {
                 </section>
 
                 <section className="existing-tags-section">
-                    <h3>All Tags</h3>
+                    <div className="section-header-row">
+                        <h3>All Tags</h3>
+                        <div className="filter-controls">
+                            <input
+                                type="text"
+                                placeholder="Filter tags..."
+                                value={filterText}
+                                onChange={(e) => setFilterText(e.target.value)}
+                                className="filter-input-subtle"
+                            />
+                            <div className="sort-btn-group">
+                                <button
+                                    className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
+                                    onClick={() => setSortMode('alphabetical')}
+                                    title="Sort A-Z"
+                                >
+                                    <ArrowDownAZ size={18} />
+                                </button>
+                                <button
+                                    className={`sort-btn ${sortMode === 'popularity' ? 'active' : ''}`}
+                                    onClick={() => setSortMode('popularity')}
+                                    title="Sort by Popularity"
+                                >
+                                    <TrendingUp size={18} />
+                                </button>
+                                <button
+                                    className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
+                                    onClick={() => setSortMode('date')}
+                                    title="Sort by Date"
+                                >
+                                    <Calendar size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="tag-grid-scroll">
                         {loading ? (
                             <div className="loading-small">Loading tags...</div>
                         ) : (
-                            tags.map((tag: TagType) => (
+                            processedTags.map((tag: TagType) => (
                                 <div key={tag.id} className="tag-management-item">
                                     {editingId === tag.id ? (
                                         <div className="tag-edit-inline">

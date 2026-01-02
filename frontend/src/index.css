@@ -186,17 +186,85 @@ body {
   padding: 1.5rem 2rem;
 }
 
-h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
+h1,
+.app-logo {
+  height: 4rem;
+  width: auto;
+  aspect-ratio: 799/304;
+  margin: 0 auto 1.5rem auto;
+
+  /* Tinting via Mask */
   background: linear-gradient(to right, var(--color-primary), var(--color-accent));
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 1.5rem;
-  text-align: center;
+  -webkit-mask-image: url('/ZLogo.svg');
+  mask-image: url('/ZLogo.svg');
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
 }
 
+/* New styles for filter/sort */
+.filter-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.filter-input-subtle {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  min-width: 200px;
+  transition: all 0.2s;
+}
+
+.filter-input-subtle:focus {
+  outline: none;
+  background: var(--bg-canvas);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.sort-btn-group {
+  display: flex;
+  background: var(--bg-card);
+  padding: 4px;
+  border-radius: 8px;
+  gap: 2px;
+}
+
+.sort-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.sort-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sort-btn.active {
+  background: var(--bg-canvas);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Legacy Card for generic use */
 /* Legacy Card for generic use */
 .card {
   background-color: var(--bg-card);
@@ -544,11 +612,19 @@ h1 {
 
 .input-with-icon input {
   width: 100%;
-  padding: 12px 12px 12px 40px;
-  border-radius: 10px;
+  padding: 1rem 1rem 1rem 3rem;
+  border-radius: 12px;
   background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid transparent;
   color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.input-with-icon input:focus {
+  outline: none;
+  background: var(--bg-canvas);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
 .color-pill {

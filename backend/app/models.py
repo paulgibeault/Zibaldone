@@ -20,6 +20,7 @@ class Tag(SQLModel, table=True):
     color: str = Field(default="#888888")
     is_autocreated: bool = Field(default=False)
     is_approved: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     items: list["ContentItem"] = Relationship(back_populates="tags", link_model=ContentItemTagLink)
 

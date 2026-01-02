@@ -31,6 +31,7 @@ export interface Tag {
     color: string;
     is_autocreated: boolean;
     is_approved: boolean;
+    created_at: string;
 }
 
 export interface ProcessingTask {

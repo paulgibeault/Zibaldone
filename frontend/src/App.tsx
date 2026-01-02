@@ -69,7 +69,7 @@ function App() {
     <div className="container">
       <WelcomeModal />
       <ThemeSwitcher />
-      <h1>Zibaldone</h1>
+      <div className="app-logo" role="img" aria-label="Zibaldone Logo" />
 
       <div className="nav-tabs">
         <button
