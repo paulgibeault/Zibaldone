@@ -290,14 +290,14 @@ h1,
 }
 
 /* Header Dropzone Replaces old Dropzone */
-/* Header Dropzone Replaces old Dropzone */
 .header-dropzone-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   width: 100%;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
+  /* Removing margin to snap tabs */
   outline: none;
   position: relative;
 
@@ -321,8 +321,8 @@ h1,
 
 /* Make the logo interactive */
 .app-logo {
-  height: 8rem;
-  /* Approx 2x previous size (4rem) */
+  height: 12rem;
+  /* Significantly larger */
   width: auto;
   aspect-ratio: 799/304;
   margin: 0 auto;
@@ -561,7 +561,8 @@ h1,
 }
 
 /* --- Tag Manager Dashboard --- */
-.tag-manager-dashboard {
+.tag-manager-dashboard,
+.explore-container {
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;

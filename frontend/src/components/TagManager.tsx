@@ -82,12 +82,7 @@ const TagManager = () => {
         }
     };
 
-    const getTagFontSize = (tagId: string): string => {
-        const count = tagUsage[tagId] || 0;
-        if (count === 0) return '0.85rem';
-        const size = 0.85 + Math.min(count * 0.2, 1.5);
-        return `${size}rem`;
-    };
+
 
     // Filter and Sort Tags
     const getProcessedTags = () => {
@@ -116,13 +111,13 @@ const TagManager = () => {
     };
 
     const processedTags = getProcessedTags();
-    const cloudTags = tags.filter(t => t.is_approved && t.name.toLowerCase().includes(filterText.toLowerCase()));
+
 
     return (
         <div className="tag-manager-dashboard fade-in">
             <div className="manager-header">
                 <div>
-                    <h2>Manage Tags</h2>
+                    <h2>Tag Index</h2>
                     <p className="subtitle">Curate and organize your digital collection.</p>
                 </div>
                 <div className="stats-mini">
@@ -133,27 +128,8 @@ const TagManager = () => {
                 </div>
             </div>
 
-            <section className="word-cloud-section glass-panel">
-                <div className="word-cloud">
-                    {cloudTags.length === 0 ? (
-                        <p className="empty-msg">No approved tags match your filter.</p>
-                    ) : (
-                        cloudTags.map((tag: TagType) => (
-                            <Tag
-                                key={tag.id}
-                                tag={tag}
-                                className="cloud-tag"
-                                style={{
-                                    fontSize: getTagFontSize(tag.id),
-                                    opacity: tagUsage[tag.id] ? 1 : 0.6
-                                }}
-                            />
-                        ))
-                    )}
-                </div>
-            </section>
-
             <div className="tag-management-grid">
+
                 <section className="create-tag-section">
                     <h3>Create New Tag</h3>
                     <form onSubmit={handleCreateTag} className="tag-form-modern">

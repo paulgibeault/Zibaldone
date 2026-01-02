@@ -7,10 +7,11 @@ import { getItems, deleteItem, type ContentItem } from './api';
 import './index.css';
 
 import TagManager from './components/TagManager';
+import { Explore } from './components/Explore';
 
 function App() {
   const [items, setItems] = useState<ContentItem[]>([]);
-  const [activeView, setActiveView] = useState<'heap' | 'tags'>('heap');
+  const [activeView, setActiveView] = useState<'heap' | 'tags' | 'explore'>('heap');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const fetchItems = async () => {
@@ -76,6 +77,16 @@ function App() {
       <div className="nav-tabs">
         <button
           type="button"
+          className={`nav-link ${activeView === 'explore' ? 'active' : ''}`}
+          onClick={(e) => {
+            e.preventDefault();
+            setActiveView('explore');
+          }}
+        >
+          Explore
+        </button>
+        <button
+          type="button"
           className={`nav-link ${activeView === 'heap' ? 'active' : ''}`}
           onClick={(e) => {
             e.preventDefault();
@@ -92,11 +103,11 @@ function App() {
             setActiveView('tags');
           }}
         >
-          Manage Tags
+          Index
         </button>
       </div>
 
-      {activeView === 'heap' ? (
+      {activeView === 'heap' && (
         <>
           <div className="item-list">
             {items.map((item: ContentItem) => (
@@ -112,9 +123,11 @@ function App() {
             ))}
           </div>
         </>
-      ) : (
-        <TagManager />
       )}
+
+      {activeView === 'tags' && <TagManager />}
+
+      {activeView === 'explore' && <Explore />}
     </div>
   );
 }
