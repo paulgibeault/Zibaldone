@@ -99,23 +99,41 @@ export const DropZone: React.FC<DropZoneProps> = ({ onUploadComplete }) => {
         onUploadComplete();
     }, [onUploadComplete]);
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+    // We want the whole area to be a drop zone, but only the logo to be clickable for the file picker.
+    // However, the user said "Clicking the logo does not bring up the file picker like the old drop-zone did"
+    // implies they WANT it to bring up the picker.
+    // BUT, Dropzone default is the whole div is clickable. If I remove noClick: true, the whole title bar will be clickable.
+    // I will enable click on the logo only.
+    const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
+        onDrop,
+        noClick: true // Disable click on root, we will attach it manually to the logo
+    });
 
     return (
-        <div className="dropzone-container">
-            <div {...getRootProps()} className={`dropzone ${isDragActive ? 'active' : ''} ${uploadError ? 'error' : ''}`}>
-                <input {...getInputProps()} />
-                {isDragActive ? (
-                    <p>Drop the files here ...</p>
+        <div className="header-dropzone-container" {...getRootProps()}>
+            <input {...getInputProps()} />
+
+            {/* The Logo is the main visual element of the drop zone */}
+            {/* Added onClick={open} to make just the logo trigger the file picker */}
+            <div
+                className={`app-logo ${isDragActive ? 'dragging' : ''}`}
+                role="button"
+                aria-label="Zibaldone Logo - Click to Upload"
+                onClick={open}
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') open(); }}
+            />
+
+            {/* Subtle Footer Instructions */}
+            <div className="dropzone-footer">
+                {uploadError ? (
+                    <span className="error-text">{uploadError}</span>
+                ) : isDragActive ? (
+                    <span className="active-text">Drop files now...</span>
                 ) : (
-                    <p>Drag 'n' drop some files here, or click to select files</p>
+                    <span>Drag and drop to upload</span>
                 )}
             </div>
-            {uploadError && (
-                <div className="error-message" style={{ color: 'red', marginTop: '10px' }}>
-                    {uploadError}
-                </div>
-            )}
         </div>
     );
 };

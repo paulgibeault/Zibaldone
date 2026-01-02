@@ -289,27 +289,95 @@ h1,
   border-radius: 1rem;
 }
 
-.dropzone {
-  border: 2px dashed var(--color-primary);
+/* Header Dropzone Replaces old Dropzone */
+/* Header Dropzone Replaces old Dropzone */
+.header-dropzone-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-bottom: 2rem;
+  outline: none;
+  position: relative;
+
+  /* Visual Drop Zone Indication */
+  border: 2px dashed transparent;
+  /* Always present but invisible to prevent layout shift */
   border-radius: 1rem;
-  padding: 2.5rem;
-  text-align: center;
-  cursor: pointer;
+  padding: 1rem;
   transition: all 0.3s ease;
+}
+
+.header-dropzone-container:hover,
+.header-dropzone-container:focus-within {
+  /* Pronounced indication on hover */
+  border-color: var(--color-primary);
   background: rgba(59, 130, 246, 0.05);
-  /* Keep low opacity tint */
+  /* Blue-500 @ 5% */
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+  /* Blue glow */
 }
 
-.dropzone:hover,
-.dropzone.active {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: var(--color-accent);
-  transform: scale(1.01);
+/* Make the logo interactive */
+.app-logo {
+  height: 8rem;
+  /* Approx 2x previous size (4rem) */
+  width: auto;
+  aspect-ratio: 799/304;
+  margin: 0 auto;
+
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s;
+  /* Ensure it sits on top for dropping if needed, though parent handles drag events */
 }
 
-.dropzone p {
-  font-size: 1.25rem;
-  color: var(--text-secondary);
+.app-logo.dragging {
+  transform: scale(1.02);
+  opacity: 0.8;
+}
+
+/* Subtle Footer */
+.dropzone-footer {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  /* Right aligned */
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  padding-right: 1rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.dropzone-footer:hover {
+  opacity: 1;
+}
+
+.active-text {
+  color: var(--color-primary);
+  font-weight: 600;
+  animation: pulse 1.5s infinite;
+}
+
+.error-text {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.6;
+  }
 }
 
 .item-list {

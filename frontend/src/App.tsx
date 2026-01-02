@@ -69,7 +69,9 @@ function App() {
     <div className="container">
       <WelcomeModal />
       <ThemeSwitcher />
-      <div className="app-logo" role="img" aria-label="Zibaldone Logo" />
+
+      {/* Header Drop Zone */}
+      <DropZone onUploadComplete={fetchItems} />
 
       <div className="nav-tabs">
         <button
@@ -96,8 +98,6 @@ function App() {
 
       {activeView === 'heap' ? (
         <>
-          <DropZone onUploadComplete={fetchItems} />
-
           <div className="item-list">
             {items.map((item: ContentItem) => (
               <FileCard
