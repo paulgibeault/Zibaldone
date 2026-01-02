@@ -12,18 +12,21 @@ source scripts/deps/minio.sh
 load_config
 
 RESTART=false
+VERBOSE=false
 # Argument parsing
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --docker) ZIB_MODE="docker" ;;
         --local) ZIB_MODE="local" ;;
         --restart) RESTART=true ;;
+        --verbose) VERBOSE=true ;;
         --help)
             echo "Usage: ./go [OPTIONS]"
             echo "Options:"
             echo "  --docker    Run in Docker mode"
             echo "  --local     Run in Local mode"
             echo "  --restart   Force restart services"
+            echo "  --verbose   Stream logs to console"
             exit 0
             ;;
         *) log_error "Unknown parameter passed: $1"; exit 1 ;;
@@ -58,9 +61,15 @@ if [ "$ZIB_MODE" = "docker" ]; then
     echo -e "${GREEN}  LiteLLM:      http://localhost:4000${NC}"
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     
-    log_info "Streaming logs (Ctrl+C to stop services)..."
     trap stop_docker_services SIGINT SIGTERM
-    $DOCKER_COMPOSE_CMD logs -f
+    
+    if [ "$VERBOSE" = true ]; then
+        log_info "Streaming logs (Ctrl+C to stop services)..."
+        $DOCKER_COMPOSE_CMD logs -f
+    else
+        log_info "Services are running (Press Ctrl+C to stop). Run with --verbose to stream logs."
+        tail -f /dev/null & wait $!
+    fi
 else
     # Local mode
     trap stop_local_services SIGINT SIGTERM

@@ -45,9 +45,15 @@ services:
     depends_on:
       - minio
     entrypoint: >
-      /bin/sh -c " echo 'Waiting for MinIO...' && until /usr/bin/mc alias set local http://minio:9000 zibaldoneadmin zibaldonepassword; do
-        sleep 1
-      done; /usr/bin/mc mb local/zibaldone-blobs || true; exit 0; "
+      /bin/sh -c "
+      echo 'Waiting for MinIO...' &&
+      until /usr/bin/mc alias set local http://minio:9000 zibaldoneadmin zibaldonepassword > /dev/null 2>&1; do
+        sleep 1;
+      done;
+      echo 'MinIO is ready.';
+      /usr/bin/mc mb --ignore-existing local/zibaldone-blobs;
+      exit 0;
+      "
 
 volumes:
   data:
