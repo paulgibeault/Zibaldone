@@ -1,119 +1,106 @@
-# Zibaldone Architecture & Implementation Guide
+# Zibaldone Architecture
 
-This document provides a comprehensive overview of the Zibaldone architecture, covering both the frontend and backend systems, their interactions, and the data flow.
+## 1. System Overview
 
-## System Overview
+Zibaldone is a **local-first, privacy-focused content ingestion system**. It allows users to drop files (PDFs, images, text) into a "box", where they are automatically processed, tagged, and organized using local Large Language Models (LLMs).
 
-Zibaldone is a local-first content analysis system that captures files, extracts metadata using local LLMs (via LiteLLM), and provides a reactive user interface for managing content.
+The system is designed with a **Micro-Service Architecture** (even when running locally via Docker Compose) to ensure scalability and clear separation of concerns.
 
 ### High-Level Components
 
-- **Frontend**: A React application built with Vite, utilizing Tailwind CSS (implied via class names in analysis) and custom components for a responsive UI.
-- **Backend**: A FastAPI (Python) server handling file uploads, managing a SQLite database, and coordinating background tasks.
-- **LLM Service**: An abstraction layer using `litellm` (running as a proxy or direct library) to interface with local or remote LLMs (e.g., LM Studio).
-- **Storage**: Local filesystem storage for uploaded blobs and a SQLite database for metadata.
+*   **Frontend (React + Vite)**: A reactive SPA that provides the drag-and-drop interface, file visualization, and real-time status updates.
+*   **Backend (FastAPI)**: The central orchestrator that manages uploads, serves the API, and coordinates background workers.
+*   **Storage Layer (Hybrid)**: Supports both **Local Filesystem** (for simple setups) and **S3/MinIO** (for robust, scalable object storage).
+*   **Database (SQLite)**: Stores metadata (`ContentItem`), taxonomy (`Tag`), and processing history (`ProcessingTask`).
+*   **LLM Service (LiteLLM)**: A unified gateway to access local (LM Studio, Ollama) or remote (OpenAI) models.
 
 ---
 
-## Backend Architecture
+## 2. Core Workflows
 
-**Location**: `/backend`
+### 2.1. File Ingestion & Storage
 
-The backend is built with **FastAPI** and **SQLModel**. It is designed to be asynchronous to handle file uploads and background processing concurrently.
+Zibaldone implements a **Hybrid Storage Strategy** to decouple the application from physical storage limits.
 
-### Key Components
+**A. The "Direct Upload" Pattern (MinIO/S3)**
+1.  **Request**: Frontend asks for a pre-signed URL (`GET /api/upload/params?filename=doc.pdf`).
+2.  **Generation**: Backend uses `boto3` to generate a secure `PUT` URL pointing directly to MinIO/S3.
+3.  **Upload**: Frontend uploads the file binary directly to the Storage Layer (bypassing the API server).
+4.  **Finalization**: Frontend calls `POST /api/upload/finalize` with the `storage_path` to create the database record.
 
-- **App Entry Point** (`app/main.py`):
-  - Initializes the FastAPI app.
-  - Configures CORS for local development.
-  - Sets up the database and starts background workers on startup (`lifespan` event).
-  - Exposes SSE (Server-Sent Events) at `/api/events` for real-time client updates.
+**B. Local Fallback**
+*   For simple deployments, the system falls back to a standard multipart upload (`POST /api/upload`), saving files to a local `data/blob_storage` directory.
 
-- **API Router** (`app/api.py`):
-  - `POST /upload`: Handles file uploads. Saves the file blob to disk and creates an initial `UNPROCESSED` record in the database.
-  - `GET /items`: Retrieves all content items.
-  - `DELETE /items/{item_id}`: Deletes file blob and database record.
+### 2.2. Atomic Task Processing Pipeline
 
-- **Data Models** (`app/models.py`):
-  - `ContentItem`: Represents a managed file.
-  - `ContentStatus`: Enum tracking state (`UNPROCESSED`, `TAGGED`, `ERROR`).
-  - Database: SQLite (via SQLModel).
+Unlike monolithic job queues, Zibaldone uses an **Atomic Task** pattern. Processing a file is broken down into granular, trackable steps. This allows for live progress reporting and easier debugging.
 
-- **Background Worker** (`app/workers.py`):
-  - Runs an infinite loop (polling every 5s) checking for `UNPROCESSED` items.
-  - **Process**:
-    1. Reads file content (text files) or valid metadata.
-    2. Sends context to the LLM service to generate metadata.
-    3. Merges LLM metadata with existing metadata (prioritizing existing keys unless collisions occur).
-    4. Updates status to `TAGGED`.
-    5. Broadcasts an update event via SSE.
+**The Pipeline:**
 
-- **LLM Service** (`app/services/llm.py`):
-  - Wraps `litellm` calls.
-  - Configured via environment variables (`LLM_MODEL`).
+1.  **Monitor**: A background worker polls for items with status `UNPROCESSED`.
+2.  **Task 1: Metadata Extraction**
+    *   **Input**: Raw file content.
+    *   **Action**: LLM reads the content and generates a summary, keywords, and *suggested tags*.
+    *   **Output**: JSON result stored in `ProcessingTask` table.
+3.  **Task 2: Tag Alignment**
+    *   **Input**: Suggested tags from Task 1 + List of *Approved Tags* from DB.
+    *   **Action**: LLM compares suggestions against the approved taxonomy to consolidate duplicates (e.g., mapping "contracts" to "Contract").
+    *   **Output**: Finalized tags applied to the `ContentItem`.
+4.  **Completion**: Item status updated to `TAGGED`.
 
-### Data Flow for Uploads
+### 2.3. Event-Driven UI Updates
 
-1. **User** drops a file in Frontend.
-2. Frontend sends `POST /api/upload` with file and optional initial metadata.
-3. **Backend** saves file to `data/blob_storage`.
-4. **Backend** creates DB entry (Status: `UNPROCESSED`).
-5. **Worker** detects `UNPROCESSED` item.
-6. **Worker** reads content, calls LLM.
-7. **Worker** updates DB entry (Status: `TAGGED`).
-8. **Broadcaster** sends SSE event `{"type": "update", "item_id": "..."}`.
-9. **Frontend** receives event and refreshes local state.
+The UI does not rely on manual refreshes. It maintains synchronization with the backend via **Server-Sent Events (SSE)**.
+
+1.  **Connection**: Frontend subscribes to `/api/events`.
+2.  **Broadcast**: When a worker completes a task (e.g., "Metadata Extraction Finished"), it broadcasts an event:
+    ```json
+    {
+      "type": "update",
+      "item_id": "uuid-1234",
+    }
+    ```
+3.  **Reaction**: The Frontend receives the event and automatically refetches the latest item state and processing history.
 
 ---
 
-## Frontend Architecture
+## 3. Data Models
 
-**Location**: `/frontend`
+### `ContentItem`
+The core entity representing a managed file.
+*   `id`: UUID
+*   `storage_path`: Path to blob (e.g., `2024/01/15/doc.pdf`)
+*   `status`: `UNPROCESSED` | `PROCESSING` | `TAGGED` | `FAILED`
+*   `metadata_json`: Current active metadata (summary, tags).
 
-The frontend is a Single Page Application (SPA) built with **React**, **TypeScript**, and **Vite**.
+### `ProcessingTask`
+An immutable record of a specific unit of work.
+*   `item_id`: FK to ContentItem
+*   `task_name`: "Metadata Extraction", "Tag Alignment", etc.
+*   `status`: `PENDING` | `RUNNING` | `COMPLETED` | `FAILED`
+*   `result_json`: The raw output of the task (e.g., the LLM's raw response), kept for debugging and transparency.
 
-### Key Components
-
-- **Entry Point** (`src/main.tsx`): Mounts the React app.
-- **Main Layout** (`src/App.tsx`):
-  - Manages global state (list of items, theme).
-  - Connects to Backend SSE endpoint for real-time updates.
-  - Renders the main view (DropZone + Grid of FileCards).
-
-- **Components**:
-  - `DropZone`: Handles drag-and-drop file inputs. extract metadata on drop if possible.
-  - `FileCard`: Displays file info. Features a tabbed interface for "Quick View" vs "Full Metadata".
-  - `ThemeSelector`: Allows switching between Light/Dark/System themes.
-
-- **Styling**:
-  - Uses standard CSS/CSS Modules or Tailwind (project structure suggests standardized CSS imports).
-  - Theming is handled via CSS variables or specific class toggles attached to the root.
-
-### State Management
-
-- **Local State**: `useState` hooks in `App.tsx` manage the list of items.
-- **Real-time Sync**: The app listens to `EventSource` on `/api/events`. When an update message is received, it triggers a fetch to refresh data, ensuring the UI always reflects background processing progress.
+### `Tag`
+*   `name`: The tag label.
+*   `is_approved`: Boolean. If `True`, this tag is part of the official taxonomy. If `False`, it was auto-created by an LLM and may need review.
 
 ---
 
-## Directory Structure Summary
+## 4. Directory Structure
 
 ```
 zibaldone/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py       # App entry & wiring
-│   │   ├── api.py        # REST endpoints
-│   │   ├── models.py     # DB Schemas
-│   │   └── workers.py    # Background logic
-│   └── requirements.txt  # Python dependencies
+│   │   ├── services/
+│   │   │   ├── s3_storage.py   # MinIO/S3 Implementation
+│   │   │   ├── llm.py          # LiteLLM Wrapper
+│   │   │   └── workers.py      # Background Task Loop
+│   │   └── models.py           # SQLModel Definitions
 ├── frontend/
 │   ├── src/
-│   │   ├── App.tsx       # Main UI Logic
-│   │   ├── components/   # React Components
-│   │   └── api.ts        # API Client
-│   └── vite.config.ts    # Build config
-├── data/                 # Local data storage (ignored in git)
-├── docs/                 # Documentation
-└── ...                   # Root level scripts (setup, go)
+│   │   ├── components/         # React Components
+│   │   └── api.ts              # API Client & Types
+├── docker-compose.yml          # Services (Backend, Frontend, MinIO, LiteLLM)
+└── scripts/                    # Helper scripts (setup, go, etc.)
 ```
