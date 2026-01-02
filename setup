@@ -17,11 +17,13 @@ log_info "=== Zibaldone Setup ==="
 # Argument parsing
 FORCE=false
 USE_DOCKER_ARG=false
+SETUP_PYTHON=false
 
 while [[ "$#" -gt 0 ]]; do
     case $1 in
         --docker) USE_DOCKER_ARG=true ;;
         -y|--force) FORCE=true ;;
+        -p|--python) SETUP_PYTHON=true ;;
         --local) ZIB_MODE="local" ;;
         --custom) ZIB_MODE="custom" ;;
         *) log_error "Unknown parameter passed: $1"; exit 1 ;;
@@ -57,8 +59,13 @@ if [ "$ZIB_MODE" = "docker" ]; then
         install_docker
     fi
     start_docker_daemon
-else
+fi
+
+if [ "$ZIB_MODE" != "docker" ] || [ "$SETUP_PYTHON" = true ]; then
     if ! check_python; then install_python; fi
+fi
+
+if [ "$ZIB_MODE" != "docker" ]; then
     if ! check_node; then install_node; fi
     if ! check_minio && [ "$ZIB_MODE" = "local" ]; then install_minio; fi
 fi
@@ -66,8 +73,11 @@ fi
 # 3. Environment Setup
 log_info "\n[2/3] Setting up environment components..."
 
-if [ "$ZIB_MODE" != "docker" ] || [ "$FORCE" = true ]; then
+if [ "$ZIB_MODE" != "docker" ] || [ "$FORCE" = true ] || [ "$SETUP_PYTHON" = true ]; then
     setup_backend_venv
+fi
+
+if [ "$ZIB_MODE" != "docker" ] || [ "$FORCE" = true ]; then
     setup_frontend_deps
 fi
 

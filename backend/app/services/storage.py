@@ -37,8 +37,8 @@ class StorageInterface(ABC):
 
     def get_date_prefix(self) -> str:
         """Returns the date-based prefix YYYY/MM/DD/."""
-        from datetime import datetime
-        now = datetime.utcnow()
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
         return now.strftime("%Y/%m/%d/")
 
 class FileSystemStorage(StorageInterface):
