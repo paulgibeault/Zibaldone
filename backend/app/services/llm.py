@@ -153,17 +153,43 @@ JSON Result:
             ]
 
         try:
-            # Log Request
-            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
-                llm_logger.info(f"--- LLM REQUEST: {Path(file_path).name} ---")
-                llm_logger.info(f"Model: {self.model}")
-                llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
+            try:
+                # Log Request
+                if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+                    llm_logger.info(f"--- LLM REQUEST: {Path(file_path).name} ---")
+                    llm_logger.info(f"Model: {self.model}")
+                    llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
 
-            response = await acompletion(
-                model=self.model,
-                api_base=api_base,
-                messages=messages,
-            )
+                response = await acompletion(
+                    model=self.model,
+                    api_base=api_base,
+                    messages=messages,
+                )
+            except Exception as e:
+                # Fallback for vision failure (e.g. model doesn't support images)
+                if file_type == "image":
+                    print(f"Vision processing failed: {e}. Falling back to text prompt.")
+                    
+                    # Create text-only fallback prompt
+                    fallback_prompt = f"{prompt}\nFilename: {Path(file_path).name}\n[Image content could not be processed, please infer metadata from filename]"
+                    
+                    messages = [
+                        {"role": "user", "content": fallback_prompt}
+                    ]
+                    
+                    # Log Fallback Request
+                    if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+                        llm_logger.info(f"--- LLM FALLBACK REQUEST: {Path(file_path).name} ---")
+                        llm_logger.info(f"Model: {self.model}")
+                        llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
+
+                    response = await acompletion(
+                        model=self.model,
+                        api_base=api_base,
+                        messages=messages,
+                    )
+                else:
+                    raise e
             
             content = response.choices[0].message.content.strip()
             
@@ -208,35 +234,43 @@ JSON Result:
             return new_tags
 
         prompt = f"""
-You are a taxonomy expert helping to organize file tags.
-Your goal is to align a list of NEW TAGS with a list of EXISTING TAGS to prevent duplicates and fragmentation.
+You are a precise tag alignment tool.
+Your goal is to decide if any NEW TAGS are strict synonyms for EXISTING TAGS.
 
-Rules:
-1. For each NEW TAG, check if there is an EXISTING TAG that means the same thing (synonym, singular/plural difference, abbreviation).
-2. If a match is found, replace the NEW TAG with the EXACT EXISTING TAG.
-3. If no match is found, keep the NEW TAG as is.
-4. If a NEW TAG is completely redundant or generic (e.g. "file", "document"), you may drop it.
-5. Return ONLY a JSON array of specific strings.
-
-Example:
-Existing: ["python", "finance", "receipts"]
-New: ["py", "financial", "bills"]
-Result: ["python", "finance", "receipts"]
+Input Data:
+Existing Tags: {existing_tags}
+New Tags: {new_tags}
 
 Task:
-Existing: {existing_tags}
-New: {new_tags}
+For each tag in "New Tags", determine if it maps to an "Existing Tag".
+- If it is a STRICT SYNONYM (e.g. "bills" -> "receipts"), map it to the existing tag.
+- If it is UNIQUE or DISTINCT, map it to null.
+- DO NOT force relationships. When in doubt, map to null.
 
-Return JSON array of strings:
+Output Format:
+Return a JSON object with a single key "mapping" containing a dictionary where keys are new tags and values are the mapped existing tag or null.
+
+Example:
+Existing: ["receipts", "javascript"]
+New: ["bills", "python", "js_code"]
+Output:
+{{
+  "mapping": {{
+    "bills": "receipts",
+    "python": null,
+    "js_code": "javascript"
+  }}
+}}
+
+JSON Result:
 """
         messages = [{"role": "user", "content": prompt}]
         api_base = os.getenv("LITELLM_URL")
         
         try:
             if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
-                llm_logger.info(f"--- LLM TAG ALIGNMENT ---")
-                llm_logger.info(f"New: {new_tags}")
-                llm_logger.info(f"Existing: {existing_tags}")
+                llm_logger.info(f"--- LLM TAG ALIGNMENT REQUEST ---")
+                llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
 
             response = await acompletion(
                 model=self.model,
@@ -245,6 +279,10 @@ Return JSON array of strings:
             )
             
             content = response.choices[0].message.content.strip()
+
+            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+                llm_logger.info(f"--- LLM TAG ALIGNMENT RESPONSE ---")
+                llm_logger.info(f"Raw Response: {content}")
             
             # Robust JSON extraction
             if "```json" in content:
@@ -252,20 +290,30 @@ Return JSON array of strings:
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
             
-            if "{" in content and "}" in content: 
-                 # Sometimes models return {"tags": [...]} despite asking for array
-                 # But our prompt asks for array. Let's handle list return.
-                 pass
-
-            aligned_tags = json.loads(content)
+            result_json = json.loads(content)
+            mapping = result_json.get("mapping", {})
             
-            if isinstance(aligned_tags, dict) and "tags" in aligned_tags:
-                 aligned_tags = aligned_tags["tags"]
+            final_tags = []
+            for tag in new_tags:
+                # Get mapped value
+                mapped_val = mapping.get(tag)
+                
+                # If mapped to a string that exists in existing_tags (sanity check), use it
+                if isinstance(mapped_val, str) and mapped_val in existing_tags:
+                    final_tags.append(mapped_val)
+                else:
+                    # Otherwise keep original
+                    final_tags.append(tag)
             
-            if isinstance(aligned_tags, list):
-                return [str(t) for t in aligned_tags]
+            # Deduplicate while preserving order (roughly)
+            seen = set()
+            unique_ordered = []
+            for t in final_tags:
+                if t not in seen:
+                    unique_ordered.append(t)
+                    seen.add(t)
             
-            return new_tags
+            return unique_ordered
             
         except Exception as e:
             print(f"LLM Tag Alignment Error: {e}")

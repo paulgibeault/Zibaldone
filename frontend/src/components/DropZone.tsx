@@ -9,15 +9,77 @@ interface DropZoneProps {
 export const DropZone: React.FC<DropZoneProps> = ({ onUploadComplete }) => {
     const [uploadError, setUploadError] = React.useState<string | null>(null);
 
+    const getImageMetadata = (file: File): Promise<any> => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(img.src);
+                resolve({ width: img.width, height: img.height });
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(img.src);
+                resolve({});
+            };
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
+    const getVideoMetadata = (file: File): Promise<any> => {
+        return new Promise((resolve) => {
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.onloadedmetadata = () => {
+                URL.revokeObjectURL(video.src);
+                resolve({
+                    duration: video.duration,
+                    width: video.videoWidth,
+                    height: video.videoHeight
+                });
+            };
+            video.onerror = () => {
+                URL.revokeObjectURL(video.src);
+                resolve({});
+            };
+            video.src = URL.createObjectURL(file);
+        });
+    };
+
+    const getAudioMetadata = (file: File): Promise<any> => {
+        return new Promise((resolve) => {
+            const audio = document.createElement('audio');
+            audio.preload = 'metadata';
+            audio.onloadedmetadata = () => {
+                URL.revokeObjectURL(audio.src);
+                resolve({ duration: audio.duration });
+            };
+            audio.onerror = () => {
+                URL.revokeObjectURL(audio.src);
+                resolve({});
+            };
+            audio.src = URL.createObjectURL(file);
+        });
+    };
+
     const onDrop = useCallback(async (acceptedFiles: File[]) => {
         setUploadError(null); // Clear previous errors
         for (const file of acceptedFiles) {
             try {
+                let extraMetadata = {};
+
+                if (file.type.startsWith('image/')) {
+                    extraMetadata = await getImageMetadata(file);
+                } else if (file.type.startsWith('video/')) {
+                    extraMetadata = await getVideoMetadata(file);
+                } else if (file.type.startsWith('audio/')) {
+                    extraMetadata = await getAudioMetadata(file);
+                }
+
                 const metadata = {
                     size: file.size,
                     type: file.type,
                     lastModified: file.lastModified,
-                    lastModifiedDate: new Date(file.lastModified).toISOString()
+                    lastModifiedDate: new Date(file.lastModified).toISOString(),
+                    ...extraMetadata
                 };
                 await uploadFile(file, metadata);
                 console.log(`Uploaded ${file.name}`);
