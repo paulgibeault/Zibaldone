@@ -6,7 +6,8 @@ import os
 import uuid
 import hashlib
 
-from app.models import get_session
+from app.deps import get_current_user
+from app.models import User, get_session
 from app.services.storage import get_storage
 from app import crud, schemas
 from app.services import item_service
@@ -29,17 +30,19 @@ async def finalize_upload(
     metadata: str = Form("{}"),
     content_type: Optional[str] = Form(None),
     checksum: Optional[str] = Form(None),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
     return await item_service.finalize_upload(
-        session, original_filename, storage_path, metadata, content_type, checksum
+        session, original_filename, storage_path, current_user.id, metadata, content_type, checksum
     )
 
 @router.post("/upload", response_model=schemas.ContentItemRead)
 async def upload_content(
     file: UploadFile = File(...), 
     metadata: str = Form("{}"),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
     content = await file.read()
     checksum = calculate_checksum(content)
@@ -47,7 +50,7 @@ async def upload_content(
     storage_path = await storage.save(content, file.filename)
     
     return await item_service.finalize_upload(
-        session, file.filename, storage_path, metadata, file.content_type, checksum
+        session, file.filename, storage_path, current_user.id, metadata, file.content_type, checksum
     )
 
 @router.get("/items", response_model=List[schemas.ContentItemRead])
@@ -56,14 +59,15 @@ def read_items(
     content_type: Optional[str] = None,
     after: Optional[str] = None,
     show_all_versions: bool = False,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
-    items = crud.get_items(session, filename, content_type, after, show_all_versions)
+    items = crud.get_items(session, current_user.id, filename, content_type, after, show_all_versions)
     return [item_service.enrich_item(item) for item in items]
 
 @router.get("/items/{item_id}/download")
-async def download_item(item_id: uuid.UUID, session: Session = Depends(get_session)):
-    item = crud.get_item(session, item_id)
+async def download_item(item_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    item = crud.get_item(session, item_id, current_user.id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
         
@@ -78,8 +82,8 @@ async def download_item(item_id: uuid.UUID, session: Session = Depends(get_sessi
     return FileResponse(full_path, filename=item.original_filename)
 
 @router.put("/items/{item_id}/metadata", response_model=schemas.ContentItemRead)
-async def update_item_metadata(item_id: uuid.UUID, metadata: dict, session: Session = Depends(get_session)):
-    item = crud.get_item(session, item_id)
+async def update_item_metadata(item_id: uuid.UUID, metadata: dict, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    item = crud.get_item(session, item_id, current_user.id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
         
@@ -88,9 +92,9 @@ async def update_item_metadata(item_id: uuid.UUID, metadata: dict, session: Sess
     return item_service.enrich_item(updated_item)
 
 @router.post("/items/{item_id}/tags/{tag_id}", response_model=schemas.ContentItemRead)
-async def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
-    item = crud.get_item(session, item_id)
-    tag = crud.get_tag(session, tag_id)
+async def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    item = crud.get_item(session, item_id, current_user.id)
+    tag = crud.get_tag(session, tag_id, current_user.id)
     
     if not item or not tag:
         raise HTTPException(status_code=404, detail="Item or Tag not found")
@@ -105,9 +109,9 @@ async def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Sessio
     return item_service.enrich_item(item)
 
 @router.delete("/items/{item_id}/tags/{tag_id}", response_model=schemas.ContentItemRead)
-async def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session)):
-    item = crud.get_item(session, item_id)
-    tag = crud.get_tag(session, tag_id)
+async def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    item = crud.get_item(session, item_id, current_user.id)
+    tag = crud.get_tag(session, tag_id, current_user.id)
     
     if not item or not tag:
         raise HTTPException(status_code=404, detail="Item or Tag not found")
@@ -122,8 +126,8 @@ async def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: S
     return item_service.enrich_item(item)
 
 @router.delete("/items/{item_id}")
-async def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session)):
-    item = crud.get_item(session, item_id)
+async def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    item = crud.get_item(session, item_id, current_user.id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
@@ -134,9 +138,10 @@ async def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session
 @router.get("/search", response_model=schemas.SearchResponse)
 def search_content(
     q: str,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
 ):
-    results = crud.search_content(session, q)
+    results = crud.search_content(session, q, current_user.id)
     # enrich items
     results["items"] = [item_service.enrich_item(item) for item in results["items"]]
     return results

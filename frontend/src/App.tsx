@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { DropZone } from './components/DropZone';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { WelcomeModal } from './components/WelcomeModal';
@@ -8,11 +9,31 @@ import './index.css';
 import TagManager from './components/TagManager';
 import { Explore } from './components/Explore';
 import { Heap } from './components/Heap';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './components/Login';
 
-function App() {
+// Protected Route Component
+const ProtectedRoute = ({ children }: { children: React.JSX.Element }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+// Main App Layout (Authenticated)
+function MainApp() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [activeView, setActiveView] = useState<'heap' | 'tags' | 'explore'>('heap');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const { logout, user } = useAuth();
 
   const fetchItems = async () => {
     try {
@@ -71,6 +92,10 @@ function App() {
       <WelcomeModal />
       <ThemeSwitcher />
 
+      <div style={{ position: 'absolute', top: '1rem', right: '4rem', fontSize: '0.8rem' }}>
+        Logged in as {user?.display_name} <button onClick={logout} style={{ marginLeft: '0.5rem' }}>Logout</button>
+      </div>
+
       {/* Header Drop Zone */}
       <DropZone onUploadComplete={fetchItems} />
 
@@ -122,6 +147,26 @@ function App() {
 
       {activeView === 'explore' && <Explore />}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <MainApp />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

@@ -46,6 +46,20 @@ rm -f .zibaldone.conf
 rm -f backend/.env
 rm -f litellm_config.yaml
 
+if [ -f "data/database.db" ]; then
+    if [ "$FULL_CLEANUP" = true ]; then
+        log_info "Removing database.db (FULL_CLEANUP)..."
+        rm -f data/database.db
+    else
+        if confirm "Found existing database.db. Delete it to reset all data?"; then
+            log_info "Removing database.db..."
+            rm -f data/database.db
+        else
+            log_info "Skipping database deletion."
+        fi
+    fi
+fi
+
 if [ "$FULL_CLEANUP" = true ]; then
     log_info "Removing data directory and logs..."
     rm -rf data

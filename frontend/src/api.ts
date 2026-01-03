@@ -10,6 +10,11 @@ const apiClient = axios.create({
 
 // Log requests and responses for debugging
 apiClient.interceptors.request.use(request => {
+    // Add Authorization header if token exists
+    const token = localStorage.getItem('zibaldone-token');
+    if (token) {
+        request.headers.Authorization = `Bearer ${token}`;
+    }
     console.log('Starting Request', request);
     return request;
 });

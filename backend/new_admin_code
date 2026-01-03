@@ -1,0 +1,4 @@
+#!/bin/bash
+# Streams the local reset_admin.py script into the backend container to execute it
+# regardless of whether the file exists inside the container.
+cat reset_admin.py | docker compose exec -T backend python -

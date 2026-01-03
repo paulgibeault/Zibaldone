@@ -6,8 +6,8 @@ from sqlalchemy.orm import selectinload
 from app.models import ContentItem, Tag, ContentItemTagLink, ProcessingTask, TaskStatus
 
 # Forced update to trigger rebuild
-def get_next_version(session: Session, filename: str) -> int:
-    statement = select(ContentItem).where(ContentItem.original_filename == filename).order_by(desc(ContentItem.version))
+def get_next_version(session: Session, filename: str, owner_id: uuid.UUID) -> int:
+    statement = select(ContentItem).where(ContentItem.original_filename == filename).where(ContentItem.owner_id == owner_id).order_by(desc(ContentItem.version))
     latest_item = session.exec(statement).first()
     if latest_item:
         return latest_item.version + 1
@@ -15,12 +15,13 @@ def get_next_version(session: Session, filename: str) -> int:
 
 def get_items(
     session: Session,
+    owner_id: uuid.UUID,
     filename: Optional[str] = None,
     content_type: Optional[str] = None,
     after: Optional[str] = None,
     show_all_versions: bool = False
 ) -> List[ContentItem]:
-    statement = select(ContentItem).options(
+    statement = select(ContentItem).where(ContentItem.owner_id == owner_id).options(
         selectinload(ContentItem.tags),
         selectinload(ContentItem.tasks)
     )
@@ -48,10 +49,11 @@ def get_items(
     
     return session.exec(statement).all()
 
-def get_item(session: Session, item_id: uuid.UUID) -> Optional[ContentItem]:
+def get_item(session: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> Optional[ContentItem]:
     return session.exec(
         select(ContentItem)
         .where(ContentItem.id == item_id)
+        .where(ContentItem.owner_id == owner_id)
         .options(
             selectinload(ContentItem.tags),
             selectinload(ContentItem.tasks)
@@ -77,24 +79,24 @@ def delete_item(session: Session, item: ContentItem):
     session.commit()
 
 # Tag operations
-def get_tags(session: Session, approved_only: bool = False) -> List[Tag]:
-    statement = select(Tag)
+def get_tags(session: Session, owner_id: uuid.UUID, approved_only: bool = False) -> List[Tag]:
+    statement = select(Tag).where(Tag.owner_id == owner_id)
     if approved_only:
         statement = statement.where(Tag.is_approved == True)
     return session.exec(statement).all()
 
-def get_tag(session: Session, tag_id: uuid.UUID) -> Optional[Tag]:
-    return session.get(Tag, tag_id)
+def get_tag(session: Session, tag_id: uuid.UUID, owner_id: uuid.UUID) -> Optional[Tag]:
+    return session.exec(select(Tag).where(Tag.id == tag_id).where(Tag.owner_id == owner_id)).first()
 
-def create_tag(session: Session, name: str, color: str, is_autocreated: bool = False, is_approved: bool = True) -> Tag:
-    tag = Tag(name=name, color=color, is_autocreated=is_autocreated, is_approved=is_approved)
+def create_tag(session: Session, name: str, color: str, owner_id: uuid.UUID, is_autocreated: bool = False, is_approved: bool = True) -> Tag:
+    tag = Tag(name=name, color=color, owner_id=owner_id, is_autocreated=is_autocreated, is_approved=is_approved)
     session.add(tag)
     session.commit()
     session.refresh(tag)
     return tag
 
-def get_tag_by_name(session: Session, name: str) -> Optional[Tag]:
-    return session.exec(select(Tag).where(Tag.name == name)).first()
+def get_tag_by_name(session: Session, name: str, owner_id: uuid.UUID) -> Optional[Tag]:
+    return session.exec(select(Tag).where(Tag.name == name).where(Tag.owner_id == owner_id)).first()
 
 def approve_tag(session: Session, tag_id: uuid.UUID) -> Optional[Tag]:
     tag = session.get(Tag, tag_id)
@@ -158,7 +160,7 @@ def update_task(
         session.refresh(task)
     return task
 
-def search_content(session: Session, query: str) -> dict:
+def search_content(session: Session, query: str, owner_id: uuid.UUID) -> dict:
     terms = query.strip().split()
     if not terms:
         return {"tags": [], "items": []}
@@ -187,13 +189,13 @@ def search_content(session: Session, query: str) -> dict:
 
     # Tags: Match ANY term
     tag_conditions = [build_like(Tag.name, term) for term in terms]
-    tag_statement = select(Tag).where(or_(*tag_conditions)).where(Tag.is_approved == True)
+    tag_statement = select(Tag).where(or_(*tag_conditions)).where(Tag.is_approved == True).where(Tag.owner_id == owner_id)
     tags = session.exec(tag_statement).all()
     
     # Items: Match ALL terms across fields
     # For each term, it must be in (original_filename OR metadata_json)
     # This matches the intuition of "invoice 2024" finding "invoice.pdf" with "2024" in metadata
-    item_statement = select(ContentItem).options(
+    item_statement = select(ContentItem).where(ContentItem.owner_id == owner_id).options(
         selectinload(ContentItem.tags),
         selectinload(ContentItem.tasks)
     )

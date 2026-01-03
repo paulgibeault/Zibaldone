@@ -40,15 +40,17 @@ async def finalize_upload(
     session: Session,
     original_filename: str,
     storage_path: str,
+    owner_id: uuid.UUID,
     metadata: str = "{}",
     content_type: Optional[str] = None,
     checksum: Optional[str] = None
 ) -> schemas.ContentItemRead:
-    version = crud.get_next_version(session, original_filename)
+    version = crud.get_next_version(session, original_filename, owner_id)
     
     content_item = ContentItem(
         original_filename=original_filename,
         storage_path=storage_path,
+        owner_id=owner_id,
         status=ContentStatus.QUEUED,
         metadata_json=metadata,
         version=version,

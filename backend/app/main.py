@@ -4,11 +4,18 @@ from app.api import router as api_router
 from contextlib import asynccontextmanager
 from app.models import create_db_and_tables
 from app.workers import process_unprocessed_items
+from app.services.auth import bootstrap_auth
+from sqlmodel import Session
+from app.models import engine
 import asyncio
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
+    
+    with Session(engine) as session:
+        bootstrap_auth(session)
+    
     
     # Ensure S3 CORS is configured if using S3
     from app.services.storage import get_storage
@@ -51,9 +58,11 @@ app.add_middleware(
 )
 
 from app.api_tags import router as tags_router
+from app.api_auth import router as auth_router
 
 app.include_router(api_router, prefix="/api")
 app.include_router(tags_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 @app.get("/")
 def read_root():
