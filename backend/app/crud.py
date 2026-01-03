@@ -157,3 +157,65 @@ def update_task(
         session.commit()
         session.refresh(task)
     return task
+
+def search_content(session: Session, query: str) -> dict:
+    terms = query.strip().split()
+    if not terms:
+        return {"tags": [], "items": []}
+    
+    # 1. Search Tags
+    # A tag matches if its name contains ALL terms (case-insensitive)? 
+    # Or matches ANY term? usually search is "find things related to these words".
+    # But usually "tag search" is exact or prefix. 
+    # Given "space delimited", if I search "web dev", I expect tags that match "web" AND "dev"? 
+    # Or maybe "web-dev".
+    # Let's try: Tag name must contain at least one of the terms? 
+    # Or Tag name must match the query string? 
+    # User said: "return results from tags... who contain the search terms... in their name"
+    # I will assume standard search engine logic: AND (intersection) of results for each term.
+    # So for a tag to match, it must match specific criteria for ALL terms.
+    # Actually, for tags, usually you want to find "python" tag when you type "python".
+    # If I type "python coding", "python" tag doesn't contain "coding".
+    # So for tags, maybe it's "Name contains ANY of the terms"? 
+    # Let's go with: Tag matches if its name contains ANY of the terms.
+    
+    from sqlalchemy import or_, and_
+    
+    # helper to build LIKE clause
+    def build_like(column, term):
+        return column.ilike(f"%{term}%")
+
+    # Tags: Match ANY term
+    tag_conditions = [build_like(Tag.name, term) for term in terms]
+    tag_statement = select(Tag).where(or_(*tag_conditions)).where(Tag.is_approved == True)
+    tags = session.exec(tag_statement).all()
+    
+    # Items: Match ALL terms across fields
+    # For each term, it must be in (original_filename OR metadata_json)
+    # This matches the intuition of "invoice 2024" finding "invoice.pdf" with "2024" in metadata
+    item_statement = select(ContentItem).options(
+        selectinload(ContentItem.tags),
+        selectinload(ContentItem.tasks)
+    )
+    
+    for term in terms:
+        # Each term must be present in at least one of these columns
+        term_condition = or_(
+            build_like(ContentItem.original_filename, term),
+            build_like(ContentItem.metadata_json, term)
+        )
+        item_statement = item_statement.where(term_condition)
+        
+    # Exclude newer versions (similar to get_items logic)
+    from sqlalchemy.orm import aliased
+    c2 = aliased(ContentItem)
+    subquery = (
+        select(1)
+        .where(c2.original_filename == ContentItem.original_filename)
+        .where(c2.version > ContentItem.version)
+    )
+    item_statement = item_statement.where(~subquery.exists())
+    
+    items = session.exec(item_statement).all()
+    
+    return {"tags": tags, "items": items}

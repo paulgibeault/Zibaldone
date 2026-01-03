@@ -12,7 +12,7 @@
 }
 
 .file-card.mode-minimal {
-    min-height: 80px;
+    min-height: 72px;
     height: fit-content;
     cursor: pointer;
 }
@@ -68,12 +68,13 @@
 }
 
 .minimal-filename {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text-primary);
+    line-height: 1.2;
 }
 
 .minimal-tags {
@@ -83,7 +84,7 @@
 }
 
 .minimal-tag-pill {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     padding: 2px 8px;
     border-radius: 99px;
     font-weight: 600;
@@ -968,8 +969,6 @@
 
 .clickable {
     cursor: pointer;
-}
-
 }
 
 .card-content-area-v2::-webkit-scrollbar-track {

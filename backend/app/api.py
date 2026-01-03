@@ -122,12 +122,21 @@ async def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: S
     return item_service.enrich_item(item)
 
 @router.delete("/items/{item_id}")
-def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session)):
+async def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session)):
     item = crud.get_item(session, item_id)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     
-    storage.delete(item.storage_path)
     crud.delete_item(session, item)
     
     return {"ok": True}
+
+@router.get("/search", response_model=schemas.SearchResponse)
+def search_content(
+    q: str,
+    session: Session = Depends(get_session)
+):
+    results = crud.search_content(session, q)
+    # enrich items
+    results["items"] = [item_service.enrich_item(item) for item in results["items"]]
+    return results

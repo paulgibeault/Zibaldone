@@ -58,3 +58,7 @@ class ContentItemRead(SQLModel):
 class ContentItemUpdate(SQLModel):
     status: Optional[ContentStatus] = None
     metadata_json: Optional[str] = None
+
+class SearchResponse(SQLModel):
+    tags: List[TagRead]
+    items: List[ContentItemRead]

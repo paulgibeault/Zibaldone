@@ -141,7 +141,17 @@ export const getItems = async (): Promise<ContentItem[]> => {
     return response.data;
 };
 
-export const updateItemMetadata = async (itemId: string, metadata: any): Promise<ContentItem> => {
+export const updateItemMetadata = async (itemId: string, metadata: Record<string, any>): Promise<ContentItem> => {
     const response = await apiClient.put(`/items/${itemId}/metadata`, metadata);
+    return response.data;
+};
+
+export interface SearchResponse {
+    tags: Tag[];
+    items: ContentItem[];
+}
+
+export const searchContent = async (q: string): Promise<SearchResponse> => {
+    const response = await apiClient.get('/search', { params: { q } });
     return response.data;
 };
