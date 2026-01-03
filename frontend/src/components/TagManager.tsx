@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, ArrowDownAZ, ArrowUpAZ, TrendingUp, Calendar, ShieldCheck } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowDownAZ, ArrowUpAZ, TrendingUp, Calendar, ShieldCheck, Check, X } from 'lucide-react';
 import { type Tag as TagType, createTag, deleteTag, updateTag, getItems, type ContentItem, approveTag } from '../api';
 import { useTags } from '../hooks/useTags';
-import { Tag } from './Tag';
+import { getContrastColor } from './Tag';
 import { CreateTagModal } from './CreateTagModal';
 
 const TagManager = () => {
@@ -204,73 +204,130 @@ const TagManager = () => {
                             {loading ? (
                                 <div className="loading-small">Loading tags...</div>
                             ) : (
-                                processedTags.map((tag: TagType) => (
-                                    <div key={tag.id} className="tag-management-item">
-                                        {editingId === tag.id ? (
-                                            <div className="tag-edit-inline">
-                                                <input
-                                                    type="text"
-                                                    value={editName}
-                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
-                                                    autoFocus
-                                                />
-                                                <input
-                                                    type="color"
-                                                    value={editColor}
-                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditColor(e.target.value)}
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.preventDefault(); handleUpdateTag(tag.id); }}
-                                                    className="btn-save"
-                                                >
-                                                    Save
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => { e.preventDefault(); setEditingId(null); }}
-                                                    className="btn-cancel"
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <Tag
-                                                    tag={tag}
-                                                    onApprove={async (id) => handleApproveTag(id)}
-                                                    showApproveIcon={true}
-                                                />
-                                                <div className="item-actions">
+                                processedTags.map((tag: TagType) => {
+                                    const isUnapproved = !tag.is_approved;
+                                    // Use standard contrast color for approved tags, but fallback to primary text for unapproved (subtle) ones to ensure readability on low-opacity background
+                                    const contrastColor = isUnapproved ? 'var(--text-primary)' : getContrastColor(tag.color);
+
+                                    // Calculate background color
+                                    // If unapproved, make it much more transparent (subtle)
+                                    // We use a multiplier to reduce the effective opacity significantly
+                                    const opacityCalc = isUnapproved
+                                        ? 'calc(var(--tag-bg-opacity) * 0.15)'
+                                        : 'var(--tag-bg-opacity)';
+
+                                    const backgroundColor = `color-mix(in srgb, ${tag.color}, transparent calc(100% - (${opacityCalc} * 100%)))`;
+
+                                    return (
+                                        <div
+                                            key={tag.id}
+                                            className="tag-row-pill"
+                                            style={{
+                                                backgroundColor,
+                                                color: contrastColor,
+                                                borderColor: tag.color,
+                                                borderStyle: isUnapproved ? 'dashed' : 'solid',
+                                                borderWidth: '1px'
+                                            }}
+                                        >
+                                            {editingId === tag.id ? (
+                                                <div className="tag-edit-inline" onClick={e => e.stopPropagation()}>
+                                                    <input
+                                                        type="text"
+                                                        value={editName}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                                                        autoFocus
+                                                        style={{ color: 'var(--text-primary)', backgroundColor: 'var(--bg-card)' }}
+                                                    />
+                                                    <input
+                                                        type="color"
+                                                        value={editColor}
+                                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditColor(e.target.value)}
+                                                    />
                                                     <button
                                                         type="button"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            setEditingId(tag.id);
-                                                            setEditName(tag.name);
-                                                            setEditColor(tag.color);
-                                                        }}
-                                                        className="btn-icon-v2"
-                                                        title="Edit"
+                                                        onClick={(e) => { e.preventDefault(); handleUpdateTag(tag.id); }}
+                                                        className="btn-icon-pill"
+                                                        title="Save"
                                                     >
-                                                        <Edit2 size={14} />
+                                                        <Check size={14} />
                                                     </button>
                                                     <button
                                                         type="button"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            handleDeleteTag(tag.id);
-                                                        }}
-                                                        className="btn-icon-v2 danger"
-                                                        title="Delete"
+                                                        onClick={(e) => { e.preventDefault(); setEditingId(null); }}
+                                                        className="btn-icon-pill danger"
+                                                        title="Cancel"
                                                     >
-                                                        <Trash2 size={14} />
+                                                        <X size={14} />
                                                     </button>
                                                 </div>
-                                            </>
-                                        )}
-                                    </div>
-                                ))
+                                            ) : (
+                                                <>
+                                                    <span className="tag-text">{tag.name}</span>
+                                                    <div className="tag-actions-group">
+                                                        {!tag.is_approved ? (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        handleApproveTag(tag.id);
+                                                                    }}
+                                                                    className="btn-icon-pill"
+                                                                    style={{ color: contrastColor }}
+                                                                    title="Approve"
+                                                                >
+                                                                    <ShieldCheck size={16} />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        handleDeleteTag(tag.id);
+                                                                    }}
+                                                                    className="btn-icon-pill"
+                                                                    style={{ color: contrastColor }}
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        setEditingId(tag.id);
+                                                                        setEditName(tag.name);
+                                                                        setEditColor(tag.color);
+                                                                    }}
+                                                                    className="btn-icon-pill"
+                                                                    style={{ color: contrastColor }}
+                                                                    title="Edit"
+                                                                >
+                                                                    <Edit2 size={16} />
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        handleDeleteTag(tag.id);
+                                                                    }}
+                                                                    className="btn-icon-pill"
+                                                                    style={{ color: contrastColor }}
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    );
+                                })
                             )}
                         </div>
 

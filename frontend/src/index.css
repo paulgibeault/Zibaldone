@@ -748,61 +748,97 @@ h1,
   }
 }
 
-.tag-management-item {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  padding: 1rem;
-  border-radius: 12px;
+.tag-row-pill {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s;
+  min-height: 50px;
+  gap: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: default;
 }
 
-.tag-management-item:hover {
-  border-color: var(--text-muted);
-  background: var(--bg-card-hover);
+.tag-row-pill:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  filter: brightness(1.1);
 }
 
-.tag-display {
+.tag-text {
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding-left: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag-actions-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Edit Mode Inline */
+.tag-edit-inline {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  width: 100%;
 }
 
-.tag-display .dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.tag-display .name {
+.tag-edit-inline input[type="text"] {
+  flex: 1;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  color: #0f172a;
   font-weight: 600;
 }
 
-.item-actions {
-  display: flex;
-  gap: 0.5rem;
+.tag-edit-inline input[type="text"]:focus {
+  outline: 2px solid var(--color-primary);
 }
 
-.btn-icon-v2 {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
+.tag-edit-inline input[type="color"] {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  padding: 0;
+  overflow: hidden;
   cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.btn-icon-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.25);
+  cursor: pointer;
   transition: all 0.2s;
+  padding: 0;
+  color: currentColor;
 }
 
-.btn-icon-v2:hover {
-  background: var(--bg-canvas);
-  color: var(--text-primary);
+.btn-icon-pill:hover {
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(1.1);
 }
 
-.btn-icon-v2.danger:hover {
-  color: var(--color-danger);
-  background: rgba(239, 68, 68, 0.1);
+.btn-icon-pill.danger:hover {
+  background: #ef4444;
+  color: white !important;
 }
 
 /* End of global styles */
