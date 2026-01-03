@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Tag as TagIcon, ArrowDownAZ, TrendingUp, Calendar } from 'lucide-react';
+import { Plus, Edit2, Trash2, ArrowDownAZ, ArrowUpAZ, TrendingUp, Calendar, ShieldCheck } from 'lucide-react';
 import { type Tag as TagType, createTag, deleteTag, updateTag, getItems, type ContentItem, approveTag } from '../api';
 import { useTags } from '../hooks/useTags';
 import { Tag } from './Tag';
+import { CreateTagModal } from './CreateTagModal';
 
 const TagManager = () => {
     const { allTags: tags, fetchTags } = useTags();
     const [tagUsage, setTagUsage] = useState<Record<string, number>>({});
-    const [newTagName, setNewTagName] = useState<string>('');
-    const [newTagColor, setNewTagColor] = useState<string>('#6366f1');
+
     const [loading, setLoading] = useState<boolean>(true);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editName, setEditName] = useState<string>('');
     const [editColor, setEditColor] = useState<string>('');
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     const [filterText, setFilterText] = useState<string>('');
     const [sortMode, setSortMode] = useState<'alphabetical' | 'popularity' | 'date'>('alphabetical');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+    const [showApprovedOnly, setShowApprovedOnly] = useState<boolean>(false);
 
     useEffect(() => {
         fetchData();
@@ -41,15 +44,13 @@ const TagManager = () => {
         }
     };
 
-    const handleCreateTag = async (e: React.FormEvent): Promise<void> => {
-        e.preventDefault();
-        if (!newTagName.trim()) return;
+    const handleCreateTag = async (name: string, color: string): Promise<void> => {
         try {
-            await createTag(newTagName, newTagColor);
-            setNewTagName('');
+            await createTag(name, color);
             fetchData();
         } catch (error) {
             console.error('Error creating tag:', error);
+            throw error;
         }
     };
 
@@ -83,31 +84,55 @@ const TagManager = () => {
     };
 
 
+    const handleSortChange = (mode: 'alphabetical' | 'popularity' | 'date') => {
+        if (sortMode === mode) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortMode(mode);
+            setSortDirection('asc'); // Default to asc for new mode, or maybe desc for popularity?
+            // Usually popularity is desc by default (most popular first).
+            if (mode === 'popularity' || mode === 'date') {
+                setSortDirection('desc');
+            } else {
+                setSortDirection('asc');
+            }
+        }
+    };
+
 
     // Filter and Sort Tags
     const getProcessedTags = () => {
-        // 1. Filter by text and approval (for cloud, maybe show all in list?)
-        // The requirement is: "unapproved tags should not be displayed in the tag cloud"
-        // But for "The list of tags", we might want to see them all?
-        // Let's assume list view shows all but supports filtering. Cloud hides unapproved.
+        let processed = tags;
 
-        return tags
-            .filter(tag => tag.name.toLowerCase().includes(filterText.toLowerCase()))
-            .sort((a, b) => {
-                if (sortMode === 'alphabetical') {
-                    return a.name.localeCompare(b.name);
-                } else if (sortMode === 'popularity') {
-                    const countA = tagUsage[a.id] || 0;
-                    const countB = tagUsage[b.id] || 0;
-                    return countB - countA;
-                } else if (sortMode === 'date') {
-                    // Fallback if created_at is missing (old tags)
-                    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-                    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-                    return dateB - dateA;
-                }
-                return 0;
-            });
+        // 1. Text Filter
+        if (filterText) {
+            processed = processed.filter(tag => tag.name.toLowerCase().includes(filterText.toLowerCase()));
+        }
+
+        // 2. Approved Filter
+        if (showApprovedOnly) {
+            processed = processed.filter(tag => tag.is_approved);
+        }
+
+        // 3. Sort
+        return processed.sort((a, b) => {
+            let comparison = 0;
+            if (sortMode === 'alphabetical') {
+                comparison = a.name.localeCompare(b.name);
+            } else if (sortMode === 'popularity') {
+                const countA = tagUsage[a.id] || 0;
+                const countB = tagUsage[b.id] || 0;
+                comparison = countA - countB;
+                if (comparison === 0) comparison = a.name.localeCompare(b.name);
+            } else if (sortMode === 'date') {
+                const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                comparison = dateA - dateB;
+                if (comparison === 0) comparison = a.name.localeCompare(b.name);
+            }
+
+            return sortDirection === 'asc' ? comparison : -comparison;
+        });
     };
 
     const processedTags = getProcessedTags();
@@ -117,152 +142,146 @@ const TagManager = () => {
         <div className="tag-manager-dashboard fade-in">
             <div className="manager-header">
                 <div>
-                    <h2>Tag Index</h2>
+                    <h2>Index</h2>
                     <p className="subtitle">Curate and organize your digital collection.</p>
                 </div>
-                <div className="stats-mini">
-                    <div className="stat-item">
-                        <TagIcon size={16} />
-                        <span>{tags.length} Unique Tags</span>
+
+                <div className="filter-controls" style={{ marginLeft: 'auto', marginRight: '1rem' }}>
+                    <input
+                        type="text"
+                        placeholder="Filter tags..."
+                        value={filterText}
+                        onChange={(e) => setFilterText(e.target.value)}
+                        className="filter-input-subtle"
+                    />
+                    <div className="sort-btn-group">
+                        <button
+                            className={`sort-btn ${showApprovedOnly ? 'active' : ''}`}
+                            onClick={() => setShowApprovedOnly(!showApprovedOnly)}
+                            title="Show Approved Only"
+                            style={{ borderRight: '1px solid var(--border-color)' }}
+                        >
+                            <ShieldCheck size={18} />
+                        </button>
+                        <button
+                            className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
+                            onClick={() => handleSortChange('alphabetical')}
+                            title="Sort A-Z"
+                        >
+                            {sortMode === 'alphabetical' && sortDirection === 'desc' ? <ArrowUpAZ size={18} /> : <ArrowDownAZ size={18} />}
+                        </button>
+                        <button
+                            className={`sort-btn ${sortMode === 'popularity' ? 'active' : ''}`}
+                            onClick={() => handleSortChange('popularity')}
+                            title="Sort by Popularity"
+                        >
+                            <TrendingUp size={18} className={sortMode === 'popularity' && sortDirection === 'asc' ? 'icon-flipped' : ''} style={{ transform: sortMode === 'popularity' && sortDirection === 'asc' ? 'scaleY(-1)' : 'none' }} />
+                        </button>
+                        <button
+                            className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
+                            onClick={() => handleSortChange('date')}
+                            title="Sort by Date"
+                        >
+                            <Calendar size={18} />
+                            {/* Indicator for date direction could be subtle or just rely on toggle behavior */}
+                        </button>
                     </div>
                 </div>
             </div>
 
             <div className="tag-management-grid">
-
-                <section className="create-tag-section">
-                    <h3>Create New Tag</h3>
-                    <form onSubmit={handleCreateTag} className="tag-form-modern">
-                        <div className="input-with-icon">
-                            <TagIcon size={18} className="input-icon" />
-                            <input
-                                type="text"
-                                placeholder="Tag name..."
-                                value={newTagName}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTagName(e.target.value)}
-                            />
-                        </div>
-                        <input
-                            type="color"
-                            value={newTagColor}
-                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTagColor(e.target.value)}
-                            className="color-pill"
-                        />
-                        <button type="submit" className="btn-circle-add" title="Add Tag">
-                            <Plus size={24} />
-                        </button>
-                    </form>
-                </section>
-
                 <section className="existing-tags-section">
-                    <div className="section-header-row">
-                        <h3>All Tags</h3>
-                        <div className="filter-controls">
-                            <input
-                                type="text"
-                                placeholder="Filter tags..."
-                                value={filterText}
-                                onChange={(e) => setFilterText(e.target.value)}
-                                className="filter-input-subtle"
-                            />
-                            <div className="sort-btn-group">
-                                <button
-                                    className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
-                                    onClick={() => setSortMode('alphabetical')}
-                                    title="Sort A-Z"
-                                >
-                                    <ArrowDownAZ size={18} />
-                                </button>
-                                <button
-                                    className={`sort-btn ${sortMode === 'popularity' ? 'active' : ''}`}
-                                    onClick={() => setSortMode('popularity')}
-                                    title="Sort by Popularity"
-                                >
-                                    <TrendingUp size={18} />
-                                </button>
-                                <button
-                                    className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
-                                    onClick={() => setSortMode('date')}
-                                    title="Sort by Date"
-                                >
-                                    <Calendar size={18} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="tag-grid-scroll">
-                        {loading ? (
-                            <div className="loading-small">Loading tags...</div>
-                        ) : (
-                            processedTags.map((tag: TagType) => (
-                                <div key={tag.id} className="tag-management-item">
-                                    {editingId === tag.id ? (
-                                        <div className="tag-edit-inline">
-                                            <input
-                                                type="text"
-                                                value={editName}
-                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
-                                                autoFocus
-                                            />
-                                            <input
-                                                type="color"
-                                                value={editColor}
-                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditColor(e.target.value)}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.preventDefault(); handleUpdateTag(tag.id); }}
-                                                className="btn-save"
-                                            >
-                                                Save
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => { e.preventDefault(); setEditingId(null); }}
-                                                className="btn-cancel"
-                                            >
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <Tag
-                                                tag={tag}
-                                                onApprove={async (id) => handleApproveTag(id)}
-                                                showApproveIcon={true}
-                                            />
-                                            <div className="item-actions">
+
+                    <CreateTagModal
+                        isOpen={isCreateModalOpen}
+                        onClose={() => setIsCreateModalOpen(false)}
+                        onCreate={handleCreateTag}
+                    />
+
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+                        <div className="tag-grid-scroll" style={{ flex: 1 }}>
+                            {loading ? (
+                                <div className="loading-small">Loading tags...</div>
+                            ) : (
+                                processedTags.map((tag: TagType) => (
+                                    <div key={tag.id} className="tag-management-item">
+                                        {editingId === tag.id ? (
+                                            <div className="tag-edit-inline">
+                                                <input
+                                                    type="text"
+                                                    value={editName}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                                                    autoFocus
+                                                />
+                                                <input
+                                                    type="color"
+                                                    value={editColor}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditColor(e.target.value)}
+                                                />
                                                 <button
                                                     type="button"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        setEditingId(tag.id);
-                                                        setEditName(tag.name);
-                                                        setEditColor(tag.color);
-                                                    }}
-                                                    className="btn-icon-v2"
-                                                    title="Edit"
+                                                    onClick={(e) => { e.preventDefault(); handleUpdateTag(tag.id); }}
+                                                    className="btn-save"
                                                 >
-                                                    <Edit2 size={14} />
+                                                    Save
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        handleDeleteTag(tag.id);
-                                                    }}
-                                                    className="btn-icon-v2 danger"
-                                                    title="Delete"
+                                                    onClick={(e) => { e.preventDefault(); setEditingId(null); }}
+                                                    className="btn-cancel"
                                                 >
-                                                    <Trash2 size={14} />
+                                                    Cancel
                                                 </button>
                                             </div>
-                                        </>
-                                    )}
-                                </div>
-                            ))
-                        )}
+                                        ) : (
+                                            <>
+                                                <Tag
+                                                    tag={tag}
+                                                    onApprove={async (id) => handleApproveTag(id)}
+                                                    showApproveIcon={true}
+                                                />
+                                                <div className="item-actions">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            setEditingId(tag.id);
+                                                            setEditName(tag.name);
+                                                            setEditColor(tag.color);
+                                                        }}
+                                                        className="btn-icon-v2"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit2 size={14} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            handleDeleteTag(tag.id);
+                                                        }}
+                                                        className="btn-icon-v2 danger"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <button
+                            className="btn-circle-add"
+                            title="Add Tag"
+                            onClick={() => setIsCreateModalOpen(true)}
+                            style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 0, alignSelf: 'flex-start' }}
+                        >
+                            <Plus size={24} />
+                        </button>
                     </div>
                 </section>
             </div>

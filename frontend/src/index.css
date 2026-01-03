@@ -652,9 +652,7 @@ h1,
 
 /* Management Grid */
 .tag-management-grid {
-  display: grid;
-  grid-template-columns: 350px 1fr;
-  gap: 3rem;
+  width: 100%;
 }
 
 .tag-form-modern {
@@ -731,11 +729,23 @@ h1,
 /* Tag List */
 .tag-grid-scroll {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   max-height: 600px;
   overflow-y: auto;
   padding-right: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .tag-grid-scroll {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .tag-grid-scroll {
+    grid-template-columns: 1fr;
+  }
 }
 
 .tag-management-item {
@@ -796,6 +806,13 @@ h1,
 }
 
 /* End of global styles */
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
 
 .picker-backdrop {
   position: fixed;

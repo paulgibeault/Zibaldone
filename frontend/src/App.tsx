@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { DropZone } from './components/DropZone';
-import { FileCard } from './components/FileCard';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { WelcomeModal } from './components/WelcomeModal';
 import { getItems, deleteItem, type ContentItem } from './api';
@@ -8,6 +7,7 @@ import './index.css';
 
 import TagManager from './components/TagManager';
 import { Explore } from './components/Explore';
+import { Heap } from './components/Heap';
 
 function App() {
   const [items, setItems] = useState<ContentItem[]>([]);
@@ -108,21 +108,14 @@ function App() {
       </div>
 
       {activeView === 'heap' && (
-        <>
-          <div className="item-list">
-            {items.map((item: ContentItem) => (
-              <FileCard
-                key={item.id}
-                item={item}
-                onDelete={handleDelete}
-                onRefresh={fetchItems}
-                isSelected={selectedItemId === item.id}
-                onSelect={() => setSelectedItemId(item.id)}
-                onDeselect={() => setSelectedItemId(null)}
-              />
-            ))}
-          </div>
-        </>
+        <Heap
+          items={items}
+          onDelete={handleDelete}
+          onRefresh={fetchItems}
+          selectedItemId={selectedItemId}
+          onSelect={(id) => setSelectedItemId(id)}
+          onDeselect={() => setSelectedItemId(null)}
+        />
       )}
 
       {activeView === 'tags' && <TagManager />}

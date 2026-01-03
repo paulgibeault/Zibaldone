@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { type Tag as TagType, getItems, type ContentItem, searchContent, deleteItem } from '../api';
 import { useTags } from '../hooks/useTags';
@@ -122,28 +122,21 @@ export const Explore = () => {
 
     return (
         <div className="explore-container fade-in">
-            <div className="manager-header" style={{ alignItems: 'center', paddingBottom: '1rem', marginBottom: '0.5rem', borderBottom: 'none' }}>
-                <div style={{ marginRight: '2rem' }}>
-                    <h2 style={{ marginBottom: '0.25rem', fontSize: '2rem' }}>Explore</h2>
-                    <p className="subtitle" style={{ margin: 0, fontSize: '0.9rem' }}>Discover connections in your collection.</p>
+            <div className="manager-header">
+                <div>
+                    <h2>Explore</h2>
+                    <p className="subtitle">Discover connections in your collection.</p>
                 </div>
 
-                <div className="search-container" style={{ flex: 1, maxWidth: '500px' }}>
+                <div className="filter-controls">
                     <div className="input-with-icon">
-                        <Search size={16} className="input-icon" style={{ left: '10px' }} />
+                        <Search size={16} className="input-icon" />
                         <input
                             type="text"
                             placeholder="Type to search..."
                             value={filterText}
                             onChange={(e) => setFilterText(e.target.value)}
-                            style={{
-                                padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                                width: '100%',
-                                fontSize: '1rem',
-                                borderRadius: '12px',
-                                background: 'var(--bg-card)',
-                                border: '1px solid var(--border-subtle)'
-                            }}
+                            className="filter-input-subtle"
                         />
                     </div>
                 </div>
