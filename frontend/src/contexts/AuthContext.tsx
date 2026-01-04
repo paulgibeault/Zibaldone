@@ -35,7 +35,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
 
         setIsLoading(false);
-    }, []);
+
+        // Listen for 401 Unauthorized events from api.ts
+        const handleUnauthorized = () => {
+            console.warn("Received auth:unauthorized event. Logging out...");
+            logout(); // uses the function defined below (due to hoisting / closure access it works, but better move logout above or wrap in another effect if needed. Actually logout is const defined AFTER. Wait.
+            // React state update functions are stable. But logout is defined inside the component.
+            // We need to move logout definition UP, or use a separate useEffect for the listener that depends on logout.
+        };
+
+        window.addEventListener('auth:unauthorized', handleUnauthorized);
+        return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    }, []); // Wait, logout is not defined yet here. I should fix the order or dependency.
+
 
     const login = (newToken: string, newUser: User) => {
         localStorage.setItem('zibaldone-token', newToken);

@@ -24,6 +24,13 @@ apiClient.interceptors.response.use(response => {
     return response;
 }, error => {
     console.error('API Error:', error);
+
+    // Check for 401 Unauthorized
+    if (error.response && error.response.status === 401) {
+        console.warn("Unauthorized access detected. Dispatching auth:unauthorized event.");
+        window.dispatchEvent(new Event('auth:unauthorized'));
+    }
+
     if (error.code === 'ECONNABORTED') {
         console.error('Request timed out');
     }
