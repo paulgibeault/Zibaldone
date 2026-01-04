@@ -10,3 +10,4 @@ httpx
 boto3
 qrcode[pil]
 passlib[bcrypt]
+tlsh

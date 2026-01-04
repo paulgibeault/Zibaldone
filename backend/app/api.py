@@ -31,17 +31,19 @@ async def finalize_upload(
     metadata: str = Form("{}"),
     content_type: Optional[str] = Form(None),
     checksum: Optional[str] = Form(None),
+    resolution: Optional[str] = Form(None),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
     return await item_service.finalize_upload(
-        session, original_filename, storage_path, current_user.id, metadata, content_type, checksum
+        session, original_filename, storage_path, current_user.id, metadata, content_type, checksum, resolution
     )
 
 @router.post("/upload", response_model=schemas.ContentItemRead)
 async def upload_content(
     file: UploadFile = File(...), 
     metadata: str = Form("{}"),
+    resolution: Optional[str] = Form(None),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
@@ -51,7 +53,7 @@ async def upload_content(
     storage_path = await storage.save(content, file.filename)
     
     return await item_service.finalize_upload(
-        session, file.filename, storage_path, current_user.id, metadata, file.content_type, checksum
+        session, file.filename, storage_path, current_user.id, metadata, file.content_type, checksum, resolution
     )
 
 @router.get("/items", response_model=List[schemas.ContentItemRead])

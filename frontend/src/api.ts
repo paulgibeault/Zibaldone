@@ -105,7 +105,7 @@ export const removeTagFromItem = async (itemId: string, tagId: string): Promise<
     return response.data;
 };
 
-export const uploadFile = async (file: File, metadata: Record<string, any> = {}): Promise<ContentItem> => {
+export const uploadFile = async (file: File, metadata: Record<string, any> = {}, resolution?: string): Promise<ContentItem> => {
     // 1. Get upload parameters from backend
     const paramsResponse = await apiClient.get('/upload/params', {
         params: { filename: file.name }
@@ -127,6 +127,9 @@ export const uploadFile = async (file: File, metadata: Record<string, any> = {})
         const formData = new FormData();
         formData.append('file', file);
         formData.append('metadata', JSON.stringify(metadata));
+        if (resolution) {
+            formData.append('resolution', resolution);
+        }
 
         const response = await apiClient.post('/upload', formData);
         return response.data;
@@ -137,6 +140,12 @@ export const uploadFile = async (file: File, metadata: Record<string, any> = {})
     finalizeData.append('original_filename', file.name);
     finalizeData.append('storage_path', storagePath);
     finalizeData.append('metadata', JSON.stringify(metadata));
+    if (metadata.checksum) {
+        finalizeData.append('checksum', metadata.checksum);
+    }
+    if (resolution) {
+        finalizeData.append('resolution', resolution);
+    }
 
     const finalizeResponse = await apiClient.post('/upload/finalize', finalizeData);
     return finalizeResponse.data;

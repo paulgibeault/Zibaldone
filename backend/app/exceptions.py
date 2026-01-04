@@ -39,3 +39,8 @@ class ValidationError(AppError):
     """Raised when validation fails."""
     def __init__(self, message: str = "Validation failed", details: Optional[Dict[str, Any]] = None):
         super().__init__(message, code="VALIDATION_FAILED", status_code=422, details=details)
+
+class IdentityConflictError(AppError):
+    """Raised when a file upload conflicts with an existing file identity."""
+    def __init__(self, message: str = "Identity conflict detected", details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, code="IDENTITY_CONFLICT", status_code=409, details=details)

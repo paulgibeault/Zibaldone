@@ -6,19 +6,139 @@ from sqlalchemy.orm import selectinload
 from app.models import ContentItem, Tag, ContentItemTagLink, ProcessingTask, TaskStatus
 
 # Forced update to trigger rebuild
-def get_next_version(session: Session, filename: str, owner_id: uuid.UUID, client_file_path: Optional[str] = None) -> int:
+def get_latest_item(session: Session, filename: str, owner_id: uuid.UUID, client_file_path: Optional[str] = None) -> Optional[ContentItem]:
     statement = select(ContentItem).where(ContentItem.original_filename == filename).where(ContentItem.owner_id == owner_id)
     
     if client_file_path:
         statement = statement.where(ContentItem.client_file_path == client_file_path)
     else:
-        # If no path provided, match items where path is NULL (or maybe items where path is filename? no, be strict)
+        # If no path provided, match items where path is NULL
         statement = statement.where(ContentItem.client_file_path == None)
 
     statement = statement.order_by(desc(ContentItem.version))
-    latest_item = session.exec(statement).first()
-    if latest_item:
-        return latest_item.version + 1
+    return session.exec(statement).first()
+
+def get_next_version(
+    session: Session, 
+    filename: str, 
+    owner_id: uuid.UUID, 
+    client_file_path: Optional[str] = None, 
+    signature: Optional[str] = None,
+    client_last_modified: Optional[str] = None,
+    client_size: Optional[int] = None,
+    tlsh_hash: Optional[str] = None,
+    resolution: Optional[str] = None
+) -> int:
+    import json
+    
+    # 0. RESOLUTION OVERRIDES
+    if resolution == 'new_file':
+        return 1
+    # If resolution == 'new_version', we simply proceed to return version+1 without raising conflicts.
+
+    # 1. EXPLICIT PATH: Trust it if provided and unique
+    is_explicit_path = client_file_path and client_file_path != filename
+    
+    if is_explicit_path:
+        # Trust the explicit path, ignore signature (user intends to update specific file)
+        return _get_next_version_db(session, filename, owner_id, client_file_path)
+
+    # 2. IMPLICIT/AMBIGUOUS PATH
+    # We query for items that also have ambiguous paths (None or same as filename)
+    statement = select(ContentItem)\
+        .where(ContentItem.original_filename == filename)\
+        .where(ContentItem.owner_id == owner_id)\
+        .order_by(desc(ContentItem.version))
+        
+    candidates = session.exec(statement).all()
+    
+    # Filter candidates to only those with implicit paths (None or == filename)
+    filtered_candidates = []
+    for c in candidates:
+        if c.client_file_path is None or c.client_file_path == c.original_filename:
+            filtered_candidates.append(c)
+            
+    if not filtered_candidates:
+        return 1
+        
+    latest_candidate = filtered_candidates[0]
+    
+    # If user explicitly said "new_version", skip checks
+    if resolution == 'new_version':
+        return latest_candidate.version + 1
+
+    # 3. IDENTITY CHECKS
+    # Use metrics to determine if this is likely the same file
+    
+    latest_meta = {}
+    try:
+        latest_meta = json.loads(latest_candidate.metadata_json)
+    except:
+        pass
+        
+    latest_client_ctx = latest_meta.get("client_context", {})
+    latest_signature = latest_client_ctx.get("signature")
+    
+    # A. Signature Check (Strongest Heuristic)
+    if latest_signature and signature:
+        if latest_signature != signature:
+             # Signature Mismatch - Likely different file
+             # TRY OPTION 3: FUZZY HASH RECOVERY
+             if _is_fuzzy_match(latest_meta.get("tlsh"), tlsh_hash):
+                 # It's a match! Just heavily edited.
+                 return latest_candidate.version + 1
+             else:
+                 # Real Conflict
+                 from app.exceptions import IdentityConflictError
+                 raise IdentityConflictError(
+                     message=f"File '{filename}' already exists but looks different.",
+                     details={"filename": filename}
+                 )
+        else:
+             # Signature Match - Headers match. 
+             # Check if the BODY is significantly different (Fuzzy Mismatch).
+             # If completely different, it might be a collision (e.g. same unrelated header).
+             if tlsh_hash and latest_meta.get("tlsh"):
+                 if not _is_fuzzy_match(latest_meta.get("tlsh"), tlsh_hash):
+                     # Significant difference despite header match.
+                     # Prompt user to be safe.
+                     from app.exceptions import IdentityConflictError
+                     raise IdentityConflictError(
+                         message=f"File '{filename}' has matching header but different content.",
+                         details={"filename": filename}
+                     )
+
+    # B. Metadata Check (Secondary)
+    # If signatures are missing (e.g. binary files), check creation time or size stability?
+    # Actually, size changes on edit. Creation time might be stable?
+    # For now, if no signature, we assume same file (legacy behavior) unless we add more strictness later.
+    
+    return latest_candidate.version + 1
+
+def _is_fuzzy_match(hash1: Optional[str], hash2: Optional[str]) -> bool:
+    """Returns True if two TLSH hashes are similar enough."""
+    if not hash1 or not hash2:
+        return False
+    try:
+        import tlsh
+        # diff() returns a score usually 0-1000+. 
+        # < 30 is strict match, < 100 is roughly similar.
+        score = tlsh.diff(hash1, hash2)
+        return score < 100
+    except ImportError:
+        # If tlsh not installed, fail safe (no match)
+        return False
+    except Exception:
+        return False
+
+def _get_next_version_db(session: Session, filename: str, owner_id: uuid.UUID, client_file_path: Optional[str]) -> int:
+    statement = select(ContentItem).where(ContentItem.original_filename == filename).where(ContentItem.owner_id == owner_id)
+    statement = statement.where(ContentItem.client_file_path == client_file_path)
+    statement = statement.order_by(desc(ContentItem.version))
+    
+    latest = session.exec(statement).first()
+    if latest:
+        return latest.version + 1
     return 1
 
 def get_items(
