@@ -5,6 +5,16 @@ from sqlmodel import SQLModel
 from app.models import ContentStatus, TaskStatus
 
 # --- Tag Schemas ---
+class UserRead(SQLModel):
+    id: uuid.UUID
+    display_name: str
+    is_admin: bool
+    profile_color: str
+
+class UserUpdate(SQLModel):
+    display_name: Optional[str] = None
+    profile_color: Optional[str] = None
+
 class TagBase(SQLModel):
     name: str
     color: str

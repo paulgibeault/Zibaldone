@@ -4,6 +4,10 @@ import os
 import uuid
 from typing import Dict, Any, Optional
 
+class StorageUnavailableError(Exception):
+    pass
+
+
 class StorageInterface(ABC):
     @abstractmethod
     async def save(self, file_content: bytes, original_filename: str) -> str:

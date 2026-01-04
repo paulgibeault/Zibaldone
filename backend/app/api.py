@@ -8,7 +8,7 @@ import hashlib
 
 from app.deps import get_current_user
 from app.models import User, get_session
-from app.services.storage import get_storage
+from app.services.storage import get_storage, StorageUnavailableError
 from app import crud, schemas
 from app.services import item_service
 
@@ -20,8 +20,11 @@ def calculate_checksum(content: bytes) -> str:
 
 @router.get("/upload/params")
 async def get_upload_params(filename: str):
-    params = await storage.get_upload_params(filename)
-    return params
+    try:
+        params = await storage.get_upload_params(filename)
+        return params
+    except StorageUnavailableError as e:
+        raise HTTPException(status_code=503, detail=f"Storage service unavailable: {str(e)}")
 
 @router.post("/upload/finalize", response_model=schemas.ContentItemRead)
 async def finalize_upload(
@@ -47,7 +50,10 @@ async def upload_content(
     content = await file.read()
     checksum = calculate_checksum(content)
     
-    storage_path = await storage.save(content, file.filename)
+    try:
+        storage_path = await storage.save(content, file.filename)
+    except StorageUnavailableError as e:
+        raise HTTPException(status_code=503, detail=f"Storage service unavailable: {str(e)}")
     
     return await item_service.finalize_upload(
         session, file.filename, storage_path, current_user.id, metadata, file.content_type, checksum

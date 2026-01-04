@@ -45,7 +45,7 @@ const Login: React.FC = () => {
         if (tokenInput) {
             // Mock user for bootstrap token since we don't have a verify endpoint handy yet
             // Or better: call a "whoami" endpoint. For phase 3, let's just assume Admin.
-            login(tokenInput, { id: 'bootstrap', display_name: 'Admin', is_admin: true });
+            login(tokenInput, { id: 'bootstrap', display_name: 'Admin', is_admin: true, profile_color: '#6366f1' });
             navigate('/');
         }
     };

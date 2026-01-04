@@ -13,6 +13,7 @@ class ContentStatus(str, Enum):
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     display_name: str = Field(index=True)
+    profile_color: str = Field(default="#6366f1")
     is_admin: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

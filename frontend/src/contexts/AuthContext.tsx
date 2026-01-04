@@ -4,6 +4,7 @@ interface User {
     id: string;
     display_name: string;
     is_admin: boolean;
+    profile_color: string;
 }
 
 interface AuthContextType {
@@ -12,6 +13,7 @@ interface AuthContextType {
     isLoading: boolean;
     login: (token: string, user: User) => void;
     logout: () => void;
+    updateUser: (user: User) => void;
     isAuthenticated: boolean;
 }
 
@@ -49,6 +51,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
     };
 
+    const updateUser = (updatedUser: User) => {
+        localStorage.setItem('zibaldone-user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -56,6 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             isLoading,
             login,
             logout,
+            updateUser,
             isAuthenticated: !!token
         }}>
             {children}

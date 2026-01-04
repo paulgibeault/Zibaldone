@@ -12,7 +12,8 @@ storage = get_storage()
 def enrich_item(item: ContentItem) -> schemas.ContentItemRead:
     url = storage.get_download_url(item.storage_path)
     if not url:
-        # Local file, point to our own download endpoint
+        # Local file or S3 error, point to our own download endpoint
+        # If it's S3 error, this endpoint will likely 404, which is better than 500
         url = f"/api/items/{item.id}/download"
     
     # Map tags to TagRead

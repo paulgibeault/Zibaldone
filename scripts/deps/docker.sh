@@ -79,8 +79,8 @@ cleanup_docker() {
     # Standard (non-full or declined) cleanup: just stop containers if they are running
     if command_exists docker; then
         if docker info >/dev/null 2>&1; then
-            log_info "Stopping Zibaldone containers..."
-            $DOCKER_COMPOSE_CMD down 2>/dev/null || true
+            log_info "Stopping Zibaldone containers and removing local images..."
+            $DOCKER_COMPOSE_CMD down --rmi local 2>/dev/null || true
         fi
     fi
 }

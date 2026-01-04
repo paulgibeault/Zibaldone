@@ -5,6 +5,7 @@ import secrets
 import uuid
 
 from app.models import get_session, User, Invite, InviteType
+from app import schemas
 from app.services.auth import create_session, create_user
 from app.deps import get_current_user, get_current_admin_user
 
@@ -96,6 +97,27 @@ def join(
         "user": {
             "id": user.id,
             "display_name": user.display_name,
-            "is_admin": user.is_admin
+            "is_admin": user.is_admin,
+            "profile_color": user.profile_color
         }
     }
+
+@router.get("/me", response_model=schemas.UserRead)
+def read_users_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@router.put("/me", response_model=schemas.UserRead)
+def update_user_me(
+    user_update: schemas.UserUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if user_update.display_name is not None:
+        current_user.display_name = user_update.display_name
+    if user_update.profile_color is not None:
+        current_user.profile_color = user_update.profile_color
+    
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+    return current_user

@@ -5,12 +5,14 @@ import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { WelcomeModal } from './components/WelcomeModal';
 import { getItems, deleteItem, type ContentItem } from './api';
 import './index.css';
+import './App.css';
 
 import TagManager from './components/TagManager';
 import { Explore } from './components/Explore';
 import { Heap } from './components/Heap';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
+import { ProfilePill } from './components/ProfilePill';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.JSX.Element }) => {
@@ -33,7 +35,8 @@ function MainApp() {
   const [items, setItems] = useState<ContentItem[]>([]);
   const [activeView, setActiveView] = useState<'heap' | 'tags' | 'explore'>('heap');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const { logout, user } = useAuth();
+  // const { logout, user } = useAuth(); // Unused in MainApp now
+
 
   const fetchItems = async () => {
     try {
@@ -90,10 +93,11 @@ function MainApp() {
   return (
     <div className="container">
       <WelcomeModal />
-      <ThemeSwitcher />
 
-      <div style={{ position: 'absolute', top: '1rem', right: '4rem', fontSize: '0.8rem' }}>
-        Logged in as {user?.display_name} <button onClick={logout} style={{ marginLeft: '0.5rem' }}>Logout</button>
+
+      <div className="header-controls">
+        <ThemeSwitcher />
+        <ProfilePill />
       </div>
 
       {/* Header Drop Zone */}
