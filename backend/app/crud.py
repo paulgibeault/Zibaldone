@@ -6,8 +6,16 @@ from sqlalchemy.orm import selectinload
 from app.models import ContentItem, Tag, ContentItemTagLink, ProcessingTask, TaskStatus
 
 # Forced update to trigger rebuild
-def get_next_version(session: Session, filename: str, owner_id: uuid.UUID) -> int:
-    statement = select(ContentItem).where(ContentItem.original_filename == filename).where(ContentItem.owner_id == owner_id).order_by(desc(ContentItem.version))
+def get_next_version(session: Session, filename: str, owner_id: uuid.UUID, client_file_path: Optional[str] = None) -> int:
+    statement = select(ContentItem).where(ContentItem.original_filename == filename).where(ContentItem.owner_id == owner_id)
+    
+    if client_file_path:
+        statement = statement.where(ContentItem.client_file_path == client_file_path)
+    else:
+        # If no path provided, match items where path is NULL (or maybe items where path is filename? no, be strict)
+        statement = statement.where(ContentItem.client_file_path == None)
+
+    statement = statement.order_by(desc(ContentItem.version))
     latest_item = session.exec(statement).first()
     if latest_item:
         return latest_item.version + 1
@@ -43,10 +51,34 @@ def get_items(
         subquery = (
             select(1)
             .where(c2.original_filename == ContentItem.original_filename)
-            .where(c2.version > ContentItem.version)
         )
+        
+        # We need to correlate by client_file_path too.
+        # If ContentItem.client_file_path is NULL, c2.client_file_path must be NULL.
+        # If ContentItem.client_file_path is "foo", c2.client_file_path must be "foo".
+        # Simple equality works if both are non-null. For NULL equality, we might need care.
+        # SQLModel/SQLAlchemy '==' usually handles None as "IS NULL" in WHERE generation?
+        # But here we are comparing two columns.
+        # Postgres supports "IS NOT DISTINCT FROM". SQLite supports "IS".
+        # Let's use the `is_not_distinct_from` operator if available or standard `==`.
+        # Actually, for SQLite, `IS` works for comparing two columns including NULLs.
+        # `where(c2.client_file_path.is_(ContentItem.client_file_path))`? No `is_` creates `IS NULL` check for value.
+        # `where(c2.client_file_path == ContentItem.client_file_path)` generates `a = b`. `NULL = NULL` is False.
+        # We need `(c2.client_file_path == ContentItem.client_file_path) | ((c2.client_file_path == None) & (ContentItem.client_file_path == None))`
+        
+        from sqlalchemy import or_, and_
+        subquery = subquery.where(
+            or_(
+                c2.client_file_path == ContentItem.client_file_path,
+                and_(c2.client_file_path == None, ContentItem.client_file_path == None)
+            )
+        )
+        
+        subquery = subquery.where(c2.version > ContentItem.version)
+
         statement = statement.where(~subquery.exists())
     
+    statement = statement.order_by(desc(ContentItem.created_at))
     return session.exec(statement).all()
 
 def get_item(session: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> Optional[ContentItem]:
@@ -65,6 +97,23 @@ def create_item(session: Session, item: ContentItem) -> ContentItem:
     session.commit()
     session.refresh(item)
     return item
+
+def get_item_versions(session: Session, item_id: uuid.UUID, owner_id: uuid.UUID) -> List[ContentItem]:
+    # 1. Get the item to identify key attributes
+    current_item = get_item(session, item_id, owner_id)
+    if not current_item:
+        return []
+        
+    # 2. Find siblings
+    statement = select(ContentItem).where(ContentItem.original_filename == current_item.original_filename).where(ContentItem.owner_id == owner_id)
+    
+    if current_item.client_file_path:
+        statement = statement.where(ContentItem.client_file_path == current_item.client_file_path)
+    else:
+        statement = statement.where(ContentItem.client_file_path == None)
+        
+    statement = statement.order_by(desc(ContentItem.version))
+    return session.exec(statement).all()
 
 def update_item_metadata(session: Session, item: ContentItem, metadata: dict) -> ContentItem:
     import json

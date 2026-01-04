@@ -22,13 +22,27 @@ def enrich_item(item: ContentItem) -> schemas.ContentItemRead:
     # Map tasks to ProcessingTaskRead
     tasks = [schemas.ProcessingTaskRead.model_validate(t) for t in item.tasks]
     
+    # Inject version into metadata for visibility
+    meta_dict = {}
+    if item.metadata_json:
+        try:
+            meta_dict = json.loads(item.metadata_json)
+        except json.JSONDecodeError:
+            pass
+            
+    meta_dict['version'] = item.version
+    if item.client_file_path:
+        meta_dict['client_file_path'] = item.client_file_path
+        
     return schemas.ContentItemRead(
         id=item.id,
         status=item.status,
         original_filename=item.original_filename,
+        version=item.version,
+        client_file_path=item.client_file_path,
         storage_path=item.storage_path,
         created_at=item.created_at,
-        metadata_json=item.metadata_json,
+        metadata_json=json.dumps(meta_dict),
         download_url=url,
         tags=tags,
         tasks=tasks
@@ -46,7 +60,20 @@ async def finalize_upload(
     content_type: Optional[str] = None,
     checksum: Optional[str] = None
 ) -> schemas.ContentItemRead:
-    version = crud.get_next_version(session, original_filename, owner_id)
+    version = 1
+    client_file_path = None
+    
+    # Extract client_file_path from metadata if available
+    if metadata:
+        try:
+            meta_dict = json.loads(metadata)
+            client_ctx = meta_dict.get("client_context", {})
+            # Use filePath if available, otherwise None
+            client_file_path = client_ctx.get("filePath")
+        except json.JSONDecodeError:
+            pass
+            
+    version = crud.get_next_version(session, original_filename, owner_id, client_file_path)
     
     content_item = ContentItem(
         original_filename=original_filename,
@@ -56,7 +83,8 @@ async def finalize_upload(
         metadata_json=metadata,
         version=version,
         content_type=content_type,
-        checksum=checksum
+        checksum=checksum,
+        client_file_path=client_file_path
     )
     
     item = crud.create_item(session, content_item)

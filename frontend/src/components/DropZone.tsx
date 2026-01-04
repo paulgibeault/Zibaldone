@@ -79,7 +79,15 @@ export const DropZone: React.FC<DropZoneProps> = ({ onUploadComplete }) => {
                     type: file.type,
                     lastModified: file.lastModified,
                     lastModifiedDate: new Date(file.lastModified).toISOString(),
-                    ...extraMetadata
+                    ...extraMetadata,
+                    client_context: {
+                        userAgent: navigator.userAgent,
+                        platform: navigator.platform,
+                        language: navigator.language,
+                        origin: window.location.origin,
+                        // @ts-ignore - path exists in Electron / some contexts
+                        filePath: (file as any).path || file.name
+                    }
                 };
                 await uploadFile(file, metadata);
                 console.log(`Uploaded ${file.name}`);

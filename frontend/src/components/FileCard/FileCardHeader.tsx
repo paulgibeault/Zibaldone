@@ -45,6 +45,11 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                         <h3 className="filename" title={item.original_filename}>
                             {item.original_filename}
                         </h3>
+                        {item.client_file_path && (
+                            <div className="source-path" title={item.client_file_path} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                                <span style={{ opacity: 0.7 }}>Source: </span> {item.client_file_path}
+                            </div>
+                        )}
                         <div className="card-tabs-nav-compact">
                             <button
                                 type="button"

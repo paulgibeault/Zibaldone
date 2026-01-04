@@ -58,6 +58,8 @@ class ContentItemRead(SQLModel):
     id: uuid.UUID
     status: ContentStatus
     original_filename: str
+    version: int
+    client_file_path: Optional[str] = None
     storage_path: str
     created_at: datetime
     metadata_json: Optional[str]

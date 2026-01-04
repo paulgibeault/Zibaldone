@@ -83,6 +83,7 @@ class ContentItem(SQLModel, table=True):
     version: int = Field(default=1, index=True)
     content_type: Optional[str] = Field(default=None, index=True)
     checksum: Optional[str] = Field(default=None, index=True) # SHA-256 for duplication detection
+    client_file_path: Optional[str] = Field(default=None, index=True) # Full path from client for smart versioning
     storage_path: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     metadata_json: Optional[str] = Field(default="{}") # Storing simple JSON as string for SQLite simplicity initially

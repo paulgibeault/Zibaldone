@@ -1,10 +1,10 @@
 # Zibaldone Roadmap / Todo
 
 ## Core System Improvements
-- [ ] **Enhanced Upload Context**: Extract detailed context from the client during file upload (client info, browser info, full file path, OS user info) to better track and understand selected files.
+- [x] **Enhanced Upload Context**: Extract detailed context from the client during file upload (client info, browser info, full file path, OS user info) to better track and understand selected files.
 - [ ] **Recursive Folder Support**: Enable uploading entire folders recursively.
 - [ ] **Queue Management**: Efficiently manage upload and processing queues to handle large batches of files.
-- [ ] **Smart Versioning**: Use client info and full file path to determine if a file is new or a new version of an existing file.
+- [x] **Smart Versioning**: Use client info and full file path to determine if a file is new or a new version of an existing file.
 
 ## Explore View
 - [ ] **Tag Filtering**: 
@@ -28,8 +28,8 @@
         - **Level 2**: `SKILL.md` body provides core instructions (loaded on demand).
         - **Level 3**: Additional files (e.g., `reference.md`, scripts) linked from `SKILL.md` (loaded only when specifically needed).
     - [ ] **Code Execution**: Skills can include executable scripts (e.g., Python tools) for deterministic operations.
-- [ ] **Sorting**: Sort items by "date updated".
-- [ ] **Source Visibility**: Display which client a file was last uploaded from.
+- [x] **Sorting**: Sort items by "date updated".
+- [x] **Source Visibility**: Display which client a file was last uploaded from.
 
 ## UI/UX Refinements
 - [ ] **Generated Titles**: Files should use a generated title displayed on file cards.

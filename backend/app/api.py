@@ -82,6 +82,11 @@ async def download_item(item_id: uuid.UUID, session: Session = Depends(get_sessi
         
     return FileResponse(full_path, filename=item.original_filename)
 
+@router.get("/items/{item_id}/versions", response_model=List[schemas.ContentItemRead])
+async def get_item_versions(item_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
+    versions = crud.get_item_versions(session, item_id, current_user.id)
+    return [item_service.enrich_item(item) for item in versions]
+
 @router.put("/items/{item_id}/metadata", response_model=schemas.ContentItemRead)
 async def update_item_metadata(item_id: uuid.UUID, metadata: dict, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     item = crud.get_item(session, item_id, current_user.id)

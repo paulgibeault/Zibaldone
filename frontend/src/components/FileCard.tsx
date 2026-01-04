@@ -26,29 +26,54 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
     const [textContent, setTextContent] = useState<string | null>(null);
     const [isLoadingContent, setIsLoadingContent] = useState(false);
 
+    // Internal state for version switching
+    const [currentItem, setCurrentItem] = useState<ContentItem>(item);
+    const [versions, setVersions] = useState<ContentItem[]>([]);
+
+    useEffect(() => {
+        setCurrentItem(item);
+    }, [item]);
+
+    // Fetch versions when entering View tab or mounting if active
+    useEffect(() => {
+        if (activeTab === 'preview') {
+            import('../api').then(api => {
+                api.getItemVersions(currentItem.id).then(setVersions).catch(console.error);
+            });
+        }
+    }, [activeTab, currentItem.id]); // Re-fetch if we switch item context? Or maybe just on mount?
+    // Actually, getting versions for 'currentItem.id' is tricky if we switch to an old version ID.
+    // But 'getItemVersions' fetches by looking up Original Filename + Path. So any version ID works.
+
+    // Update dependent variables to use currentItem
+    const displayItem = currentItem;
+
     const viewMode: ViewMode = isFullscreen ? 'fullscreen' : (isSelected ? 'standard' : 'minimal');
 
     const metadata = useMemo(() => {
         try {
-            return JSON.parse(item.metadata_json || '{}');
+            return JSON.parse(displayItem.metadata_json || '{}');
         } catch (e) {
             console.error("Failed to parse metadata", e);
             return {};
         }
-    }, [item.metadata_json]);
+    }, [displayItem.metadata_json]);
 
-    const fileCategory = useMemo(() => getFileCategory(metadata.type, item.original_filename), [metadata.type, item.original_filename]);
+    const fileCategory = useMemo(() => getFileCategory(metadata.type, displayItem.original_filename), [metadata.type, displayItem.original_filename]);
 
     useEffect(() => {
         const textBased = isTextBased(fileCategory);
 
-        if (activeTab === 'preview' && textBased && item.download_url && !textContent && !isLoadingContent) {
+        if (activeTab === 'preview' && textBased && displayItem.download_url && !textContent && !isLoadingContent) {
+            // Reset content when item changes?
+            // See dependency list.
+
             const fetchContent = async () => {
                 setIsLoadingContent(true);
                 try {
-                    const url = item.download_url!.startsWith('http')
-                        ? item.download_url!
-                        : `http://${window.location.hostname}:8000${item.download_url!}`;
+                    const url = displayItem.download_url!.startsWith('http')
+                        ? displayItem.download_url!
+                        : `http://${window.location.hostname}:8000${displayItem.download_url!}`;
                     const response = await axios.get(url, { responseType: 'text' });
                     setTextContent(response.data);
                 } catch (err) {
@@ -60,7 +85,12 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
             };
             fetchContent();
         }
-    }, [activeTab, item.download_url, fileCategory, textContent, isLoadingContent]);
+    }, [activeTab, displayItem.download_url, fileCategory, textContent, isLoadingContent, displayItem.id]);
+
+    // Clear text content when item changes
+    useEffect(() => {
+        setTextContent(null);
+    }, [displayItem.id]);
 
     const formatSize = useCallback((bytes?: number): string => {
         if (!bytes) return 'N/A';
@@ -138,7 +168,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
     const renderStandardView = (isFull: boolean = false) => (
         <div className={`file-card-inner ${isFull ? 'expanded-inner' : ''}`}>
             <FileCardHeader
-                item={item}
+                item={displayItem}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 isFullscreen={isFull}
@@ -152,7 +182,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
             />
 
             <FileCardContent
-                item={item}
+                item={displayItem}
                 activeTab={activeTab}
                 metadata={metadata}
                 metadataView={metadataView}
@@ -162,11 +192,13 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                 formatMetadataKey={formatMetadataKey}
                 formatMetadataValue={formatMetadataValue}
                 onRefresh={onRefresh}
+                itemVersions={versions}
+                onVersionSelect={setCurrentItem}
             />
 
             <FileCardFooter
-                itemId={item.id}
-                currentItemTags={item.tags || []}
+                itemId={displayItem.id}
+                currentItemTags={displayItem.tags || []}
                 onRefresh={onRefresh}
                 onDelete={onDelete}
             />
@@ -181,7 +213,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                 <div className="fullscreen-container" onClick={(e) => e.stopPropagation()}>
                     <div className={`file-card-inner expanded-inner`}>
                         <FileCardHeader
-                            item={item}
+                            item={displayItem}
                             activeTab={activeTab}
                             onTabChange={setActiveTab}
                             isFullscreen={true}
@@ -195,7 +227,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                         />
 
                         <FileCardContent
-                            item={item}
+                            item={displayItem}
                             activeTab={activeTab}
                             metadata={metadata}
                             metadataView={metadataView}
@@ -205,11 +237,13 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                             formatMetadataKey={formatMetadataKey}
                             formatMetadataValue={formatMetadataValue}
                             onRefresh={onRefresh}
+                            itemVersions={versions}
+                            onVersionSelect={setCurrentItem}
                         />
 
                         <FileCardFooter
-                            itemId={item.id}
-                            currentItemTags={item.tags || []}
+                            itemId={displayItem.id}
+                            currentItemTags={displayItem.tags || []}
                             onRefresh={onRefresh}
                             onDelete={onDelete}
                         />

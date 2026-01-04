@@ -15,6 +15,8 @@ interface FileCardContentProps {
     formatMetadataKey: (key: string) => string;
     formatMetadataValue: (key: string, value: any) => React.ReactNode;
     onRefresh: () => void;
+    itemVersions?: ContentItem[];
+    onVersionSelect?: (versionItem: ContentItem) => void;
 }
 
 export const FileCardContent: React.FC<FileCardContentProps> = ({
@@ -27,7 +29,9 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     isLoadingContent,
     formatMetadataKey,
     formatMetadataValue,
-    onRefresh
+    onRefresh,
+    itemVersions = [],
+    onVersionSelect
 }) => {
     const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
     const [isEditing, setIsEditing] = React.useState(false);
@@ -40,12 +44,9 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     );
 
     const handleStartEdit = () => {
-        // Filter out tags from the editor
         const { tags, ...rest } = metadata;
         setEditMetadata(rest);
         setIsEditing(true);
-        // Force raw view for editing if desired, or keep as is?
-        // Let's keep it in the "rendered" container but show inputs
         onMetadataViewChange('rendered');
     };
 
@@ -57,15 +58,6 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     const handleSaveEdit = async () => {
         setIsSaving(true);
         try {
-            // Re-merge with original tags if needed? No, backend handles it?
-            // Wait, we are sending the whole metadata object.
-            // If we send it without 'tags', and the backend just overwrites 'metadata_json',
-            // then 'tags' key will be lost from 'metadata_json'.
-            // This is INTENTIONAL as per the plan to unlink tags from metadata.
-
-            // However, we should be careful not to lose other things?
-            // The user sees what they edit.
-
             await import('../../api').then(m => m.updateItemMetadata(item.id, editMetadata));
             setIsEditing(false);
             onRefresh();
@@ -103,7 +95,6 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
         }
 
         const newMeta: Record<string, any> = {};
-        // Preserve order
         Object.keys(editMetadata).forEach(k => {
             if (k === oldKey) {
                 newMeta[newKey] = editMetadata[oldKey];
@@ -114,6 +105,11 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
         setEditMetadata(newMeta);
     };
 
+    // Sort versions descending
+    const sortedVersions = React.useMemo(() => {
+        return [...itemVersions].sort((a, b) => b.version - a.version);
+    }, [itemVersions]);
+
     return (
         <div className="card-content-area-v2">
             {activeTab === 'info' && (
@@ -123,6 +119,19 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                         <p className="summary-text">
                             {metadata.summary || "No summary available. Processing might still be in progress."}
                         </p>
+                    </div>
+
+                    <div className="metadata-grid" style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+                        <div className="meta-key">Version</div>
+                        <div className="meta-value">v{item.version}</div>
+                        {item.client_file_path && (
+                            <>
+                                <div className="meta-key">Source Path</div>
+                                <div className="meta-value" style={{ wordBreak: 'break-all' }}>{item.client_file_path}</div>
+                            </>
+                        )}
+                        <div className="meta-key">Created</div>
+                        <div className="meta-value">{new Date(item.created_at).toLocaleString()}</div>
                     </div>
 
                     {item.tasks && item.tasks.length > 0 && (
@@ -179,6 +188,25 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
 
             {activeTab === 'preview' && (
                 <div className="preview-tab fade-in">
+                    {sortedVersions.length > 1 && (
+                        <div className="version-selector-bar" style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-secondary)' }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Viewing Version:</span>
+                            <select
+                                value={item.id}
+                                onChange={(e) => {
+                                    const selected = sortedVersions.find(v => v.id === e.target.value);
+                                    if (selected && onVersionSelect) onVersionSelect(selected);
+                                }}
+                                style={{ padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}
+                            >
+                                {sortedVersions.map(v => (
+                                    <option key={v.id} value={v.id}>
+                                        v{v.version} - {new Date(v.created_at).toLocaleDateString()}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     <div className="preview-container">
                         <FilePreview
                             item={item}
@@ -189,6 +217,8 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* ... metadata tab ... */}
 
             {activeTab === 'metadata' && (
                 <div className="metadata-tab-container fade-in">
