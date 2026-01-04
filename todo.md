@@ -5,6 +5,7 @@
 - [ ] **Recursive Folder Support**: Enable uploading entire folders recursively.
 - [ ] **Queue Management**: Efficiently manage upload and processing queues to handle large batches of files.
 - [x] **Smart Versioning**: Use client info and full file path to determine if a file is new or a new version of an existing file.
+- [ ] **Dynamic File Processing**: Enable execution and tracking of processing tasks at the ContentItem level. Align to accepted task management standards/frameworks (e.g. Atomic Agents).
 
 ## Explore View
 - [ ] **Tag Filtering**: 
@@ -37,3 +38,19 @@
     - [ ] Attempt to display content directly in the file card view tab (Text, Markdown, Image, Video).
     - [ ] Provide an option to select an external tool for unrecognized file types.
 - [ ] **Maximized View**: Maximized file cards should occupy the entire width of the screen.
+- [ ] **File Card Tags**:
+    - [ ] Minimized View: Text-based tags (remove pills), appropriate color, comma delimited.
+    - [ ] Support two lines of text; mouseover shows full list.
+- [ ] **File Card Summary Tab**:
+    - [ ] Show only Version (remove File and Created).
+    - [ ] Use a more design-centric placement for version info.
+- [ ] **File Card Processing History**:
+    - [ ] List most recent tasks first.
+    - [ ] Make section scrollable and collapsible.
+
+## Admin & User Management
+- [ ] **Admin UI**: Interface to create and send invitations.
+- [ ] **Device Management**: User UI to list and manage connected devices.
+
+## Known Issues
+- [ ] **Profile UI**: Fix error when saving profile changes.
