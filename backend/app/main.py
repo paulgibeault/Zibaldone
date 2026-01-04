@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import router as api_router
 from contextlib import asynccontextmanager
@@ -7,6 +8,7 @@ from app.workers import process_unprocessed_items
 from app.services.auth import bootstrap_auth
 from sqlmodel import Session
 from app.models import engine
+from app.exceptions import AppError
 import asyncio
 
 @asynccontextmanager
@@ -47,6 +49,27 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Zibaldone", lifespan=lifespan)
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.code,
+                "message": exc.message,
+                "details": exc.details
+            }
+        }
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"Global Exception Handler Caught: {exc}") # Simple logging
+    return JSONResponse(
+        status_code=500,
+        content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred."}}
+    )
 
 # CORS - Allow all for local development convenience
 app.add_middleware(

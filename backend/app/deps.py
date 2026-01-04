@@ -1,9 +1,10 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
 from app.models import get_session, User, Session as UserSession
 from app.services.auth import get_token_hash
 from datetime import datetime, timezone
+from app.exceptions import AuthenticationError, PermissionError
 
 # We use auto_error=False to allow optional auth (for now) or manual handling
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token", auto_error=False)
@@ -41,19 +42,12 @@ def get_current_user(
     user: User | None = Depends(get_current_user_optional)
 ) -> User:
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_41_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationError("Not authenticated")
     return user
 
 def get_current_admin_user(
     user: User = Depends(get_current_user)
 ) -> User:
     if not user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="The user doesn't have enough privileges",
-        )
+        raise PermissionError("The user doesn't have enough privileges")
     return user

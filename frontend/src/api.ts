@@ -119,11 +119,7 @@ export const uploadFile = async (file: File, metadata: Record<string, any> = {})
         formData.append('file', file);
         formData.append('metadata', JSON.stringify(metadata));
 
-        const response = await apiClient.post('/upload', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+        const response = await apiClient.post('/upload', formData);
         return response.data;
     }
 

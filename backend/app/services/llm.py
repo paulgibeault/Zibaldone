@@ -7,6 +7,8 @@ from pathlib import Path
 import logging
 from datetime import datetime
 
+from app.exceptions import ServiceUnavailable
+
 # Setup LLM Logger
 log_dir = Path(__file__).parent.parent.parent / "logs"
 log_dir.mkdir(exist_ok=True)
@@ -96,6 +98,7 @@ JSON Result:
     async def generate_metadata(self, file_path: str, content_text: Optional[str] = None, content_bytes: Optional[bytes] = None) -> Dict[str, Any]:
         """
         Generates metadata for the given file, using vision for images if supported.
+        Raises ServiceUnavailable or other exceptions on failure.
         """
         ext = Path(file_path).suffix
         file_type = self._get_type_for_extension(ext)
@@ -153,74 +156,72 @@ JSON Result:
             ]
 
         try:
-            try:
-                # Log Request
+            # Log Request
+            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+                llm_logger.info(f"--- LLM REQUEST: {Path(file_path).name} ---")
+                llm_logger.info(f"Model: {self.model}")
+                llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
+
+            response = await acompletion(
+                model=self.model,
+                api_base=api_base,
+                messages=messages,
+            )
+        except Exception as e:
+            # Fallback for vision failure (e.g. model doesn't support images)
+            if file_type == "image":
+                print(f"Vision processing failed: {e}. Falling back to text prompt.")
+                
+                # Create text-only fallback prompt
+                fallback_prompt = f"{prompt}\nFilename: {Path(file_path).name}\n[Image content could not be processed, please infer metadata from filename]"
+                
+                messages = [
+                    {"role": "user", "content": fallback_prompt}
+                ]
+                
+                # Log Fallback Request
                 if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
-                    llm_logger.info(f"--- LLM REQUEST: {Path(file_path).name} ---")
+                    llm_logger.info(f"--- LLM FALLBACK REQUEST: {Path(file_path).name} ---")
                     llm_logger.info(f"Model: {self.model}")
                     llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
 
-                response = await acompletion(
-                    model=self.model,
-                    api_base=api_base,
-                    messages=messages,
-                )
-            except Exception as e:
-                # Fallback for vision failure (e.g. model doesn't support images)
-                if file_type == "image":
-                    print(f"Vision processing failed: {e}. Falling back to text prompt.")
-                    
-                    # Create text-only fallback prompt
-                    fallback_prompt = f"{prompt}\nFilename: {Path(file_path).name}\n[Image content could not be processed, please infer metadata from filename]"
-                    
-                    messages = [
-                        {"role": "user", "content": fallback_prompt}
-                    ]
-                    
-                    # Log Fallback Request
-                    if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
-                        llm_logger.info(f"--- LLM FALLBACK REQUEST: {Path(file_path).name} ---")
-                        llm_logger.info(f"Model: {self.model}")
-                        llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
-
+                try:
                     response = await acompletion(
                         model=self.model,
                         api_base=api_base,
                         messages=messages,
                     )
-                else:
-                    raise e
-            
-            content = response.choices[0].message.content.strip()
-            
-            # Log Response
-            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
-                llm_logger.info(f"--- LLM RESPONSE: {Path(file_path).name} ---")
-                llm_logger.info(f"Raw Response: {content}")
-            
-            # Robust JSON extraction
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0].strip()
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0].strip()
-            
-            if "{" in content and "}" in content:
-                start_index = content.find("{")
-                end_index = content.rfind("}")
-                if start_index != -1 and end_index != -1:
-                    content = content[start_index:end_index+1]
+                except Exception as ex:
+                    raise ServiceUnavailable(f"LLM Service failed: {ex}")
+            else:
+                raise ServiceUnavailable(f"LLM Service failed: {e}")
+        
+        content = response.choices[0].message.content.strip()
+        
+        # Log Response
+        if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+            llm_logger.info(f"--- LLM RESPONSE: {Path(file_path).name} ---")
+            llm_logger.info(f"Raw Response: {content}")
+        
+        # Robust JSON extraction
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+        
+        if "{" in content and "}" in content:
+            start_index = content.find("{")
+            end_index = content.rfind("}")
+            if start_index != -1 and end_index != -1:
+                content = content[start_index:end_index+1]
 
+        try:
             return json.loads(content)
-        except Exception as e:
-            print(f"LLM Error: {e}")
-            return {
-                "error": str(e),
-                "tags": ["processing-failed"],
-                "processing_notes": f"Attempted file: {Path(file_path).name}"
-            }
-        if isinstance(llm_tags, list):
-            return llm_tags
-        return []
+        except json.JSONDecodeError:
+            # Return partial result or fail?
+            # Creating a fake dict might be better than failing task?
+            # But let's stick to fail fast if LLM returns garbage
+            raise ServiceUnavailable(f"LLM returned invalid JSON")
 
     async def align_tags(self, new_tags: list[str], existing_tags: list[str]) -> list[str]:
         """

@@ -38,15 +38,26 @@ const Login: React.FC = () => {
         }
     };
 
-    const handleManualToken = (e: React.FormEvent) => {
+    const handleManualToken = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Self-note: This is a hacky backdoor for the Admin Bootstrap token
-        // In a real app we might verify it against /users/me first
         if (tokenInput) {
-            // Mock user for bootstrap token since we don't have a verify endpoint handy yet
-            // Or better: call a "whoami" endpoint. For phase 3, let's just assume Admin.
-            login(tokenInput, { id: 'bootstrap', display_name: 'Admin', is_admin: true, profile_color: '#6366f1' });
-            navigate('/');
+            setIsLoading(true);
+            setError('');
+            try {
+                // Verify token against backend
+                const response = await axios.get('http://127.0.0.1:8000/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${tokenInput}` }
+                });
+
+                const user = response.data;
+                login(tokenInput, user);
+                navigate('/');
+            } catch (err: any) {
+                console.error("Token verification failed", err);
+                setError('Invalid or expired token. Please check the server logs for the correct token.');
+            } finally {
+                setIsLoading(false);
+            }
         }
     };
 

@@ -3,8 +3,9 @@ import aiofiles
 import os
 import uuid
 from typing import Dict, Any, Optional
+from app.exceptions import ServiceUnavailable
 
-class StorageUnavailableError(Exception):
+class StorageUnavailableError(ServiceUnavailable):
     pass
 
 

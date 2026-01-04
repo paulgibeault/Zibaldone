@@ -8,7 +8,8 @@ import hashlib
 
 from app.deps import get_current_user
 from app.models import User, get_session
-from app.services.storage import get_storage, StorageUnavailableError
+from app.services.storage import get_storage
+from app.exceptions import ResultNotFound
 from app import crud, schemas
 from app.services import item_service
 
@@ -20,11 +21,8 @@ def calculate_checksum(content: bytes) -> str:
 
 @router.get("/upload/params")
 async def get_upload_params(filename: str):
-    try:
-        params = await storage.get_upload_params(filename)
-        return params
-    except StorageUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"Storage service unavailable: {str(e)}")
+    params = await storage.get_upload_params(filename)
+    return params
 
 @router.post("/upload/finalize", response_model=schemas.ContentItemRead)
 async def finalize_upload(
@@ -50,10 +48,7 @@ async def upload_content(
     content = await file.read()
     checksum = calculate_checksum(content)
     
-    try:
-        storage_path = await storage.save(content, file.filename)
-    except StorageUnavailableError as e:
-        raise HTTPException(status_code=503, detail=f"Storage service unavailable: {str(e)}")
+    storage_path = await storage.save(content, file.filename)
     
     return await item_service.finalize_upload(
         session, file.filename, storage_path, current_user.id, metadata, file.content_type, checksum
@@ -75,7 +70,7 @@ def read_items(
 async def download_item(item_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     item = crud.get_item(session, item_id, current_user.id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise ResultNotFound("Item not found")
         
     url = storage.get_download_url(item.storage_path)
     if url:
@@ -83,7 +78,7 @@ async def download_item(item_id: uuid.UUID, session: Session = Depends(get_sessi
         
     full_path = storage.get_path(item.storage_path)
     if not os.path.exists(full_path):
-        raise HTTPException(status_code=404, detail="File not found on disk")
+        raise ResultNotFound("File not found on disk")
         
     return FileResponse(full_path, filename=item.original_filename)
 
@@ -91,7 +86,7 @@ async def download_item(item_id: uuid.UUID, session: Session = Depends(get_sessi
 async def update_item_metadata(item_id: uuid.UUID, metadata: dict, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     item = crud.get_item(session, item_id, current_user.id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise ResultNotFound("Item not found")
         
     updated_item = crud.update_item_metadata(session, item, metadata)
     await item_service.notify_item_update(item.id)
@@ -103,7 +98,7 @@ async def add_tag_to_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: Sessio
     tag = crud.get_tag(session, tag_id, current_user.id)
     
     if not item or not tag:
-        raise HTTPException(status_code=404, detail="Item or Tag not found")
+        raise ResultNotFound("Item or Tag not found")
 
     if tag not in item.tags:
         item.tags.append(tag)
@@ -120,7 +115,7 @@ async def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: S
     tag = crud.get_tag(session, tag_id, current_user.id)
     
     if not item or not tag:
-        raise HTTPException(status_code=404, detail="Item or Tag not found")
+        raise ResultNotFound("Item or Tag not found")
     
     if tag in item.tags:
         item.tags.remove(tag)
@@ -135,7 +130,7 @@ async def remove_tag_from_item(item_id: uuid.UUID, tag_id: uuid.UUID, session: S
 async def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     item = crud.get_item(session, item_id, current_user.id)
     if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
+        raise ResultNotFound("Item not found")
     
     crud.delete_item(session, item)
     
