@@ -1,6 +1,8 @@
 import React from 'react';
 import { FileCard } from './FileCard';
 import { type ContentItem } from '../api';
+import { ViewHeader } from './ViewHeader';
+import { ViewContainer } from './ViewContainer';
 
 interface HeapProps {
     items: ContentItem[];
@@ -13,20 +15,16 @@ interface HeapProps {
 
 export const Heap = ({ items, onDelete, onRefresh, selectedItemId, onSelect, onDeselect }: HeapProps) => {
     return (
-        <div className="heap-container fade-in" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
-            <div className="manager-header">
-                <div>
-                    <h2>The Heap</h2>
-                    <p className="subtitle">Your unstructured pile of everything.</p>
-                </div>
-
-                <div className="filter-controls">
-                    {/* Placeholder for future controls or simple count */}
+        <ViewContainer>
+            <ViewHeader
+                title="The Heap"
+                subtitle="Your unstructured pile of everything."
+                controls={
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                         {items.length} items
                     </span>
-                </div>
-            </div>
+                }
+            />
 
             <div className="item-list">
                 {items.map((item: ContentItem) => (
@@ -54,6 +52,6 @@ export const Heap = ({ items, onDelete, onRefresh, selectedItemId, onSelect, onD
                     </div>
                 )}
             </div>
-        </div>
+        </ViewContainer>
     );
 };

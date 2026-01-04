@@ -4,6 +4,8 @@ import { type Tag as TagType, getItems, type ContentItem, searchContent, deleteI
 import { useTags } from '../hooks/useTags';
 import { Tag } from './Tag';
 import { FileCard } from './FileCard';
+import { ViewHeader } from './ViewHeader';
+import { ViewContainer } from './ViewContainer';
 
 export const Explore = () => {
     const { allTags: tags, fetchTags } = useTags();
@@ -121,14 +123,11 @@ export const Explore = () => {
     };
 
     return (
-        <div className="explore-container fade-in">
-            <div className="manager-header">
-                <div>
-                    <h2>Explore</h2>
-                    <p className="subtitle">Discover connections in your collection.</p>
-                </div>
-
-                <div className="filter-controls">
+        <ViewContainer>
+            <ViewHeader
+                title="Explore"
+                subtitle="Discover connections in your collection."
+                controls={
                     <div className="input-with-icon">
                         <Search size={16} className="input-icon" />
                         <input
@@ -139,14 +138,14 @@ export const Explore = () => {
                             className="filter-input-subtle"
                         />
                     </div>
-                </div>
-            </div>
+                }
+            />
 
             <div className="explore-content">
                 <div className="search-layout" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                     {/* Left Column: Tags */}
                     <section className="results-section" style={{ width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
                                 Tags
                             </h3>
@@ -178,7 +177,7 @@ export const Explore = () => {
 
                     {/* Right Column: Content */}
                     <section className="results-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
                                 Content
                             </h3>
@@ -215,6 +214,6 @@ export const Explore = () => {
                     </section>
                 </div>
             </div>
-        </div>
+        </ViewContainer>
     );
 };

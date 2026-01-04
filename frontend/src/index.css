@@ -561,11 +561,12 @@ h1,
 }
 
 /* --- Tag Manager Dashboard --- */
-.tag-manager-dashboard,
-.explore-container {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
+.view-container {
+  /* 
+     We remove specific padding here because the main .container 
+     already provides padding. This prevents "double padding".
+  */
+  width: 100%;
 }
 
 .manager-header {

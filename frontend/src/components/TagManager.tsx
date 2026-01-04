@@ -4,6 +4,8 @@ import { type Tag as TagType, createTag, deleteTag, updateTag, getItems, type Co
 import { useTags } from '../hooks/useTags';
 import { getContrastColor } from './Tag';
 import { CreateTagModal } from './CreateTagModal';
+import { ViewHeader } from './ViewHeader';
+import { ViewContainer } from './ViewContainer';
 
 const TagManager = () => {
     const { allTags: tags, fetchTags } = useTags();
@@ -138,56 +140,58 @@ const TagManager = () => {
     const processedTags = getProcessedTags();
 
 
-    return (
-        <div className="tag-manager-dashboard fade-in">
-            <div className="manager-header">
-                <div>
-                    <h2>Index</h2>
-                    <p className="subtitle">Curate and organize your digital collection.</p>
-                </div>
 
-                <div className="filter-controls" style={{ marginLeft: 'auto', marginRight: '1rem' }}>
-                    <input
-                        type="text"
-                        placeholder="Filter tags..."
-                        value={filterText}
-                        onChange={(e) => setFilterText(e.target.value)}
-                        className="filter-input-subtle"
-                    />
-                    <div className="sort-btn-group">
-                        <button
-                            className={`sort-btn ${showApprovedOnly ? 'active' : ''}`}
-                            onClick={() => setShowApprovedOnly(!showApprovedOnly)}
-                            title="Show Approved Only"
-                            style={{ borderRight: '1px solid var(--border-color)' }}
-                        >
-                            <ShieldCheck size={18} />
-                        </button>
-                        <button
-                            className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
-                            onClick={() => handleSortChange('alphabetical')}
-                            title="Sort A-Z"
-                        >
-                            {sortMode === 'alphabetical' && sortDirection === 'desc' ? <ArrowUpAZ size={18} /> : <ArrowDownAZ size={18} />}
-                        </button>
-                        <button
-                            className={`sort-btn ${sortMode === 'popularity' ? 'active' : ''}`}
-                            onClick={() => handleSortChange('popularity')}
-                            title="Sort by Popularity"
-                        >
-                            <TrendingUp size={18} className={sortMode === 'popularity' && sortDirection === 'asc' ? 'icon-flipped' : ''} style={{ transform: sortMode === 'popularity' && sortDirection === 'asc' ? 'scaleY(-1)' : 'none' }} />
-                        </button>
-                        <button
-                            className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
-                            onClick={() => handleSortChange('date')}
-                            title="Sort by Date"
-                        >
-                            <Calendar size={18} />
-                            {/* Indicator for date direction could be subtle or just rely on toggle behavior */}
-                        </button>
-                    </div>
-                </div>
-            </div>
+
+
+    return (
+        <ViewContainer>
+            <ViewHeader
+                title="Index"
+                subtitle="Curate and organize your digital collection."
+                controls={
+                    <>
+                        <input
+                            type="text"
+                            placeholder="Filter tags..."
+                            value={filterText}
+                            onChange={(e) => setFilterText(e.target.value)}
+                            className="filter-input-subtle"
+                        />
+                        <div className="sort-btn-group">
+                            <button
+                                className={`sort-btn ${showApprovedOnly ? 'active' : ''}`}
+                                onClick={() => setShowApprovedOnly(!showApprovedOnly)}
+                                title="Show Approved Only"
+                                style={{ borderRight: '1px solid var(--border-color)' }}
+                            >
+                                <ShieldCheck size={18} />
+                            </button>
+                            <button
+                                className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
+                                onClick={() => handleSortChange('alphabetical')}
+                                title="Sort A-Z"
+                            >
+                                {sortMode === 'alphabetical' && sortDirection === 'desc' ? <ArrowUpAZ size={18} /> : <ArrowDownAZ size={18} />}
+                            </button>
+                            <button
+                                className={`sort-btn ${sortMode === 'popularity' ? 'active' : ''}`}
+                                onClick={() => handleSortChange('popularity')}
+                                title="Sort by Popularity"
+                            >
+                                <TrendingUp size={18} className={sortMode === 'popularity' && sortDirection === 'asc' ? 'icon-flipped' : ''} style={{ transform: sortMode === 'popularity' && sortDirection === 'asc' ? 'scaleY(-1)' : 'none' }} />
+                            </button>
+                            <button
+                                className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
+                                onClick={() => handleSortChange('date')}
+                                title="Sort by Date"
+                            >
+                                <Calendar size={18} />
+                                {/* Indicator for date direction could be subtle or just rely on toggle behavior */}
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <div className="tag-management-grid">
                 <section className="existing-tags-section">
@@ -342,7 +346,7 @@ const TagManager = () => {
                     </div>
                 </section>
             </div>
-        </div>
+        </ViewContainer>
     );
 };
 
