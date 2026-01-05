@@ -11,3 +11,4 @@ boto3
 qrcode[pil]
 passlib[bcrypt]
 python-tlsh
+pydantic-settings

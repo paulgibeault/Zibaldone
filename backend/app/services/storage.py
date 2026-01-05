@@ -94,13 +94,14 @@ class FileSystemStorage(StorageInterface):
             return await f.read()
 
 def get_storage() -> StorageInterface:
-    storage_type = os.getenv("STORAGE_TYPE", "filesystem").lower()
+    from app.config import settings
+    storage_type = settings.STORAGE_TYPE.lower()
     
     if storage_type == "s3":
         print("Using S3/MinIO storage backend")
         from app.services.s3_storage import S3Storage
         return S3Storage()
     else:
-        storage_dir = os.getenv("STORAGE_DIR", "../data/blob_storage")
+        storage_dir = settings.STORAGE_DIR
         print(f"Using local filesystem storage backend ({storage_dir})")
         return FileSystemStorage(storage_dir)

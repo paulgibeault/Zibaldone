@@ -8,6 +8,7 @@ import logging
 from datetime import datetime
 
 from app.exceptions import ServiceUnavailable
+from app.config import settings
 
 # Setup LLM Logger
 log_dir = Path(__file__).parent.parent.parent / "logs"
@@ -104,7 +105,7 @@ JSON Result:
         file_type = self._get_type_for_extension(ext)
         prompt = self._load_prompt_config(file_type)
         
-        api_base = os.getenv("LITELLM_URL")
+        api_base = settings.LITELLM_URL
         messages = []
 
         if file_type == "image":
@@ -157,7 +158,7 @@ JSON Result:
 
         try:
             # Log Request
-            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+            if settings.ENABLE_LLM_LOGGING:
                 llm_logger.info(f"--- LLM REQUEST: {Path(file_path).name} ---")
                 llm_logger.info(f"Model: {self.model}")
                 llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
@@ -180,7 +181,7 @@ JSON Result:
                 ]
                 
                 # Log Fallback Request
-                if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+                if settings.ENABLE_LLM_LOGGING:
                     llm_logger.info(f"--- LLM FALLBACK REQUEST: {Path(file_path).name} ---")
                     llm_logger.info(f"Model: {self.model}")
                     llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
@@ -199,7 +200,7 @@ JSON Result:
         content = response.choices[0].message.content.strip()
         
         # Log Response
-        if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+        if settings.ENABLE_LLM_LOGGING:
             llm_logger.info(f"--- LLM RESPONSE: {Path(file_path).name} ---")
             llm_logger.info(f"Raw Response: {content}")
         
@@ -266,10 +267,10 @@ Output:
 JSON Result:
 """
         messages = [{"role": "user", "content": prompt}]
-        api_base = os.getenv("LITELLM_URL")
+        api_base = settings.LITELLM_URL
         
         try:
-            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+            if settings.ENABLE_LLM_LOGGING:
                 llm_logger.info(f"--- LLM TAG ALIGNMENT REQUEST ---")
                 llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
 
@@ -281,7 +282,7 @@ JSON Result:
             
             content = response.choices[0].message.content.strip()
 
-            if os.getenv("ENABLE_LLM_LOGGING", "false").lower() == "true":
+            if settings.ENABLE_LLM_LOGGING:
                 llm_logger.info(f"--- LLM TAG ALIGNMENT RESPONSE ---")
                 llm_logger.info(f"Raw Response: {content}")
             

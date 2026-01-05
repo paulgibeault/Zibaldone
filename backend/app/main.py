@@ -48,7 +48,8 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(process_unprocessed_items())
     yield
 
-app = FastAPI(title="Zibaldone", lifespan=lifespan)
+from app.config import settings
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
 
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError):

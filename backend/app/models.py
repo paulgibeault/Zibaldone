@@ -1,5 +1,6 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 from sqlmodel import Field, SQLModel, create_engine, Session as DbSession, Relationship
+from sqlalchemy import Column, JSON
 from datetime import datetime, timezone
 import uuid
 from enum import Enum
@@ -86,7 +87,10 @@ class ContentItem(SQLModel, table=True):
     client_file_path: Optional[str] = Field(default=None, index=True) # Full path from client for smart versioning
     storage_path: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
-    metadata_json: Optional[str] = Field(default="{}") # Storing simple JSON as string for SQLite simplicity initially
+    
+    # Store metadata as JSON
+    item_metadata: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
+    is_latest: bool = Field(default=True, index=True)
     
     tags: list[Tag] = Relationship(back_populates="items", link_model=ContentItemTagLink)
     tasks: list[ProcessingTask] = Relationship(back_populates="item", sa_relationship_kwargs={"cascade": "all, delete-orphan"})

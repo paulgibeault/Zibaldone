@@ -5,13 +5,15 @@ from typing import Dict, Any, Optional
 from app.services.storage import StorageInterface, StorageUnavailableError
 from botocore.exceptions import ClientError, BotoCoreError
 
+from app.config import settings
+
 class S3Storage(StorageInterface):
     def __init__(self):
-        self.endpoint_url = os.getenv("S3_ENDPOINT")
-        self.access_key = os.getenv("S3_ACCESS_KEY")
-        self.secret_key = os.getenv("S3_SECRET_KEY")
-        self.bucket_name = os.getenv("S3_BUCKET_NAME", "zibaldone-blobs")
-        self.region = os.getenv("S3_REGION", "us-east-1")
+        self.endpoint_url = settings.S3_ENDPOINT
+        self.access_key = settings.S3_ACCESS_KEY
+        self.secret_key = settings.S3_SECRET_KEY
+        self.bucket_name = settings.S3_BUCKET_NAME
+        self.region = settings.S3_REGION
         
         # Use path-style addressing for MinIO if endpoint is provided
         s3_config = Config(
@@ -35,7 +37,7 @@ class S3Storage(StorageInterface):
             print(f"Warning: Failed to initialize S3 client: {e}")
             self.s3_client = None
 
-        self.public_url = os.getenv("S3_PUBLIC_URL")
+        self.public_url = settings.S3_PUBLIC_URL
         
         # If public_url is provided, we need a separate client for signing 
         # to ensure the signature matches the host the browser will use.

@@ -1,35 +1,28 @@
 import uuid
 from typing import Optional
-from sqlmodel import Session
+from sqlmodel import Session, select, desc
 from app.models import ContentItem, ContentStatus
 from app import crud, schemas
 from app.services.storage import get_storage
 from app.services.event_broadcaster import broadcaster
+from app.exceptions import IdentityConflictError
 import json
+import logging
 
 storage = get_storage()
+logger = logging.getLogger(__name__)
 
 def enrich_item(item: ContentItem) -> schemas.ContentItemRead:
     url = storage.get_download_url(item.storage_path)
     if not url:
-        # Local file or S3 error, point to our own download endpoint
-        # If it's S3 error, this endpoint will likely 404, which is better than 500
         url = f"/api/items/{item.id}/download"
     
-    # Map tags to TagRead
     tags = [schemas.TagRead.model_validate(t) for t in item.tags]
-    
-    # Map tasks to ProcessingTaskRead
     tasks = [schemas.ProcessingTaskRead.model_validate(t) for t in item.tasks]
     
     # Inject version into metadata for visibility
-    meta_dict = {}
-    if item.metadata_json:
-        try:
-            meta_dict = json.loads(item.metadata_json)
-        except json.JSONDecodeError:
-            pass
-            
+    # copy so we don't mutate the db object's dict in memory persistently if cached
+    meta_dict = item.item_metadata.copy() if item.item_metadata else {}
     meta_dict['version'] = item.version
     if item.client_file_path:
         meta_dict['client_file_path'] = item.client_file_path
@@ -42,11 +35,86 @@ def enrich_item(item: ContentItem) -> schemas.ContentItemRead:
         client_file_path=item.client_file_path,
         storage_path=item.storage_path,
         created_at=item.created_at,
-        metadata_json=json.dumps(meta_dict),
+        metadata_json=json.dumps(meta_dict), # Schema still expects json string for now? Check schemas.py
         download_url=url,
         tags=tags,
         tasks=tasks
     )
+
+def _is_fuzzy_match(hash1: Optional[str], hash2: Optional[str], threshold: int = 100) -> bool:
+    if not hash1 or not hash2:
+        return False
+    try:
+        import tlsh
+        score = tlsh.diff(hash1, hash2)
+        logger.info(f"TLSH Score: {score} (Threshold: {threshold}) -> {'MATCH' if score < threshold else 'MISMATCH'}")
+        return score < threshold
+    except ImportError:
+        logger.warning("TLSH not installed, cannot compare.")
+        return False
+    except Exception as e:
+        logger.error(f"TLSH comparison error: {e}")
+        return False
+
+def calculate_next_version(
+    session: Session, 
+    filename: str, 
+    owner_id: uuid.UUID, 
+    client_file_path: Optional[str] = None, 
+    signature: Optional[str] = None,
+    tlsh_hash: Optional[str] = None,
+    resolution: Optional[str] = None
+) -> tuple[int, Optional[ContentItem]]:
+    
+    if resolution == 'new_file':
+        return 1, None
+
+    statement = select(ContentItem)\
+        .where(ContentItem.original_filename == filename)\
+        .where(ContentItem.owner_id == owner_id)\
+        .where(ContentItem.is_latest == True)
+        
+    candidates = session.exec(statement).all()
+    latest_candidate: Optional[ContentItem] = None
+    
+    for c in candidates:
+        if c.client_file_path == client_file_path:
+             latest_candidate = c
+             break
+        is_implicit_req = not client_file_path or client_file_path == filename
+        is_implicit_cand = not c.client_file_path or c.client_file_path == filename
+        if is_implicit_req and is_implicit_cand:
+             latest_candidate = c
+             break
+             
+    if not latest_candidate:
+        return 1, None
+        
+    if resolution == 'new_version':
+        return latest_candidate.version + 1, latest_candidate
+
+    meta = latest_candidate.item_metadata or {}
+    latest_sig = meta.get("client_context", {}).get("signature")
+    latest_tlsh = meta.get("tlsh")
+    
+    if latest_sig and signature:
+        if latest_sig != signature:
+             if _is_fuzzy_match(latest_tlsh, tlsh_hash):
+                 return latest_candidate.version + 1, latest_candidate
+             else:
+                 raise IdentityConflictError(
+                     message=f"File '{filename}' already exists but looks different.",
+                     details={"filename": filename}
+                 )
+        else:
+             if tlsh_hash and latest_tlsh:
+                 if not _is_fuzzy_match(latest_tlsh, tlsh_hash):
+                      raise IdentityConflictError(
+                          message=f"File '{filename}' has matching header but different content.",
+                          details={"filename": filename}
+                      )
+                      
+    return latest_candidate.version + 1, latest_candidate
 
 async def notify_item_update(item_id: uuid.UUID):
     await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item_id)}))
@@ -61,34 +129,19 @@ async def finalize_upload(
     checksum: Optional[str] = None,
     resolution: Optional[str] = None
 ) -> schemas.ContentItemRead:
-    import logging
-    logger = logging.getLogger(__name__)
-
+    
     version = 1
     client_file_path = None
     tlsh_hash = None
     
     logger.info(f"finalize_upload: filename={original_filename}, path={storage_path}, checksum={checksum}, has_metadata={bool(metadata)}")
 
-    # Calculate TLSH if possible
-    # We need the content to calculate TLSH. Ideally this is done before saving or we read it back.
-    # storage_path usually points to a file we just saved.
-    # Note: Using storage.read() might be expensive for S3. 
-    # For now, let's assume we can read it cheaply or we do it upstream in api.py if we had the bytes.
-    # However, existing api.py `upload_content` reads bytes. `finalize_upload` endpoint (multipart) relies on client?
-    # Wait, `finalize_upload` is mainly for chunked uploads where backend might not have full content easily accessible here unless it stitches it.
-    # But `upload_content` (simple upload) has content.
-    # Let's try to calculate TLSH from the file on disk if it exists locally, or skip if remote/expensive.
-    # Actually, `api.py` upload_content has the content in memory. We should pass it?
-    # For this refactor, let's compute it here if we can read the file.
-    
     from app.services.storage import get_storage
     storage = get_storage()
     # Attempt to read header of file for TLSH
     try:
         import tlsh
         # TLSH needs at least 50 chars usually.
-        # Use storage.get_content() to handle both local and S3
         data = await storage.get_content(storage_path)
         if data:
             tlsh_hash = tlsh.hash(data)
@@ -104,7 +157,6 @@ async def finalize_upload(
         try:
             meta_dict = json.loads(metadata)
             client_ctx = meta_dict.get("client_context", {})
-            # Use filePath if available, otherwise None
             client_file_path = client_ctx.get("filePath")
             signature = client_ctx.get("signature")
             logger.info(f"Metadata extracted: path={client_file_path}, sig={signature}")
@@ -123,7 +175,7 @@ async def finalize_upload(
     from fastapi import HTTPException
     
     try:
-        version = crud.get_next_version(
+        version, previous_latest = calculate_next_version(
             session=session, 
             filename=original_filename, 
             owner_id=owner_id, 
@@ -133,6 +185,12 @@ async def finalize_upload(
             resolution=resolution
         )
         logger.info(f"Determined next version: {version}")
+        
+        if previous_latest:
+            previous_latest.is_latest = False
+            session.add(previous_latest)
+            session.flush() # Ensure update is pending?
+            
     except IdentityConflictError as e:
         logger.error(f"Identity conflict: {e}")
         raise HTTPException(status_code=409, detail=e.message)
@@ -140,15 +198,16 @@ async def finalize_upload(
     # Update metadata with TLSH for future reference
     if tlsh_hash:
         meta_dict["tlsh"] = tlsh_hash
-        metadata = json.dumps(meta_dict)
-
+        # No need to dump back to string for db, but we need it in dict form
+        
     content_item = ContentItem(
         original_filename=original_filename,
         storage_path=storage_path,
         owner_id=owner_id,
         status=ContentStatus.QUEUED,
-        metadata_json=metadata,
+        item_metadata=meta_dict, # Pass dict directly
         version=version,
+        is_latest=True, # New item is always latest
         content_type=content_type,
         checksum=checksum,
         client_file_path=client_file_path

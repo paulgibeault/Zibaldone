@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { type ContentItem } from '../api';
-import { getFileCategory, getFileIcon, isTextBased } from '../utils/fileTypes';
+import { type ContentItem } from '../../api';
+import { getFileCategory, getFileIcon, isTextBased } from '../../utils/fileTypes';
 import { FileCardHeader } from './FileCardHeader';
 import { FileCardContent } from './FileCardContent';
 import { FileCardFooter } from './FileCardFooter';
@@ -36,7 +36,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
     // Fetch versions when entering View tab or mounting if active
     useEffect(() => {
         if (activeTab === 'preview') {
-            import('../api').then(api => {
+            import('../../api').then(api => {
                 api.getItemVersions(currentItem.id).then(setVersions).catch(console.error);
             });
         }

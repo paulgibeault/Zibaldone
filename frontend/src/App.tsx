@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { DropZone } from './components/DropZone';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
 import { WelcomeModal } from './components/WelcomeModal';
-import { getItems, deleteItem, type ContentItem } from './api';
 import './index.css';
 import './App.css';
 
@@ -13,6 +12,8 @@ import { Heap } from './components/Heap';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import { ProfilePill } from './components/ProfilePill';
+import { useItems } from './hooks/useItems';
+import { useEventSubscription } from './hooks/useEventSubscription';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.JSX.Element }) => {
@@ -32,63 +33,27 @@ const ProtectedRoute = ({ children }: { children: React.JSX.Element }) => {
 
 // Main App Layout (Authenticated)
 function MainApp() {
-  const [items, setItems] = useState<ContentItem[]>([]);
+  const { items, fetchItems, deleteItemAction } = useItems();
   const [activeView, setActiveView] = useState<'heap' | 'tags' | 'explore'>('heap');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  // const { logout, user } = useAuth(); // Unused in MainApp now
 
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+  useEventSubscription(`${API_URL}/events`, fetchItems);
 
-  const fetchItems = async () => {
-    try {
-      const data = await getItems();
-      // Sort by created_at desc
-      data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setItems(data);
-    } catch (error) {
-      console.error("Failed to fetch items:", error);
-    }
-  };
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!window.confirm("Are you sure you want to delete this item?")) return;
 
     try {
-      await deleteItem(id);
-      setItems((prev: ContentItem[]) => prev.filter((item: ContentItem) => item.id !== id));
+      await deleteItemAction(id);
     } catch (error) {
-      console.error("Failed to delete item:", error);
       alert("Failed to delete item");
     }
   };
-
-  useEffect(() => {
-    fetchItems();
-
-    // Setup SSE
-    const eventSource = new EventSource('http://localhost:8000/api/events');
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'update') {
-          console.log("Received update event:", data);
-          fetchItems();
-        }
-      } catch (e) {
-        console.error("Error parsing SSE data", e);
-      }
-    };
-
-    eventSource.onerror = (e) => {
-      console.log("SSE Error (connection might be closed):", e);
-      eventSource.close();
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, []);
 
   return (
     <div className="container">

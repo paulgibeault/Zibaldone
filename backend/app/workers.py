@@ -52,13 +52,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
     try:
         async with TaskContext(session, item.id, "Metadata Extraction") as task:
             # Load existing metadata
-            existing_metadata = {}
-            if item.metadata_json:
-                try:
-                    existing_metadata = json.loads(item.metadata_json)
-                except json.JSONDecodeError:
-                    logger.warning(f"Warning: Could not parse existing metadata for item {item.id}")
-                    pass
+            existing_metadata = item.item_metadata.copy() if item.item_metadata else {}
 
             # Generate new metadata from LLM
             logger.info(f"Extracting metadata for {item.original_filename} using {llm_service.model}")
@@ -82,7 +76,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
             merged_metadata = existing_metadata.copy()
             merged_metadata.update(llm_metadata)
             
-            item.metadata_json = json.dumps(merged_metadata)
+            item.item_metadata = merged_metadata
 
             # Save result to task
             task.result_json = json.dumps(llm_metadata, indent=2)
@@ -111,7 +105,7 @@ async def process_item(item: ContentItem, session: Session, llm_service: LLMServ
                 # Update metadata with aligned tags if they changed
                 if final_tags != llm_tags:
                     merged_metadata['tags'] = final_tags
-                    item.metadata_json = json.dumps(merged_metadata)
+                    item.item_metadata = merged_metadata
                 
                 # Record result
                 alignment_task.result_json = json.dumps({
