@@ -35,6 +35,7 @@ export const getContrastColor = (hexcolor: string) => {
     return luminance > 0.6 ? '#0f172a' : '#ffffff';
 };
 
+// Start of Tag Component
 export const Tag = ({
     tag,
     onRemove,
@@ -44,8 +45,15 @@ export const Tag = ({
     showRemoveIcon = false,
     showApproveIcon = false
 }: TagProps) => {
-    const contrastColor = getContrastColor(tag.color);
+    let contrastColor = getContrastColor(tag.color);
     const isUnapproved = tag.is_autocreated && !tag.is_approved;
+
+    // For unapproved tags, the background is very faint/transparent (see .standard-tag.unapproved),
+    // so we MUST use a color that contrasts with the CARD/PAGE background, not the tag background.
+    // Usually that means the primary text color or the primary theme color.
+    if (isUnapproved) {
+        contrastColor = 'var(--text-primary)';
+    }
 
     return (
         <span

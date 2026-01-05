@@ -77,24 +77,36 @@
     line-height: 1.2;
 }
 
-.minimal-tags {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
+.minimal-tags-text {
+    font-size: 0.75rem;
+    line-height: 1.2;
+    color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
 }
 
-.minimal-tag-pill {
-    font-size: 0.6rem;
-    padding: 2px 8px;
-    border-radius: 99px;
+.text-tag {
     font-weight: 600;
-    border: 1px solid transparent;
+    /* Optional: if you want to mix the tag color with text color for better readability, 
+       but user plan implies using tag color. 
+       We fallback to a darker readable version if needed via filter or just opacity. */
+    filter: brightness(0.9);
 }
 
-.minimal-tag-more {
-    font-size: 0.7rem;
+/* Light mode adjustment for text tags to ensure contrast if tag colors are very light */
+@media (prefers-color-scheme: light) {
+    .text-tag {
+        filter: brightness(0.7);
+    }
+}
+
+.tag-separator {
     color: var(--text-muted);
-    font-weight: 500;
+    margin-right: 3px;
 }
 
 .minimal-actions {

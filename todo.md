@@ -39,8 +39,8 @@
     - [ ] Provide an option to select an external tool for unrecognized file types.
 - [ ] **Maximized View**: Maximized file cards should occupy the entire width of the screen.
 - [ ] **File Card Tags**:
-    - [ ] Minimized View: Text-based tags (remove pills), appropriate color, comma delimited.
-    - [ ] Support two lines of text; mouseover shows full list.
+    - [x] Minimized View: Text-based tags (remove pills), appropriate color, comma delimited.
+    - [x] Support two lines of text; mouseover shows full list.
 - [ ] **File Card Summary Tab**:
     - [ ] Show only Version (remove File and Created).
     - [ ] Use a more design-centric placement for version info.

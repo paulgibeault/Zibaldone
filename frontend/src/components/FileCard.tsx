@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { type ContentItem } from '../api';
 import { getFileCategory, getFileIcon, isTextBased } from '../utils/fileTypes';
-import { Tag } from './Tag';
 import { FileCardHeader } from './FileCard/FileCardHeader';
 import { FileCardContent } from './FileCard/FileCardContent';
 import { FileCardFooter } from './FileCard/FileCardFooter';
@@ -141,29 +140,48 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
         return <Icon className={`file-icon-${fileCategory}`} />;
     }, [fileCategory]);
 
-    const renderMinimalView = () => (
-        <div className="file-card-minimal" onClick={onSelect}>
-            <div className="minimal-icon">
-                {renderFileIcon()}
-            </div>
-            <div className="minimal-info">
-                <div className="minimal-filename" title={item.original_filename}>
-                    {item.original_filename}
+    const renderMinimalView = () => {
+        const sortedTags = [...(item.tags || [])].sort((a, b) => {
+            const isUnapprovedA = a.is_autocreated && !a.is_approved;
+            const isUnapprovedB = b.is_autocreated && !b.is_approved;
+            if (isUnapprovedA !== isUnapprovedB) {
+                return isUnapprovedA ? 1 : -1;
+            }
+            return a.name.localeCompare(b.name);
+        });
+        const tagsString = sortedTags.map(t => t.name).join(', ');
+
+        return (
+            <div className="file-card-minimal" onClick={onSelect} title={`Tags: ${tagsString}`}>
+                <div className="minimal-icon">
+                    {renderFileIcon()}
                 </div>
-                <div className="minimal-tags">
-                    {(item.tags || []).slice(0, 3).map(tag => (
-                        <Tag key={tag.id} tag={tag} className="minimal-tag-pill" />
-                    ))}
-                    {(item.tags || []).length > 3 && (
-                        <span className="minimal-tag-more">+{item.tags!.length - 3}</span>
+                <div className="minimal-info">
+                    <div className="minimal-filename" title={item.original_filename}>
+                        {item.original_filename}
+                    </div>
+                    {sortedTags.length > 0 && (
+                        <div className="minimal-tags-text">
+                            {sortedTags.map((tag, index) => (
+                                <React.Fragment key={tag.id}>
+                                    <span
+                                        className="text-tag"
+                                        style={{ color: tag.color }}
+                                    >
+                                        {tag.name}
+                                    </span>
+                                    {index < sortedTags.length - 1 && <span className="tag-separator">, </span>}
+                                </React.Fragment>
+                            ))}
+                        </div>
                     )}
                 </div>
+                <div className="minimal-actions">
+                    <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
+                </div>
             </div>
-            <div className="minimal-actions">
-                <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
-            </div>
-        </div>
-    );
+        );
+    };
 
     const renderStandardView = (isFull: boolean = false) => (
         <div className={`file-card-inner ${isFull ? 'expanded-inner' : ''}`}>
