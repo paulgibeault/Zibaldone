@@ -1,0 +1,169 @@
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Start from the top instead of centering */
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 1rem;
+    /* Add top padding to position it pleasantly "high up" but not at the edge */
+    padding-top: 10vh;
+    gap: 2rem;
+    /* Remove custom gradient to match app theme */
+    background: transparent;
+}
+
+.login-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.login-logo-override {
+    /* Override standard logo size for login splash */
+    height: 12rem !important;
+    width: auto !important;
+    margin-bottom: 0.5rem;
+    /* Ensure the gradient mask works by inheriting or resetting if needed */
+    /* .app-logo in index.css handles the mask and background */
+}
+
+.login-logo:hover {
+    transform: scale(1.05);
+}
+
+/* Title removed as text is in the logo */
+
+.login-options {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    width: 100%;
+    max-width: 900px;
+    justify-content: center;
+    align-items: stretch;
+}
+
+.login-card {
+    flex: 1;
+    /* Match standard .card variable usage */
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    min-width: 350px;
+    /* Use standard shadows */
+    box-shadow: var(--shadow-md);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.login-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--border-subtle);
+}
+
+.login-card h3 {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.login-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.login-form-group label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.login-input {
+    width: 100%;
+    /* Ensure padding doesn't add to width */
+    box-sizing: border-box;
+    padding: 0.75rem 1rem;
+    background-color: var(--bg-canvas);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.login-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    background-color: var(--bg-canvas);
+}
+
+.login-input::placeholder {
+    color: #64748b;
+}
+
+.login-button {
+    background-color: var(--primary, #3b82f6);
+    background-image: linear-gradient(to right, #3b82f6, #2563eb);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    width: 100%;
+    margin-top: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+.login-button:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.4);
+    filter: brightness(1.1);
+}
+
+.login-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.login-helper-text {
+    font-size: 0.85rem;
+    color: var(--text-muted, #64748b);
+    line-height: 1.5;
+    margin: 0;
+    text-align: center;
+}
+
+.error-message {
+    color: #f87171;
+    background-color: rgba(127, 29, 29, 0.2);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    width: 100%;
+    max-width: 600px;
+    text-align: center;
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}

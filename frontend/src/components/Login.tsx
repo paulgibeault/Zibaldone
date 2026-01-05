@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import './Login.css';
 
 const Login: React.FC = () => {
     const [tokenInput, setTokenInput] = useState('');
@@ -62,52 +63,64 @@ const Login: React.FC = () => {
     };
 
     return (
-        <div style={{ maxWidth: '400px', margin: '2rem auto', padding: '1rem', border: '1px solid #ccc', borderRadius: '8px' }}>
-            <h2>Login to Zibaldone</h2>
-
-            {error && <div style={{ color: 'red', marginBottom: '1rem' }}>{error}</div>}
-
-            <div style={{ marginBottom: '2rem' }}>
-                <h3>Option A: Join with Invite Code</h3>
-                <form onSubmit={handleJoin}>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                        <label>Device Name:</label><br />
-                        <input
-                            type="text"
-                            value={deviceName}
-                            onChange={e => setDeviceName(e.target.value)}
-                            required
-                        />
-                    </div>
-                    <div style={{ marginBottom: '0.5rem' }}>
-                        <label>Invite Code:</label><br />
-                        <input
-                            type="text"
-                            value={qrCode}
-                            onChange={e => setQrCode(e.target.value)}
-                            placeholder="Paste code here"
-                            required
-                        />
-                    </div>
-                    <button type="submit" disabled={isLoading}>
-                        {isLoading ? 'Joining...' : 'Join Server'}
-                    </button>
-                </form>
+        <div className="login-container">
+            <div className="login-header">
+                <div className="app-logo login-logo-override" aria-label="Zibaldone Logo" />
             </div>
 
-            <div style={{ borderTop: '1px solid #eee', paddingTop: '1rem' }}>
-                <h3>Option B: Paste Existing Token</h3>
-                <form onSubmit={handleManualToken}>
-                    <input
-                        type="text"
-                        value={tokenInput}
-                        onChange={e => setTokenInput(e.target.value)}
-                        placeholder="Paste Bearer Token"
-                        style={{ width: '100%', marginBottom: '0.5rem' }}
-                    />
-                    <button type="submit">Log In</button>
-                    <p style={{ fontSize: '0.8rem', color: '#666' }}>Use the Admin Token printed in server logs.</p>
-                </form>
+            {error && <div className="error-message">{error}</div>}
+
+            <div className="login-options">
+                {/* Option A: Join with Invite Code */}
+                <div className="login-card">
+                    <h3>Join with Invite Code</h3>
+                    <form onSubmit={handleJoin}>
+                        <div className="login-form-group">
+                            <label>Device Name:</label>
+                            <input
+                                className="login-input"
+                                type="text"
+                                value={deviceName}
+                                onChange={e => setDeviceName(e.target.value)}
+                                required
+                            />
+                        </div>
+                        <div className="login-form-group">
+                            <label>Invite Code:</label>
+                            <input
+                                className="login-input"
+                                type="text"
+                                value={qrCode}
+                                onChange={e => setQrCode(e.target.value)}
+                                placeholder="Paste code here"
+                                required
+                            />
+                        </div>
+                        <button type="submit" className="login-button" disabled={isLoading}>
+                            {isLoading ? 'Joining...' : 'Join Server'}
+                        </button>
+                    </form>
+                </div>
+
+                {/* Option B: Paste Existing Token */}
+                <div className="login-card">
+                    <h3>Paste Existing Token</h3>
+                    <form onSubmit={handleManualToken}>
+                        <div className="login-form-group">
+                            <input
+                                className="login-input"
+                                type="text"
+                                value={tokenInput}
+                                onChange={e => setTokenInput(e.target.value)}
+                                placeholder="Paste Bearer Token"
+                            />
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <button type="submit" className="login-button">Log In</button>
+                            <p className="login-helper-text">Use the Admin Token printed in server logs.</p>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     );
