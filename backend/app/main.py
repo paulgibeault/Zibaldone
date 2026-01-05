@@ -80,12 +80,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from app.api_tags import router as tags_router
-from app.api_auth import router as auth_router
-
 app.include_router(api_router, prefix="/api")
-app.include_router(tags_router, prefix="/api")
-app.include_router(auth_router, prefix="/api")
 
 @app.get("/")
 def read_root():

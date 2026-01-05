@@ -40,6 +40,7 @@ def delete_tag(tag_id: uuid.UUID, session: Session = Depends(get_session), curre
     
     crud.delete_tag(session, tag)
     return {"ok": True}
+
 @router.post("/tags/{tag_id}/approve", response_model=schemas.TagRead)
 def approve_tag(tag_id: uuid.UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)):
     # TODO: Check if current_user.is_admin is required? Or just that they own the tag?

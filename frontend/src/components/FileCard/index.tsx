@@ -2,9 +2,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { type ContentItem } from '../api';
 import { getFileCategory, getFileIcon, isTextBased } from '../utils/fileTypes';
-import { FileCardHeader } from './FileCard/FileCardHeader';
-import { FileCardContent } from './FileCard/FileCardContent';
-import { FileCardFooter } from './FileCard/FileCardFooter';
+import { FileCardHeader } from './FileCardHeader';
+import { FileCardContent } from './FileCardContent';
+import { FileCardFooter } from './FileCardFooter';
 import './FileCard.css';
 
 type ViewMode = 'minimal' | 'standard' | 'fullscreen';
