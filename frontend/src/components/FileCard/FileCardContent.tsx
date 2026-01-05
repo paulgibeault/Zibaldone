@@ -122,49 +122,46 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                     </div>
 
                     <div className="metadata-grid" style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
-                        <div className="meta-key">Version</div>
-                        <div className="meta-value">v{item.version}</div>
-                        {item.client_file_path && (
-                            <>
-                                <div className="meta-key">Source Path</div>
-                                <div className="meta-value" style={{ wordBreak: 'break-all' }}>{item.client_file_path}</div>
-                            </>
-                        )}
-                        <div className="meta-key">Created</div>
-                        <div className="meta-value">{new Date(item.created_at).toLocaleString()}</div>
+                        {/* Version moved to header */}
                     </div>
 
                     {item.tasks && item.tasks.length > 0 && (
                         <div className="history-section">
-                            <h4>PROCESSING HISTORY</h4>
-                            <div className="history-list">
-                                {item.tasks.map(task => (
-                                    <div
-                                        key={task.id}
-                                        className={`history-item ${task.result_json ? 'clickable' : ''}`}
-                                        onClick={() => task.result_json && setSelectedTaskId(task.id)}
-                                        title={task.result_json ? "Click to view details" : ""}
-                                    >
-                                        <div className="history-status">
-                                            {task.status === 'COMPLETED' && <CheckCircle2 size={14} className="status-icon-completed" />}
-                                            {task.status === 'RUNNING' && <Loader2 size={14} className="status-icon-running spin" />}
-                                            {task.status === 'FAILED' && <XCircle size={14} className="status-icon-failed" />}
-                                            {task.status === 'PENDING' && <Clock size={14} className="status-icon-pending" />}
-                                        </div>
-                                        <div className="history-details">
-                                            <div className="history-name-row">
-                                                <span className="history-name">{task.name}</span>
-                                                <span className="history-status-text">{task.status}</span>
+                            <details className="history-details-container" open>
+                                <summary>
+                                    <h4>PROCESSING HISTORY</h4>
+                                </summary>
+                                <div className="history-list custom-scrollbar">
+                                    {[...item.tasks]
+                                        .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+                                        .map(task => (
+                                            <div
+                                                key={task.id}
+                                                className={`history-item ${task.result_json ? 'clickable' : ''}`}
+                                                onClick={() => task.result_json && setSelectedTaskId(task.id)}
+                                                title={task.result_json ? "Click to view details" : ""}
+                                            >
+                                                <div className="history-status">
+                                                    {task.status === 'COMPLETED' && <CheckCircle2 size={14} className="status-icon-completed" />}
+                                                    {task.status === 'RUNNING' && <Loader2 size={14} className="status-icon-running spin" />}
+                                                    {task.status === 'FAILED' && <XCircle size={14} className="status-icon-failed" />}
+                                                    {task.status === 'PENDING' && <Clock size={14} className="status-icon-pending" />}
+                                                </div>
+                                                <div className="history-details">
+                                                    <div className="history-name-row">
+                                                        <span className="history-name">{task.name}</span>
+                                                        <span className="history-status-text">{task.status}</span>
+                                                    </div>
+                                                    {task.message && <div className="history-message">{task.message}</div>}
+                                                    <div className="history-time">
+                                                        {new Date(task.start_time).toLocaleString()}
+                                                        {task.end_time && ` - ${new Date(task.end_time).toLocaleTimeString()}`}
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {task.message && <div className="history-message">{task.message}</div>}
-                                            <div className="history-time">
-                                                {new Date(task.start_time).toLocaleString()}
-                                                {task.end_time && ` - ${new Date(task.end_time).toLocaleTimeString()}`}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                        ))}
+                                </div>
+                            </details>
                         </div>
                     )}
 

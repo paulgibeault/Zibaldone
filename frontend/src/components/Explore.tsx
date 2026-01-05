@@ -18,30 +18,33 @@ export const Explore = () => {
     const [searchResults, setSearchResults] = useState<{ tags: TagType[], items: ContentItem[] } | null>(null);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
-    // Initial load
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                const [_, itemsData] = await Promise.all([fetchTags(), getItems()]);
-                setAllItems(itemsData);
 
-                // Calculate usage count for each tag
-                const usage: Record<string, number> = {};
-                itemsData.forEach((item: ContentItem) => {
-                    (item.tags || []).forEach((t: TagType) => {
-                        usage[t.id] = (usage[t.id] || 0) + 1;
-                    });
+
+    // Initial load
+    const fetchData = React.useCallback(async () => {
+        setLoading(true);
+        try {
+            const [_, itemsData] = await Promise.all([fetchTags(), getItems()]);
+            setAllItems(itemsData);
+
+            // Calculate usage count for each tag
+            const usage: Record<string, number> = {};
+            itemsData.forEach((item: ContentItem) => {
+                (item.tags || []).forEach((t: TagType) => {
+                    usage[t.id] = (usage[t.id] || 0) + 1;
                 });
-                setTagUsage(usage);
-            } catch (error) {
-                console.error('Error fetching data:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
+            });
+            setTagUsage(usage);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [fetchTags]);
+
+    useEffect(() => {
         fetchData();
-    }, []);
+    }, [fetchData]);
 
     // Debounce search text
     useEffect(() => {
@@ -56,6 +59,7 @@ export const Explore = () => {
         if (!debouncedFilterText.trim()) {
             setSearchResults(null);
             setSearching(false);
+            fetchData(); // Ensure we are fresh when clearing search
             return;
         }
 
@@ -72,11 +76,15 @@ export const Explore = () => {
         };
 
         doSearch();
-    }, [debouncedFilterText]);
+    }, [debouncedFilterText, fetchData]);
 
     // Function to re-run the search (e.g., after deleting an item)
     const refreshSearch = async () => {
-        if (!debouncedFilterText.trim()) return;
+        if (!debouncedFilterText.trim()) {
+            // If no search active, refresh the main view
+            await fetchData();
+            return;
+        }
 
         try {
             const results = await searchContent(debouncedFilterText);

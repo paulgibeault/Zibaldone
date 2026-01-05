@@ -1180,3 +1180,78 @@
 .expanded-inner .preview-text-frame {
     height: 70vh;
 }
+
+/* Initial Loading State */
+.file-card-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-muted);
+}
+
+/* Version Badge */
+.version-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+
+/* History Details Collapsible */
+.history-details-container summary {
+    cursor: pointer;
+    list-style: none;
+    /* Hide default triangle in some browsers */
+}
+
+/* Custom indicator for summary if needed, or rely on default behavior but styled */
+.history-details-container summary::-webkit-details-marker {
+    display: none;
+}
+
+.history-details-container summary h4 {
+    display: inline-block;
+}
+
+.history-details-container summary::after {
+    content: '▼';
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-left: 0.5rem;
+    display: inline-block;
+    transition: transform 0.2s;
+}
+
+.history-details-container[open] summary::after {
+    transform: rotate(180deg);
+}
+
+/* Scrollable History List */
+.history-list.custom-scrollbar {
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-subtle) transparent;
+}
+
+.history-list.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.history-list.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.history-list.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--border-subtle);
+    border-radius: 20px;
+}

@@ -80,6 +80,8 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                         </div>
                     </div>
                     <div className="sub-details">
+                        <span className="detail-item" style={{ fontWeight: 600 }}>v{item.version}</span>
+                        <span className="divider">|</span>
                         <span className="detail-item">Size: {formatSize(size)}</span>
                         <span className="divider">|</span>
                         <span className="detail-item">Created: {new Date(item.created_at).toLocaleDateString()}</span>

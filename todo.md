@@ -38,19 +38,19 @@
     - [ ] Attempt to display content directly in the file card view tab (Text, Markdown, Image, Video).
     - [ ] Provide an option to select an external tool for unrecognized file types.
 - [ ] **Maximized View**: Maximized file cards should occupy the entire width of the screen.
-- [ ] **File Card Tags**:
+- [x] **File Card Tags**:
     - [x] Minimized View: Text-based tags (remove pills), appropriate color, comma delimited.
     - [x] Support two lines of text; mouseover shows full list.
-- [ ] **File Card Summary Tab**:
-    - [ ] Show only Version (remove File and Created).
-    - [ ] Use a more design-centric placement for version info.
-- [ ] **File Card Processing History**:
-    - [ ] List most recent tasks first.
-    - [ ] Make section scrollable and collapsible.
+- [x] **File Card Summary Tab**:
+    - [x] Show only Version (remove File and Created).
+    - [x] Use a more design-centric placement for version info.
+- [x] **File Card Processing History**:
+    - [x] List most recent tasks first.
+    - [x] Make section scrollable and collapsible.
 
 ## Admin & User Management
 - [ ] **Admin UI**: Interface to create and send invitations.
 - [ ] **Device Management**: User UI to list and manage connected devices.
 
 ## Known Issues
-- [ ] **Profile UI**: Fix error when saving profile changes.
+- [x] **Profile UI**: Fix error when saving profile changes.
