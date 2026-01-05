@@ -16,11 +16,13 @@ def mock_get_next_version(monkeypatch):
 async def test_finalize_upload(session: Session, mock_storage, mock_get_next_version):
     original_filename = "test.txt"
     storage_path = "uploads/test.txt"
+    owner_id = uuid.uuid4()
     
     enriched_item = await finalize_upload(
         session,
         original_filename,
         storage_path,
+        owner_id,
         metadata='{"key": "value"}',
         content_type="text/plain"
     )
@@ -39,6 +41,7 @@ async def test_finalize_upload(session: Session, mock_storage, mock_get_next_ver
 async def test_enrich_item(session: Session, mock_storage):
     item = ContentItem(
         original_filename="enrich_test.txt",
+        owner_id=uuid.uuid4(),
         storage_path="path/to/file",
         status=ContentStatus.COMPLETED,
         version=1

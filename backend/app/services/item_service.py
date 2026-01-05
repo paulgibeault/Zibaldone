@@ -61,10 +61,15 @@ async def finalize_upload(
     checksum: Optional[str] = None,
     resolution: Optional[str] = None
 ) -> schemas.ContentItemRead:
+    import logging
+    logger = logging.getLogger(__name__)
+
     version = 1
     client_file_path = None
     tlsh_hash = None
     
+    logger.info(f"finalize_upload: filename={original_filename}, path={storage_path}, checksum={checksum}, has_metadata={bool(metadata)}")
+
     # Calculate TLSH if possible
     # We need the content to calculate TLSH. Ideally this is done before saving or we read it back.
     # storage_path usually points to a file we just saved.
@@ -83,13 +88,13 @@ async def finalize_upload(
     try:
         import tlsh
         # TLSH needs at least 50 chars usually.
-        # storage.get_path() works for local fs.
-        full_path = storage.get_path(storage_path)
-        if full_path:
-            with open(full_path, 'rb') as f:
-                data = f.read() # Read all? or limit? TLSH needs full content for full hash.
-                tlsh_hash = tlsh.hash(data)
-    except Exception:
+        # Use storage.get_content() to handle both local and S3
+        data = await storage.get_content(storage_path)
+        if data:
+            tlsh_hash = tlsh.hash(data)
+            logger.info(f"Calculated TLSH: {tlsh_hash}")
+    except Exception as e:
+        logger.warning(f"Failed to calculate TLSH: {e}")
         pass
 
     # Extract client_file_path and signature from metadata if available
@@ -102,13 +107,16 @@ async def finalize_upload(
             # Use filePath if available, otherwise None
             client_file_path = client_ctx.get("filePath")
             signature = client_ctx.get("signature")
+            logger.info(f"Metadata extracted: path={client_file_path}, sig={signature}")
         except json.JSONDecodeError:
+            logger.error("Failed to parse metadata JSON")
             pass
             
     # Check for existing duplicate first
     if checksum:
         latest_item = crud.get_latest_item(session, original_filename, owner_id, client_file_path)
         if latest_item and latest_item.checksum == checksum:
+            logger.info("Duplicate checksum found. Returning existing item.")
             return enrich_item(latest_item)
 
     from app.exceptions import IdentityConflictError
@@ -124,7 +132,9 @@ async def finalize_upload(
             tlsh_hash=tlsh_hash,
             resolution=resolution
         )
+        logger.info(f"Determined next version: {version}")
     except IdentityConflictError as e:
+        logger.error(f"Identity conflict: {e}")
         raise HTTPException(status_code=409, detail=e.message)
     
     # Update metadata with TLSH for future reference
