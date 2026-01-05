@@ -158,7 +158,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                 </div>
                 <div className="minimal-info">
                     <div className="minimal-filename" title={item.original_filename}>
-                        {item.original_filename}
+                        {metadata.title || item.original_filename}
                     </div>
                     {sortedTags.length > 0 && (
                         <div className="minimal-tags-text">

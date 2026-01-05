@@ -1,4 +1,5 @@
 {
+    "title": "A short, descriptive title for the content found in the file which will be displayed in the UI.",
     "summary": "A brief, one-sentence summary of the content. Focus on the 'what' and 'why'.",
     "tags": [
         "A list of 3-7 highly relevant keywords or categories. Use lowercase and hyphens for multi-word tags."
