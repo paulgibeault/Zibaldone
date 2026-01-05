@@ -46,8 +46,8 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose }) =
     };
 
     return (
-        <div className="modal-backdrop">
-            <div className="modal-content">
+        <div className="edit-profile-modal-backdrop">
+            <div className="edit-profile-modal-content">
                 <h2>Edit Profile</h2>
                 {error && <div className="error-message">{error}</div>}
                 <form onSubmit={handleSubmit}>

@@ -1,4 +1,4 @@
-.modal-backdrop {
+.edit-profile-modal-backdrop {
     position: fixed;
     top: 0;
     left: 0;
@@ -11,7 +11,7 @@
     z-index: 100;
 }
 
-.modal-content {
+.edit-profile-modal-content {
     background: var(--bg-secondary);
     padding: 2rem;
     border-radius: 1rem;
@@ -22,7 +22,7 @@
     color: var(--text-primary);
 }
 
-.modal-content h2 {
+.edit-profile-modal-content h2 {
     margin-top: 0;
     margin-bottom: 1.5rem;
 }
