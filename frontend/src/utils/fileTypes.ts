@@ -30,6 +30,10 @@ export const getFileCategory = (contentType: string = '', filename: string = '')
         return 'text';
     }
 
+    if (['license', 'copying', 'unlicense', 'makefile', 'dockerfile', 'gemfile'].includes(name)) {
+        return 'text';
+    }
+
     return 'default';
 };
 

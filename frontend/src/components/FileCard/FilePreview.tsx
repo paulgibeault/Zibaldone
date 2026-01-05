@@ -2,6 +2,7 @@ import React from 'react';
 import { FileSearch } from 'lucide-react';
 import { type ContentItem } from '../../api';
 import { MarkdownPreview } from '../MarkdownPreview';
+import { getFileCategory, isTextBased } from '../../utils/fileTypes';
 
 interface FilePreviewProps {
     item: ContentItem;
@@ -44,7 +45,10 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
         );
     }
 
-    if (type.includes('text/') || type.includes('javascript') || type.includes('json') || type.includes('python') || type.includes('html') || type.includes('css') || item.original_filename.toLowerCase().endsWith('.txt')) {
+    const category = getFileCategory(metadata.type || '', item.original_filename);
+
+    // If it's explicitly text-based OR it's unknown but has a summary (implying text extraction worked), show as text
+    if (isTextBased(category) || (category === 'default' && metadata.summary)) {
         return (
             <div className="preview-text-wrapper">
                 {isLoadingContent ? (

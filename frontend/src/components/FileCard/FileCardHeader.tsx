@@ -25,9 +25,11 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
 }) => {
     // Parse metadata safely (already parsed in parent usually, but for robustness)
     let size = 0;
+    let title = item.original_filename;
     try {
         const meta = JSON.parse(item.metadata_json || '{}');
         size = meta.size;
+        if (meta.title) title = meta.title;
     } catch (e) { }
 
     return (
@@ -43,7 +45,7 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                 <div className="header-info">
                     <div className="title-row">
                         <h3 className="filename" title={item.original_filename}>
-                            {item.original_filename}
+                            {title}
                         </h3>
                         {item.client_file_path && (
                             <div className="source-path" title={item.client_file_path} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
