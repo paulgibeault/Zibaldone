@@ -2,7 +2,10 @@ import sys
 import os
 
 # Add backend directory to sys.path
-sys.path.append(os.path.join(os.getcwd(), "backend"))
+import pathlib
+script_dir = pathlib.Path(__file__).parent.absolute()
+project_root = script_dir.parent
+sys.path.append(os.path.join(project_root, "backend"))
 
 from app.models import create_db_and_tables, ContentItem, Tag
 from app.crud import search_content, create_tag
