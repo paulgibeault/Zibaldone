@@ -12,6 +12,7 @@ import { Heap } from './components/Heap';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import { ProfilePill } from './components/ProfilePill';
+import { UploadStatus } from './components/UploadStatus';
 import { useItems } from './hooks/useItems';
 import { useEventSubscription } from './hooks/useEventSubscription';
 
@@ -64,6 +65,7 @@ function MainApp() {
         <ThemeSwitcher />
         <ProfilePill />
       </div>
+      <UploadStatus />
 
       {/* Header Drop Zone */}
       <DropZone onUploadComplete={fetchItems} />
