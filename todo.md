@@ -2,8 +2,8 @@
 
 ## Core System Improvements
 - [x] **Enhanced Upload Context**: Extract detailed context from the client during file upload (client info, browser info, full file path, OS user info) to better track and understand selected files.
-- [ ] **Recursive Folder Support**: Enable uploading entire folders recursively.
-- [ ] **Queue Management**: Efficiently manage upload and processing queues to handle large batches of files.
+- [x] **Recursive Folder Support**: Enable uploading entire folders recursively.
+- [x] **Queue Management**: Efficiently manage upload and processing queues to handle large batches of files.
 - [x] **Smart Versioning**: Use client info and full file path to determine if a file is new or a new version of an existing file.
 - [ ] **Dynamic File Processing**: Enable execution and tracking of processing tasks at the ContentItem level. Align to accepted task management standards/frameworks (e.g. Atomic Agents).
 
@@ -33,11 +33,11 @@
 - [x] **Source Visibility**: Display which client a file was last uploaded from.
 
 ## UI/UX Refinements
-- [ ] **Generated Titles**: Files should use a generated title displayed on file cards.
-- [ ] **Rich Content Display**: 
+- [x] **Generated Titles**: Files should use a generated title displayed on file cards.
+- [x] **Rich Content Display**: 
     - [ ] Attempt to display content directly in the file card view tab (Text, Markdown, Image, Video).
     - [ ] Provide an option to select an external tool for unrecognized file types.
-- [ ] **Maximized View**: Maximized file cards should occupy the entire width of the screen.
+- [x] **Maximized View**: Maximized file cards should occupy the entire width of the screen.
 - [x] **File Card Tags**:
     - [x] Minimized View: Text-based tags (remove pills), appropriate color, comma delimited.
     - [x] Support two lines of text; mouseover shows full list.
@@ -49,8 +49,8 @@
     - [x] Make section scrollable and collapsible.
 
 ## Admin & User Management
-- [ ] **Admin UI**: Interface to create and send invitations.
-- [ ] **Device Management**: User UI to list and manage connected devices.
+- [x] **Admin UI**: Interface to create and send invitations.
+- [x] **Device Management**: User UI to list and manage connected devices.
 
 ## Known Issues
 - [x] **Profile UI**: Fix error when saving profile changes.

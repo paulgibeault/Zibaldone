@@ -3,6 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import mermaid from 'mermaid';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
     Chart as ChartJS,
     CategoryScale,
@@ -103,6 +105,19 @@ export const MarkdownPreview = ({ content }: MarkdownPreviewProps) => {
 
                         if (!inline && lang === 'chartjs') {
                             return <ChartJSPreview code={String(children).replace(/\n$/, '')} />;
+                        }
+
+                        if (!inline && match) {
+                            return (
+                                <SyntaxHighlighter
+                                    {...props}
+                                    style={vscDarkPlus}
+                                    language={match[1]}
+                                    PreTag="div"
+                                >
+                                    {String(children).replace(/\n$/, '')}
+                                </SyntaxHighlighter>
+                            );
                         }
 
                         return (

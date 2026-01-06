@@ -3,6 +3,8 @@ import { FileSearch } from 'lucide-react';
 import { type ContentItem } from '../../api';
 import { MarkdownPreview } from '../MarkdownPreview';
 import { getFileCategory, isTextBased } from '../../utils/fileTypes';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface FilePreviewProps {
     item: ContentItem;
@@ -49,12 +51,36 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
 
     // If it's explicitly text-based OR it's unknown but has a summary (implying text extraction worked), show as text
     if (isTextBased(category) || (category === 'default' && metadata.summary)) {
+        let language = 'text';
+        const filename = item.original_filename.toLowerCase();
+        
+        if (type.includes('javascript') || filename.endsWith('.js') || filename.endsWith('.ts') || filename.endsWith('.tsx')) language = 'typescript';
+        else if (type.includes('python') || filename.endsWith('.py')) language = 'python';
+        else if (type.includes('json') || filename.endsWith('.json')) language = 'json';
+        else if (type.includes('html') || filename.endsWith('.html')) language = 'html';
+        else if (type.includes('css') || filename.endsWith('.css')) language = 'css';
+        else if (filename.endsWith('.sh') || filename.endsWith('.bash')) language = 'bash';
+        else if (filename.endsWith('.yaml') || filename.endsWith('.yml')) language = 'yaml';
+        else if (filename.endsWith('.md')) language = 'markdown';
+        else if (filename.endsWith('.sql')) language = 'sql';
+        else if (filename.endsWith('.go')) language = 'go';
+        else if (filename.endsWith('.rs')) language = 'rust';
+        else if (filename.endsWith('.java')) language = 'java';
+        else if (filename.endsWith('.c') || filename.endsWith('.cpp') || filename.endsWith('.h')) language = 'cpp';
+
         return (
             <div className="preview-text-wrapper">
                 {isLoadingContent ? (
                     <div className="preview-loading">Loading content...</div>
                 ) : (
-                    <pre className="raw-text-preview">{textContent}</pre>
+                    <SyntaxHighlighter
+                        style={vscDarkPlus}
+                        language={language}
+                        showLineNumbers={true}
+                        customStyle={{ margin: 0, height: '100%', borderRadius: 0, fontSize: '13px' }}
+                    >
+                        {textContent || ''}
+                    </SyntaxHighlighter>
                 )}
             </div>
         );
