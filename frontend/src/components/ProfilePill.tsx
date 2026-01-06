@@ -39,7 +39,7 @@ export const ProfilePill: React.FC = () => {
                             setIsEditModalOpen(true);
                         }}>
                             <Settings size={16} />
-                            Edit Profile
+                            Settings
                         </button>
                         <button onClick={() => {
                             setIsOpen(false);

@@ -11,6 +11,14 @@ class UserRead(SQLModel):
     is_admin: bool
     profile_color: str
 
+class SessionRead(SQLModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    name: str
+    created_at: datetime
+    last_used_at: datetime
+    is_active: bool
+
 class UserUpdate(SQLModel):
     display_name: Optional[str] = None
     profile_color: Optional[str] = None

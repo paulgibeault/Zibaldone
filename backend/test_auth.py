@@ -71,5 +71,45 @@ def test_auth_endpoints():
     else:
         print(f"FAILURE: Authenticated request to /api/upload/finalize failed. Body: {response.json()}")
 
+    # 3. Test GET /api/auth/sessions
+    print("\n[TEST] GET /api/auth/sessions")
+    response = client.get("/api/auth/sessions", headers=headers)
+    print(f"Status: {response.status_code}")
+    if response.status_code == 200:
+        sessions = response.json()
+        print(f"SUCCESS: Retrieved {len(sessions)} sessions.")
+        if len(sessions) > 0:
+            print(f"First session ID: {sessions[0]['id']}")
+    else:
+        print(f"FAILURE: GET /api/auth/sessions failed. Body: {response.json()}")
+
+    # 4. Test DELETE /api/auth/sessions/{id}
+    # We will try to delete the CURRENT session.
+    # First get the session ID we just created in setup_auth
+    # Actually setup_auth doesn't return the session object.
+    # But GET /sessions returned it.
+    
+    if response.status_code == 200 and len(response.json()) > 0:
+        session_id = response.json()[0]['id']
+        print(f"\n[TEST] DELETE /api/auth/sessions/{session_id}")
+        
+        del_response = client.delete(f"/api/auth/sessions/{session_id}", headers=headers)
+        print(f"Status: {del_response.status_code}")
+        
+        if del_response.status_code == 200:
+            print("SUCCESS: Session revoked.")
+            
+            # Verify we can no longer use this token?
+            # Actually our get_current_user implementation checks checks is_active.
+            print("\n[TEST] Verify Token Invalidated")
+            verify_response = client.get("/api/items", headers=headers)
+            print(f"Status: {verify_response.status_code} (Expect 401)")
+            if verify_response.status_code == 401:
+                print("SUCCESS: Token is now invalid.")
+            else:
+                 print(f"FAILURE: Token should be invalid but got {verify_response.status_code}")
+        else:
+             print(f"FAILURE: Could not revoke session. Body: {del_response.json()}")
+
 if __name__ == "__main__":
     test_auth_endpoints()

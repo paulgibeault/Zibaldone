@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import secrets
 import uuid
 
-from app.models import get_session, User, Invite, InviteType
+from app.models import get_session, User, Invite, InviteType, Session as UserSession 
 from app import schemas
 from app.services.auth import create_session, create_user
 from app.deps import get_current_user, get_current_admin_user
@@ -121,3 +121,43 @@ def update_user_me(
     session.commit()
     session.refresh(current_user)
     return current_user
+
+@router.get("/sessions", response_model=list[schemas.SessionRead])
+def read_sessions(
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+):
+    """
+    List all active sessions for the current user.
+    """
+    return current_user.sessions
+
+@router.delete("/sessions/{session_id}")
+def revoke_session(
+    session_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db_session: Session = Depends(get_session)
+):
+    """
+    Revoke a specific session.
+    """
+    # Verify session belongs to user
+    # We can filter by ID and user_id to be safe
+    # Also we should probably not allow revoking the current session? 
+    # Or maybe we SHOULD, to log out.
+    
+    s = db_session.get(UserSession, session_id)
+    if not s:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    if s.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to revoke this session")
+        
+    # Instead of deleting, we set is_active=False
+    # But wait, looking at models.py, Session has is_active.
+    # But currently get_current_user checks is_active.
+    
+    s.is_active = False
+    db_session.add(s)
+    db_session.commit()
+    return {"status": "success"}
