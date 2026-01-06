@@ -1,0 +1,11 @@
+name: "Metadata Extraction"
+description: "Extracts title, summary, and initial tags using LLM."
+version: "1.0.0"
+triggers:
+  - event: file_created
+    priority: 10
+parameters:
+  llm_model:
+    type: string
+    description: "Model to use for extraction"
+    default: "zibaldone-model"

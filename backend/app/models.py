@@ -73,6 +73,11 @@ class ProcessingTask(SQLModel, table=True):
     start_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     end_time: Optional[datetime] = None
     result_json: Optional[str] = None
+    
+    # New fields for Skill system
+    trigger_event: Optional[str] = None
+    parameters: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
+    provenance_output: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
 
     item: "ContentItem" = Relationship(back_populates="tasks")
 

@@ -1,188 +1,222 @@
 import asyncio
-from sqlmodel import Session, select
-from app.models import engine, ContentItem, ContentStatus, ProcessingTask, TaskStatus
-import json
-from datetime import datetime, timezone
-from litellm import completion
-from app import crud
-
-from app.services.llm import LLMService
-from app.services.storage import get_storage
-from app.services.task_runner import TaskContext
-from app.services.event_broadcaster import broadcaster
-import os
-
-storage = get_storage()
-
-# Initialize LLM Service
-# User can configure model via env var, e.g. "ollama/llama2"
-llm_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo") 
-llm_service = LLMService(model=llm_model)
-
-# Simple worker loop
-# Simple worker loop
-
 import logging
+import json
+import traceback
+from datetime import datetime, timezone
+from typing import Dict, Any, List
+
+from sqlmodel import Session, select
+from app.models import (
+    engine, 
+    ContentItem, 
+    ContentStatus, 
+    ProcessingTask, 
+    TaskStatus, 
+    User,
+    Tag
+)
+from app import crud
+from app.services.skill_registry import skill_registry
+from app.services.skill_sdk import SkillContext
+from app.services.event_broadcaster import broadcaster
+from app.services.storage import get_storage
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-async def process_item(item: ContentItem, session: Session, llm_service: LLMService):
+# Initialize Skills
+skill_registry.load_skills()
+
+async def handle_event(session: Session, event: str, item_id: Any, context_data: Dict[str, Any] = None):
     """
-    Process a single item: extract content, generate metadata via LLM, 
-    merge with existing metadata, and update status.
+    Finds skills triggered by event and creates PENDING tasks.
+    Broadcasting events is also handled here if needed (system wide events).
     """
-    logger.info(f"Processing item: {item.original_filename}")
+    logger.info(f"Event detected: {event} for item {item_id}")
     
-    # Update item status to PROCESSING
-    item.status = ContentStatus.PROCESSING
-    session.add(item)
+    # 1. Broadcast to UI
+    try:
+        await broadcaster.broadcast(json.dumps({
+            "type": "event",
+            "event": event,
+            "item_id": str(item_id)
+        }))
+    except Exception as e:
+        logger.warning(f"Failed to broadcast event: {e}")
+
+    # 2. Trigger Skills
+    skills = skill_registry.get_skills_for_trigger(event)
+    for skill_config in skills:
+        # Check if we should deduct from context_data or defaults
+        params = {}
+        for k, v in skill_config.parameters.items():
+            params[k] = v.default
+            
+        task = ProcessingTask(
+            item_id=item_id,
+            name=skill_config.name,
+            status=TaskStatus.PENDING,
+            trigger_event=event,
+            parameters=params
+        )
+        session.add(task)
+        logger.info(f"Scheduled task: {skill_config.name} for item {item_id}")
+    
     session.commit()
     
-    # Broadcast event
-    from app.services.event_broadcaster import broadcaster
-    await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
-
-    # Create a processing task record
-    # Create a processing task record
-    # Note: We replaced the manual assignment with TaskContext below
-    
-    # Read content (assuming text for now, or just tagging filename)
+    # Notify UI of new task
     try:
-        async with TaskContext(session, item.id, "Metadata Extraction") as task:
-            # Load existing metadata
-            existing_metadata = item.item_metadata.copy() if item.item_metadata else {}
+        await broadcaster.broadcast(json.dumps({
+            "type": "update",
+            "item_id": str(item_id)
+        }))
+    except:
+        pass
 
-            # Generate new metadata from LLM
-            logger.info(f"Extracting metadata for {item.original_filename} using {llm_service.model}")
-            
-            # Fetch content for LLM processing
-            try:
-                content_bytes = await storage.get_content(item.storage_path)
-                content_text = content_bytes.decode('utf-8', errors='ignore')
-            except Exception as e:
-                logger.error(f"Error fetching content for {item.original_filename}: {e}")
-                content_bytes = None
-                content_text = None
-
-            llm_metadata = await llm_service.generate_metadata(
-                item.storage_path, 
-                content_text=content_text,
-                content_bytes=content_bytes
-            )
-            logger.info(f"LLM metadata extracted for {item.original_filename}")
-            
-            merged_metadata = existing_metadata.copy()
-            merged_metadata.update(llm_metadata)
-            
-            item.item_metadata = merged_metadata
-
-            # Save result to task
-            task.result_json = json.dumps(llm_metadata, indent=2)
-            session.add(task)
-            
-            # Process tags from LLM metadata
-            # Expecting tags in llm_metadata['tags'] as a list of strings
-            llm_tags = llm_metadata.get('tags', [])
-        
-        # --- Tag Alignment Step ---
-        if isinstance(llm_tags, list) and len(llm_tags) > 0:
-            # Create a specific task for Tag Alignment
-            async with TaskContext(session, item.id, "Tag Alignment") as alignment_task:
-                # Fetch all existing tags names for alignment
-                all_tags = crud.get_tags(session, owner_id=item.owner_id, approved_only=True)
-                existing_tag_names = [t.name for t in all_tags]
-                
-                logger.info(f"Aligning {len(llm_tags)} tags against {len(existing_tag_names)} existing tags...")
-                aligned_tags = await llm_service.align_tags(llm_tags, existing_tag_names)
-                
-                logger.info(f"Tags aligned. Original: {llm_tags} -> Aligned: {aligned_tags}")
-                
-                # Use the aligned tags
-                final_tags = aligned_tags
-                
-                # Update metadata with aligned tags if they changed
-                if final_tags != llm_tags:
-                    merged_metadata['tags'] = final_tags
-                    item.item_metadata = merged_metadata
-                
-                # Record result
-                alignment_task.result_json = json.dumps({
-                    "original_tags": llm_tags,
-                    "existing_tags_count": len(existing_tag_names),
-                    "aligned_tags": final_tags,
-                    "changes": [t for t in final_tags if t not in llm_tags]
-                }, indent=2)
-                session.add(alignment_task)
-                
-                # Use final_tags for linking
-                llm_tags = final_tags
-                
-        # --------------------------
-
-        if isinstance(llm_tags, list):
-            for tag_name in llm_tags:
-                if not tag_name:
+async def process_queued_items():
+    """
+    Polls content items in QUEUED state.
+    Triggers 'file_created' event.
+    """
+    # Use a separate session for polling
+    item_ids = []
+    with Session(engine) as session:
+        statement = select(ContentItem.id).where(ContentItem.status == ContentStatus.QUEUED)
+        item_ids = session.exec(statement).all()
+        logger.info(f"Worker polling: Found {len(item_ids)} queued items.")
+    
+    # Process outside the polling session
+    for item_id in item_ids:
+        try:
+            with Session(engine) as session:
+                item = session.get(ContentItem, item_id)
+                if not item or item.status != ContentStatus.QUEUED:
                     continue
+                    
+                logger.info(f"Picked up queued item: {item.original_filename}")
                 
-                # Check if tag already exists
-                tag = crud.get_tag_by_name(session, tag_name, owner_id=item.owner_id)
-                if not tag:
-                    # Create as unapproved autocreated tag
-                    tag = crud.create_tag(
-                        session, 
-                        name=tag_name, 
-                        color="#888888", 
-                        owner_id=item.owner_id,
-                        is_autocreated=True, 
-                        is_approved=False
-                    )
+                # Update status to COMPLETED (meaning "Ingested into system")
+                item.status = ContentStatus.COMPLETED 
+                session.add(item)
+                session.commit()
                 
-                # Link tag to item if not already linked
-                if tag not in item.tags:
-                    item.tags.append(tag)
+                # Trigger 'file_created'
+                await handle_event(session, "file_created", item.id)
+                
+        except Exception as e:
+            logger.error(f"Error processing queued item {item_id}: {e}", exc_info=True)
+            try:
+                with Session(engine) as error_session:
+                    i = error_session.get(ContentItem, item_id)
+                    if i:
+                        i.status = ContentStatus.FAILED
+                        error_session.add(i)
+                        error_session.commit()
+            except:
+                pass
 
-        item.status = ContentStatus.COMPLETED
-        session.add(item)
-        
-        session.commit()
-        logger.info(f"Successfully processed and tagged {item.original_filename} (ID: {item.id})")
-        
-        # Broadcast event
-        from app.services.event_broadcaster import broadcaster
-        await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
+async def execute_task(task_id: str):
+    """
+    Executes a single task by ID.
+    """
+    with Session(engine) as session:
+        task = session.get(ProcessingTask, task_id)
+        if not task or task.status != TaskStatus.PENDING:
+            return
 
-    except Exception as e:
-        logger.error(f"Error processing item {item.id}: {e}", exc_info=True)
-        
-        # Update item status to FAILED
-        item.status = ContentStatus.FAILED
-        session.add(item)
-        
-        # Note: Individual tasks are handled by TaskContext so we don't need to fails them manually here
-        # unless the error happened outside a TaskContext, in which case we might lose tracking.
-        # But generally, TaskContext handles its own failure.
-        
+        # Lock / Set RUNNING
+        task.status = TaskStatus.RUNNING
+        task.start_time = datetime.now(timezone.utc)
+        session.add(task)
         session.commit()
         
-        # Broadcast event
-        from app.services.event_broadcaster import broadcaster
-        await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(item.id)}))
+        # Notify start
+        try:
+            await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(task.item_id)}))
+        except: pass
+
+        try:
+            item = task.item
+            ctx = SkillContext(session, task, item)
+            
+            logger.info(f"Executing Skill {task.name} for item {item.id}")
+            result = await skill_registry.execute_skill(task.name, ctx)
+            
+            # 1. Update Metadata
+            if result.metadata_patch:
+                current = item.item_metadata.copy() if item.item_metadata else {}
+                current.update(result.metadata_patch)
+                
+                # Add Provenance info
+                prov = current.get('provenance', {})
+                prov['last_task'] = str(task.id) # simple tracking
+                current['provenance'] = prov
+                
+                item.item_metadata = current
+                session.add(item)
+
+            # 2. Update Content (Versioning) - Placeholder
+            if result.new_version_created and result.new_content:
+                logger.info("New version creation requested - Not yet implemented fully")
+                # TODO: Implement full versioning logic
+
+            # 3. Finalize Task
+            task.status = TaskStatus.COMPLETED
+            task.end_time = datetime.now(timezone.utc)
+            # Use model_dump_json for Pydantic v2
+            if hasattr(result, 'model_dump_json'):
+                task.result_json = result.model_dump_json()
+            else:
+                task.result_json = result.json() 
+                
+            session.add(task)
+            session.commit()
+            
+            # 4. Emit Events (AFTER commit to ensure data is visible)
+            for evt in result.events_to_emit:
+                # We need to trigger these events.
+                await handle_event(session, evt, item.id)
+
+        except Exception as e:
+            logger.error(f"Task {task.id} failed: {e}", exc_info=True)
+            task.status = TaskStatus.FAILED
+            task.message = str(e)
+            task.end_time = datetime.now(timezone.utc)
+            session.add(task)
+            session.commit()
+            
+        # Notify end
+        try:
+            await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(task.item_id)}))
+        except: pass
+
+
+async def process_task_queue():
+    """
+    Polls for PENDING tasks and runs them.
+    """
+    # Use a separate session for polling
+    with Session(engine) as session:
+        statement = select(ProcessingTask.id).where(ProcessingTask.status == TaskStatus.PENDING)
+        task_ids = session.exec(statement).all()
+        
+    for task_id in task_ids:
+        # Run sequentially for now
+        await execute_task(task_id)
 
 
 async def process_unprocessed_items():
+    """
+    Main worker entry point.
+    Renamed loops but keeping this function name for main.py compatibility.
+    """
+    logger.info("Skill Worker started.")
     while True:
         try:
-            with Session(engine) as session:
-                statement = select(ContentItem).where(ContentItem.status == ContentStatus.QUEUED)
-                results = session.exec(statement)
-                items = results.all()
-                
-                for item in items:
-                    print(f"Worker: Processing {item.original_filename}", flush=True)
-                    await process_item(item, session, llm_service)
+            await process_queued_items()
+            await process_task_queue()
         except Exception as e:
-            logger.error(f"Worker: Error in loop: {e}", exc_info=True)
-                
-        await asyncio.sleep(5) # Poll every 5 seconds
+            logger.error(f"Worker Loop Error: {e}", exc_info=True)
+        
+        await asyncio.sleep(2)

@@ -12,3 +12,4 @@ qrcode[pil]
 passlib[bcrypt]
 python-tlsh
 pydantic-settings
+PyYAML

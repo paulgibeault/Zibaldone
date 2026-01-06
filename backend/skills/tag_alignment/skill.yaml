@@ -1,0 +1,7 @@
+name: "Tag Alignment"
+description: "Aligns item tags with existing taxonomy."
+version: "1.0.0"
+triggers:
+  - event: metadata_updated
+    priority: 10
+parameters: {}

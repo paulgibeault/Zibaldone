@@ -20,7 +20,7 @@ file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(mes
 llm_logger.addHandler(file_handler)
 
 class LLMService:
-    def __init__(self, model: str = "gpt-3.5-turbo"):
+    def __init__(self, model: str = "zibaldone-model"):
         self.model = model
         self.prompts_dir = Path(__file__).parent.parent / "prompts"
         self.type_mapping = {
@@ -167,6 +167,8 @@ JSON Result:
                 model=self.model,
                 api_base=api_base,
                 messages=messages,
+                custom_llm_provider="openai",
+                api_key="sk-1234"
             )
         except Exception as e:
             # Fallback for vision failure (e.g. model doesn't support images)
@@ -191,6 +193,8 @@ JSON Result:
                         model=self.model,
                         api_base=api_base,
                         messages=messages,
+                        custom_llm_provider="openai",
+                        api_key="sk-1234"
                     )
                 except Exception as ex:
                     raise ServiceUnavailable(f"LLM Service failed: {ex}")
@@ -278,6 +282,8 @@ JSON Result:
                 model=self.model,
                 api_base=api_base,
                 messages=messages,
+                custom_llm_provider="openai",
+                api_key="sk-1234"
             )
             
             content = response.choices[0].message.content.strip()
