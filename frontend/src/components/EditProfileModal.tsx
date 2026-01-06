@@ -119,10 +119,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose }) =
 
     // --- Renderers ---
 
-    const colors = [
-        '#6366f1', '#ef4444', '#f59e0b', '#10b981',
-        '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'
-    ];
+
 
     return (
         <Modal
@@ -172,18 +169,13 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({ onClose }) =
 
                     <div className="form-group">
                         <label>Profile Color</label>
-                        <div className="color-grid">
-                            {colors.map(color => (
-                                <button
-                                    type="button"
-                                    key={color}
-                                    className={`color-option ${profileColor === color ? 'selected' : ''}`}
-                                    style={{ backgroundColor: color }}
-                                    onClick={() => setProfileColor(color)}
-                                    aria-label={`Select color ${color}`}
-                                />
-                            ))}
-                        </div>
+                        <input
+                            type="color"
+                            value={profileColor}
+                            onChange={(e) => setProfileColor(e.target.value)}
+                            className="profile-color-picker"
+                            aria-label="Select profile color"
+                        />
                     </div>
 
                     <div className="modal-actions">

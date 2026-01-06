@@ -21,28 +21,31 @@
     /* Important for width: 100% */
 }
 
-.color-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.75rem;
-}
-
-.color-option {
-    width: 100%;
-    aspect-ratio: 1;
+.profile-color-picker {
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    border: none;
     border-radius: 50%;
-    border: 3px solid transparent;
     cursor: pointer;
-    transition: all 0.2s;
+    background: none;
+    overflow: hidden;
+    transition: transform 0.2s;
 }
 
-.color-option:hover {
-    transform: scale(1.1);
+.profile-color-picker:hover {
+    transform: scale(1.05);
 }
 
-.color-option.selected {
-    border-color: var(--text-primary);
-    transform: scale(1.1);
+.profile-color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.profile-color-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+    padding: 0;
+    border: 2px solid var(--border-color);
 }
 
 .modal-actions {
