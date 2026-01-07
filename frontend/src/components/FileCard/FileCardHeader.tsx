@@ -99,7 +99,7 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                 {onTogglePin && (
                     <button
                         type="button"
-                        className={`action-btn-card pin-btn ${isPinned ? 'pinned' : ''}`}
+                        className={`btn btn-ghost btn-icon pin-btn ${isPinned ? 'text-accent' : ''}`}
                         onClick={onTogglePin}
                         title={isPinned ? "Unpin File" : "Pin File"}
                     >
@@ -108,7 +108,7 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                 )}
                 <button
                     type="button"
-                    className="action-btn-card expand-btn"
+                    className="btn btn-ghost btn-icon expand-btn"
                     onClick={onToggleFullscreen}
                     title={isFullscreen ? "Restore View" : "Fullscreen"}
                 >
@@ -116,7 +116,7 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                 </button>
                 <button
                     type="button"
-                    className="action-btn-card minimize-btn"
+                    className="btn btn-ghost btn-icon minimize-btn"
                     onClick={onClose}
                     title="Close Selection"
                 >

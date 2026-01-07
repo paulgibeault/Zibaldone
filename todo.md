@@ -8,10 +8,10 @@
 - [x] **Dynamic File Processing**: Enable execution and tracking of processing tasks at the ContentItem level. Align to accepted task management standards/frameworks (e.g. Atomic Agents).
 
 ## Explore View
-- [ ] **Tag Filtering**: 
-    - [ ] Clicking a tag should filter files containing that tag.
-    - [ ] Tags should behave as toggles (on/off).
-    - [ ] Support multi-select toggles with intersection logic (files must contain *all* selected tags).
+- [x] **Tag Filtering**: 
+    - [x] Clicking a tag should filter files containing that tag.
+    - [x] Tags should behave as toggles (on/off).
+    - [x] Support multi-select toggles with intersection logic (files must contain *all* selected tags).
 - [ ] **Project Creation**:
     - [ ] Add "New Project" button to create a project from current view (selected tags + pinned files).
 - [ ] **File Pinning**:

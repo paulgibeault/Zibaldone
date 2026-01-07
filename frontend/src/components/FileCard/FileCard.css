@@ -9,6 +9,7 @@
     color: var(--text-primary);
     display: flex;
     flex-direction: column;
+    min-width: 0; /* Prevent Grid Blowout */
 }
 
 .file-card.mode-minimal {
@@ -39,6 +40,7 @@
     flex: 1;
     padding: 1rem;
     min-height: 0;
+    min-width: 0; /* Prevent Flex Blowout */
 }
 
 /* Minimal Card View */
@@ -281,6 +283,7 @@
     min-height: 0;
     margin-bottom: 0.75rem;
     padding-right: 4px;
+    width: 100%;
 }
 
 .summary-section h4 {
@@ -634,33 +637,7 @@
     align-items: center;
 }
 
-.metadata-edit-row input {
-    background: var(--bg-card);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-size: 0.85rem;
-    color: var(--text-primary);
-    flex: 1;
-}
 
-.metadata-edit-row .delete-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-}
-
-.metadata-edit-row .delete-btn:hover {
-    color: var(--color-danger);
-    background: rgba(239, 68, 68, 0.1);
-}
 
 .metadata-actions {
     display: flex;
@@ -670,27 +647,7 @@
     border-top: 1px solid var(--border-subtle);
 }
 
-.btn-primary-sm {
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-}
 
-.btn-secondary-sm {
-    background: transparent;
-    border: 1px solid var(--border-subtle);
-    color: var(--text-primary);
-    border-radius: 6px;
-    padding: 6px 12px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-}
 
 .btn-add-field {
     background: transparent;
@@ -782,29 +739,6 @@
     margin-left: auto;
 }
 
-
-.action-btn-card {
-
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--text-muted);
-    padding: 6px;
-    border-radius: 8px;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-}
-
-.action-btn-card:hover {
-    color: var(--text-primary);
-    background: var(--bg-card-hover);
-}
-
-.delete-btn-card:hover {
-    color: var(--color-danger);
-    background: rgba(239, 68, 68, 0.1);
-}
 
 .fade-in {
     animation: fadeIn 0.3s ease-out;
@@ -1098,6 +1032,7 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .preview-container {
@@ -1111,6 +1046,7 @@
     overflow-y: auto;
     position: relative;
     color: var(--text-muted);
+    min-width: 0;
 }
 
 .preview-markdown-wrapper {
@@ -1171,6 +1107,8 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow-x: auto;
+    max-width: 100%;
 }
 
 .preview-placeholder,

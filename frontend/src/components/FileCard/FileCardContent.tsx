@@ -263,18 +263,20 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                     <div key={key} className="metadata-edit-row">
                                         <input
                                             type="text"
+                                            className="input input-sm"
                                             value={key}
                                             onChange={(e) => handleRenameKey(key, e.target.value)}
                                             style={{ width: '120px', flex: '0 0 auto' }}
                                         />
                                         <input
                                             type="text"
+                                            className="input input-sm"
                                             value={String(value)}
                                             onChange={(e) => handleMetadataChange(key, e.target.value)}
                                         />
                                         <button
                                             type="button"
-                                            className="delete-btn"
+                                            className="btn btn-ghost btn-icon btn-danger"
                                             onClick={() => handleDeleteField(key)}
                                             title="Delete field"
                                         >
@@ -286,10 +288,10 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                     + Add Field
                                 </button>
                                 <div className="metadata-actions">
-                                    <button type="button" className="btn-primary-sm" onClick={handleSaveEdit} disabled={isSaving}>
+                                    <button type="button" className="btn btn-primary btn-sm" onClick={handleSaveEdit} disabled={isSaving}>
                                         {isSaving ? 'Saving...' : 'Save Changes'}
                                     </button>
-                                    <button type="button" className="btn-secondary-sm" onClick={handleCancelEdit} disabled={isSaving}>
+                                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleCancelEdit} disabled={isSaving}>
                                         Cancel
                                     </button>
                                 </div>

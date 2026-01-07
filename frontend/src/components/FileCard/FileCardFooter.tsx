@@ -18,7 +18,7 @@ export const FileCardFooter: React.FC<FileCardFooterProps> = ({ itemId, currentI
             </div>
             <button
                 type="button"
-                className="action-btn-card delete-btn-footer"
+                className="btn btn-ghost btn-icon btn-danger delete-btn-footer"
                 onClick={(e) => onDelete(itemId, e)}
                 title="Delete file"
             >

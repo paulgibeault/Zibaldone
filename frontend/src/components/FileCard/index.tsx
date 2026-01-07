@@ -184,10 +184,10 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                      {onTogglePin && (
                         <button
                             type="button"
-                            className={`action-btn-card pin-btn-minimal ${isPinned ? 'pinned' : ''}`}
+                            className={`btn btn-ghost btn-icon pin-btn-minimal ${isPinned ? 'text-accent' : ''}`}
                             onClick={(e) => onTogglePin(item.id, e)}
                             title={isPinned ? "Unpin File" : "Pin File"}
-                            style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: isPinned ? 'var(--accent-color)' : 'var(--text-muted)' }}
+                            style={{ padding: '4px', cursor: 'pointer' }}
                         >
                              <Pin size={16} fill={isPinned ? "currentColor" : "none"} />
                         </button>
