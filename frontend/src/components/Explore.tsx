@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, ArrowDownAZ, ArrowUpAZ, Calendar } from 'lucide-react';
 import { type Tag as TagType, getItems, type ContentItem, searchContent, deleteItem } from '../api';
 import { useTags } from '../hooks/useTags';
 import { Tag } from './Tag';
@@ -7,7 +7,7 @@ import { FileCard } from './FileCard';
 import { ViewHeader } from './ViewHeader';
 import { ViewContainer } from './ViewContainer';
 
-export const Explore = () => {
+export const Explore = ({ isActive = false }: { isActive?: boolean }) => {
     const { allTags: tags, fetchTags } = useTags();
     const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
     const [allItems, setAllItems] = useState<ContentItem[]>([]);
@@ -18,6 +18,20 @@ export const Explore = () => {
     const [searchResults, setSearchResults] = useState<{ tags: TagType[], items: ContentItem[] } | null>(null);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [pinnedItems, setPinnedItems] = useState<Set<string>>(new Set());
+    const [sortMode, setSortMode] = useState<'alphabetical' | 'date'>('date');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+    const handleSortChange = (mode: 'alphabetical' | 'date') => {
+        if (sortMode === mode) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortMode(mode);
+            setSortDirection('desc'); // Default to desc (newest/Z-A) usually better for exploration
+            if (mode === 'alphabetical') {
+                setSortDirection('asc'); // A-Z usually better for names
+            }
+        }
+    };
 
     // Calculate usage count for each tag based on UNPINNED items
     const tagUsage = React.useMemo(() => {
@@ -47,8 +61,10 @@ export const Explore = () => {
     }, [fetchTags]);
 
     useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+        if (isActive) {
+            fetchData();
+        }
+    }, [isActive, fetchData]);
 
     // Debounce search text
     useEffect(() => {
@@ -153,7 +169,32 @@ export const Explore = () => {
                 return true;
             });
         }
-        return items;
+
+        
+        return items.sort((a, b) => {
+            let comparison = 0;
+            if (sortMode === 'alphabetical') {
+                // Helper to get title from metadata or fallback to filename
+                const getTitle = (item: ContentItem) => {
+                    try {
+                        const meta = JSON.parse(item.metadata_json || '{}');
+                        return meta.title || item.original_filename;
+                    } catch {
+                        return item.original_filename;
+                    }
+                };
+                
+                const nameA = getTitle(a);
+                const nameB = getTitle(b);
+                comparison = nameA.localeCompare(nameB);
+            } else if (sortMode === 'date') {
+                const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                comparison = dateA - dateB;
+            }
+            
+            return sortDirection === 'asc' ? comparison : -comparison;
+        });
     };
 
     const handlePinAll = () => {
@@ -192,16 +233,34 @@ export const Explore = () => {
                 title="Explore"
                 subtitle="Discover connections in your collection."
                 controls={
-                    <div className="input-with-icon">
-                        <Search size={16} className="input-icon" />
-                        <input
-                            type="text"
-                            placeholder="Type to search..."
-                            value={filterText}
-                            onChange={(e) => setFilterText(e.target.value)}
-                            className="filter-input-subtle"
-                        />
-                    </div>
+                    <>
+                        <div className="input-with-icon">
+                            <Search size={16} className="input-icon" />
+                            <input
+                                type="text"
+                                placeholder="Type to search..."
+                                value={filterText}
+                                onChange={(e) => setFilterText(e.target.value)}
+                                className="filter-input-subtle"
+                            />
+                        </div>
+                        <div className="sort-btn-group" style={{ marginLeft: '1rem', display: 'flex' }}>
+                             <button
+                                className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
+                                onClick={() => handleSortChange('alphabetical')}
+                                title="Sort A-Z"
+                            >
+                                {sortMode === 'alphabetical' && sortDirection === 'desc' ? <ArrowUpAZ size={18} /> : <ArrowDownAZ size={18} />}
+                            </button>
+                            <button
+                                className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
+                                onClick={() => handleSortChange('date')}
+                                title="Sort by Date"
+                            >
+                                <Calendar size={18} />
+                            </button>
+                        </div>
+                    </>
                 }
             />
 

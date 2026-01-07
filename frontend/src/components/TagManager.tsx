@@ -7,7 +7,7 @@ import { ViewHeader } from './ViewHeader';
 import { ViewContainer } from './ViewContainer';
 import { TagList } from './TagManager/TagList';
 
-const TagManager = () => {
+const TagManager = ({ isActive = false }: { isActive?: boolean }) => {
     const { allTags: tags, fetchTags } = useTags();
     const [tagUsage, setTagUsage] = useState<Record<string, number>>({});
 
@@ -20,8 +20,10 @@ const TagManager = () => {
     const [showApprovedOnly, setShowApprovedOnly] = useState<boolean>(false);
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (isActive) {
+            fetchData();
+        }
+    }, [isActive]);
 
     const fetchData = async (): Promise<void> => {
         setLoading(true);

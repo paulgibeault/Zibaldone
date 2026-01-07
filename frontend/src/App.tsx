@@ -103,7 +103,7 @@ function MainApp() {
         </button>
       </div>
 
-      {activeView === 'heap' && (
+      <div style={{ display: activeView === 'heap' ? 'block' : 'none' }}>
         <Heap
           items={items}
           onDelete={handleDelete}
@@ -112,11 +112,15 @@ function MainApp() {
           onSelect={(id) => setSelectedItemId(id)}
           onDeselect={() => setSelectedItemId(null)}
         />
-      )}
+      </div>
 
-      {activeView === 'tags' && <TagManager />}
+      <div style={{ display: activeView === 'tags' ? 'block' : 'none' }}>
+        <TagManager isActive={activeView === 'tags'} />
+      </div>
 
-      {activeView === 'explore' && <Explore />}
+      <div style={{ display: activeView === 'explore' ? 'block' : 'none' }}>
+        <Explore isActive={activeView === 'explore'} />
+      </div>
     </div>
   );
 }
