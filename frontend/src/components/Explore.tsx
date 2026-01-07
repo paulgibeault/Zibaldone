@@ -10,6 +10,7 @@ import { ViewContainer } from './ViewContainer';
 export const Explore = () => {
     const { allTags: tags, fetchTags } = useTags();
     const [tagUsage, setTagUsage] = useState<Record<string, number>>({});
+    const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
     const [allItems, setAllItems] = useState<ContentItem[]>([]);
     const [filterText, setFilterText] = useState<string>('');
     const [debouncedFilterText, setDebouncedFilterText] = useState<string>('');
@@ -17,8 +18,6 @@ export const Explore = () => {
     const [searching, setSearching] = useState<boolean>(false);
     const [searchResults, setSearchResults] = useState<{ tags: TagType[], items: ContentItem[] } | null>(null);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-
-
 
     // Initial load
     const fetchData = React.useCallback(async () => {
@@ -112,7 +111,31 @@ export const Explore = () => {
         }
     };
 
+    const toggleTag = (tagId: string) => {
+        const newSelected = new Set(selectedTags);
+        if (newSelected.has(tagId)) {
+            newSelected.delete(tagId);
+        } else {
+            newSelected.add(tagId);
+        }
+        setSelectedTags(newSelected);
+    };
 
+    const getFilteredItems = () => {
+        let items = filterText.trim() && searchResults ? searchResults.items : allItems;
+        
+        if (selectedTags.size > 0) {
+            items = items.filter(item => {
+                const itemTagIds = new Set((item.tags || []).map(t => t.id));
+                // Intersection logic: Item must have ALL selected tags
+                for (const tagId of selectedTags) {
+                    if (!itemTagIds.has(tagId)) return false;
+                }
+                return true;
+            });
+        }
+        return items;
+    };
 
     const getCloudTags = () => {
         // Default view: "top used and recent tags"
@@ -126,9 +149,12 @@ export const Explore = () => {
                 const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
                 const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
                 return dateB - dateA;
-            })
-            .slice(0, 50);
+            });
     };
+
+    const visibleTagsRaw = filterText.trim() && searchResults ? searchResults.tags : getCloudTags();
+    const visibleTags = visibleTagsRaw.filter(t => !selectedTags.has(t.id));
+    const activeTagsList = tags.filter(t => selectedTags.has(t.id));
 
     return (
         <ViewContainer>
@@ -153,6 +179,28 @@ export const Explore = () => {
                 <div className="search-layout" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                     {/* Left Column: Tags */}
                     <section className="results-section" style={{ width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                        
+                        {/* Active Filters Section */}
+                        {selectedTags.size > 0 && (
+                            <div className="active-tags-section" style={{ marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: '0 0 0.75rem 0', fontWeight: 700 }}>
+                                    Active Filters
+                                </h3>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
+                                    {activeTagsList.map(tag => (
+                                        <Tag
+                                            key={`active-${tag.id}`}
+                                            tag={tag}
+                                            onClick={() => toggleTag(tag.id)}
+                                            isSelected={true}
+                                            style={{ fontSize: '0.8rem', padding: '0.35rem 0.8rem' }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Available Tags Section */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
                                 Tags
@@ -161,23 +209,25 @@ export const Explore = () => {
                         </div>
 
                         <div className="tags-column" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignContent: 'flex-start' }}>
-                            {(filterText.trim() && searchResults ? searchResults.tags : getCloudTags()).map((tag: TagType) => (
+                            {visibleTags.map((tag: TagType) => (
                                 <Tag
                                     key={tag.id}
                                     tag={tag}
                                     className="cloud-tag"
+                                    onClick={() => toggleTag(tag.id)}
+                                    isSelected={selectedTags.has(tag.id)}
                                     style={{
                                         fontSize: '0.8rem',
                                         padding: '0.35rem 0.8rem',
                                         gap: '0.4rem',
-                                        opacity: (filterText.trim() ? 1 : (tagUsage[tag.id] ? 1 : 0.6))
+                                        opacity: (selectedTags.has(tag.id) || filterText.trim() ? 1 : (tagUsage[tag.id] ? 1 : 0.6))
                                     }}
                                 />
                             ))}
-                            {filterText.trim() && searchResults?.tags.length === 0 && (
+                            {visibleTags.length === 0 && filterText.trim() && (
                                 <p className="empty-msg" style={{ fontSize: '0.8rem', paddingLeft: '0.25rem' }}>No matching tags.</p>
                             )}
-                            {!filterText.trim() && getCloudTags().length === 0 && (
+                            {visibleTags.length === 0 && !filterText.trim() && (
                                 <p className="empty-msg" style={{ fontSize: '0.8rem', paddingLeft: '0.25rem' }}>No tags found.</p>
                             )}
                         </div>
@@ -199,7 +249,7 @@ export const Explore = () => {
                                 gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
                                 gap: '1.5rem'
                             }}>
-                                {(filterText.trim() && searchResults ? searchResults.items : allItems.slice(0, 20)).map((item: ContentItem) => (
+                                {getFilteredItems().slice(0, 50).map((item: ContentItem) => (
                                     <FileCard
                                         key={item.id}
                                         item={item}

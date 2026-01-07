@@ -1,7 +1,7 @@
 import uuid
 from sqlmodel import Session, select
 from sqlalchemy.orm import selectinload, aliased
-from sqlalchemy import or_
+from sqlalchemy import or_, String
 from app.models import ContentItem, Tag
 
 def search_content(session: Session, query: str, owner_id: uuid.UUID) -> dict:
@@ -13,11 +13,6 @@ def search_content(session: Session, query: str, owner_id: uuid.UUID) -> dict:
     def build_like(column, term):
         return column.ilike(f"%{term}%")
 
-    # Tags: Match ANY term
-    tag_conditions = [build_like(Tag.name, term) for term in terms]
-    tag_statement = select(Tag).where(or_(*tag_conditions)).where(Tag.is_approved == True).where(Tag.owner_id == owner_id)
-    tags = session.exec(tag_statement).all()
-    
     # Items: Match ALL terms across fields
     # For each term, it must be in (original_filename OR metadata_json)
     # This matches the intuition of "invoice 2024" finding "invoice.pdf" with "2024" in metadata
@@ -30,7 +25,7 @@ def search_content(session: Session, query: str, owner_id: uuid.UUID) -> dict:
         # Each term must be present in at least one of these columns
         term_condition = or_(
             build_like(ContentItem.original_filename, term),
-            build_like(ContentItem.metadata_json, term)
+            build_like(ContentItem.item_metadata.cast(String), term)
         )
         item_statement = item_statement.where(term_condition)
         
@@ -44,5 +39,13 @@ def search_content(session: Session, query: str, owner_id: uuid.UUID) -> dict:
     item_statement = item_statement.where(~subquery.exists())
     
     items = session.exec(item_statement).all()
+    # We want ALL tags associated with these items
+    tags_set = {}
+    for item in items:
+        for tag in item.tags:
+            if tag.is_approved:
+                tags_set[tag.id] = tag
+                
+    tags = list(tags_set.values())
     
     return {"tags": tags, "items": items}

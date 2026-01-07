@@ -6,10 +6,12 @@ interface TagProps {
     tag: TagType;
     onRemove?: (tagId: string, e: React.MouseEvent) => void;
     onApprove?: (tagId: string, e: React.MouseEvent) => void;
+    onClick?: (tagId: string, e: React.MouseEvent) => void;
     className?: string;
     style?: React.CSSProperties;
     showRemoveIcon?: boolean;
     showApproveIcon?: boolean;
+    isSelected?: boolean;
     key?: string | number;
 }
 
@@ -40,10 +42,12 @@ export const Tag = ({
     tag,
     onRemove,
     onApprove,
+    onClick,
     className = '',
     style = {},
     showRemoveIcon = false,
-    showApproveIcon = false
+    showApproveIcon = false,
+    isSelected = false
 }: TagProps) => {
     let contrastColor = getContrastColor(tag.color);
     const isUnapproved = tag.is_autocreated && !tag.is_approved;
@@ -51,19 +55,55 @@ export const Tag = ({
     // For unapproved tags, the background is very faint/transparent (see .standard-tag.unapproved),
     // so we MUST use a color that contrasts with the CARD/PAGE background, not the tag background.
     // Usually that means the primary text color or the primary theme color.
-    if (isUnapproved) {
+    if (isUnapproved && !isSelected) {
         contrastColor = 'var(--text-primary)';
+    }
+
+    // Interactive state (selected): Force solid background and high contrast text
+    if (isSelected) {
+        // Recalculate contrast assuming fully opaque background
+        const hex = tag.color.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        contrastColor = luminance > 0.6 ? '#0f172a' : '#ffffff';
     }
 
     return (
         <span
-            className={`standard-tag ${isUnapproved ? 'unapproved' : ''} ${className}`}
+            className={`standard-tag ${isUnapproved ? 'unapproved' : ''} ${className} ${isSelected ? 'selected' : ''}`}
+            onClick={(e) => onClick?.(tag.id, e)}
             style={{
-                backgroundColor: `color-mix(in srgb, ${tag.color}, transparent calc(100% - (var(--tag-bg-opacity) * 100%)))`,
+                // If selected, use solid color. If not, use semi-transparent mix via CSS var or fallback
+                backgroundColor: isSelected 
+                    ? tag.color 
+                    : `color-mix(in srgb, ${tag.color}, transparent calc(100% - (var(--tag-bg-opacity) * 100%)))`,
                 color: contrastColor,
+                cursor: onClick ? 'pointer' : 'default',
+                // Add a ring for focus/selection visibility if needed, or rely on solid color
+                boxShadow: isSelected ? `0 0 0 1px ${contrastColor} inset` : undefined, 
+                fontWeight: isSelected ? 600 : undefined,
+                display: 'inline-flex',
+                alignItems: 'center',
                 ...style
             }}
         >
+            {isSelected && (
+                <span style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    backgroundColor: `color-mix(in srgb, ${contrastColor}, transparent 80%)`,
+                    marginRight: '6px',
+                    flexShrink: 0
+                }}>
+                    <Check size={10} strokeWidth={3} />
+                </span>
+            )}
             {tag.name}
             {isUnapproved && (showApproveIcon || onApprove) && (
                 <button
