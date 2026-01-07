@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Pin } from 'lucide-react';
 import axios from 'axios';
 import { type ContentItem } from '../../api';
 import { getFileCategory, getFileIcon, isTextBased } from '../../utils/fileTypes';
@@ -16,9 +17,12 @@ interface FileCardProps {
     isSelected: boolean;
     onSelect: () => void;
     onDeselect: () => void;
+    isPinned?: boolean;
+    onTogglePin?: (id: string, e: React.MouseEvent) => void;
+    variant?: 'default' | 'micro';
 }
 
-export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, isSelected, onSelect, onDeselect }) => {
+export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, isSelected, onSelect, onDeselect, isPinned, onTogglePin, variant = 'default' }) => {
     const [activeTab, setActiveTab] = useState<'info' | 'preview' | 'metadata'>('info');
     const [metadataView, setMetadataView] = useState<'rendered' | 'raw'>('rendered');
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -152,7 +156,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
         const tagsString = sortedTags.map(t => t.name).join(', ');
 
         return (
-            <div className="file-card-minimal" onClick={onSelect} title={`Tags: ${tagsString}`}>
+            <div className={`file-card-minimal ${variant === 'micro' ? 'file-card-micro' : ''}`} onClick={onSelect} title={`Tags: ${tagsString}`}>
                 <div className="minimal-icon">
                     {renderFileIcon()}
                 </div>
@@ -160,7 +164,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                     <div className="minimal-filename" title={item.original_filename}>
                         {metadata.title || item.original_filename}
                     </div>
-                    {sortedTags.length > 0 && (
+                    {variant !== 'micro' && sortedTags.length > 0 && (
                         <div className="minimal-tags-text">
                             {sortedTags.map((tag, index) => (
                                 <React.Fragment key={tag.id}>
@@ -177,6 +181,17 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                     )}
                 </div>
                 <div className="minimal-actions">
+                     {onTogglePin && (
+                        <button
+                            type="button"
+                            className={`action-btn-card pin-btn-minimal ${isPinned ? 'pinned' : ''}`}
+                            onClick={(e) => onTogglePin(item.id, e)}
+                            title={isPinned ? "Unpin File" : "Pin File"}
+                            style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', color: isPinned ? 'var(--accent-color)' : 'var(--text-muted)' }}
+                        >
+                             <Pin size={16} fill={isPinned ? "currentColor" : "none"} />
+                        </button>
+                    )}
                     <span className={`status-dot status-${item.status}`} title={`Status: ${item.status}`} />
                 </div>
             </div>
@@ -197,6 +212,8 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                 }}
                 getFileIcon={renderFileIcon}
                 formatSize={formatSize}
+                isPinned={isPinned}
+                onTogglePin={onTogglePin ? (e) => onTogglePin(item.id, e!) : undefined}
             />
 
             <FileCardContent
@@ -242,6 +259,8 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                             }}
                             getFileIcon={renderFileIcon}
                             formatSize={formatSize}
+                            isPinned={isPinned}
+                            onTogglePin={onTogglePin ? (e) => onTogglePin(item.id, e!) : undefined}
                         />
 
                         <FileCardContent
@@ -272,7 +291,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
     }
 
     return (
-        <div className={`file-card mode-${viewMode}`}>
+        <div className={`file-card mode-${viewMode} ${variant === 'micro' ? 'card-micro' : ''}`}>
             {viewMode === 'minimal' ? renderMinimalView() : renderStandardView(false)}
         </div>
     );

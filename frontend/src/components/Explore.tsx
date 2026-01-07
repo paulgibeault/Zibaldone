@@ -9,7 +9,6 @@ import { ViewContainer } from './ViewContainer';
 
 export const Explore = () => {
     const { allTags: tags, fetchTags } = useTags();
-    const [tagUsage, setTagUsage] = useState<Record<string, number>>({});
     const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
     const [allItems, setAllItems] = useState<ContentItem[]>([]);
     const [filterText, setFilterText] = useState<string>('');
@@ -18,6 +17,21 @@ export const Explore = () => {
     const [searching, setSearching] = useState<boolean>(false);
     const [searchResults, setSearchResults] = useState<{ tags: TagType[], items: ContentItem[] } | null>(null);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [pinnedItems, setPinnedItems] = useState<Set<string>>(new Set());
+
+    // Calculate usage count for each tag based on UNPINNED items
+    const tagUsage = React.useMemo(() => {
+        const usage: Record<string, number> = {};
+        // Only use items that are NOT pinned for the tag cloud
+        const itemsToConsider = allItems.filter(item => !pinnedItems.has(item.id));
+        
+        itemsToConsider.forEach((item: ContentItem) => {
+            (item.tags || []).forEach((t: TagType) => {
+                usage[t.id] = (usage[t.id] || 0) + 1;
+            });
+        });
+        return usage;
+    }, [allItems, pinnedItems]);
 
     // Initial load
     const fetchData = React.useCallback(async () => {
@@ -25,15 +39,6 @@ export const Explore = () => {
         try {
             const [_, itemsData] = await Promise.all([fetchTags(), getItems()]);
             setAllItems(itemsData);
-
-            // Calculate usage count for each tag
-            const usage: Record<string, number> = {};
-            itemsData.forEach((item: ContentItem) => {
-                (item.tags || []).forEach((t: TagType) => {
-                    usage[t.id] = (usage[t.id] || 0) + 1;
-                });
-            });
-            setTagUsage(usage);
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -121,9 +126,23 @@ export const Explore = () => {
         setSelectedTags(newSelected);
     };
 
+    const togglePin = (itemId: string, e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        const newPinned = new Set(pinnedItems);
+        if (newPinned.has(itemId)) {
+            newPinned.delete(itemId);
+        } else {
+            newPinned.add(itemId);
+        }
+        setPinnedItems(newPinned);
+    };
+
     const getFilteredItems = () => {
         let items = filterText.trim() && searchResults ? searchResults.items : allItems;
         
+        // Exclude pinned items from the main content grid
+        items = items.filter(item => !pinnedItems.has(item.id));
+
         if (selectedTags.size > 0) {
             items = items.filter(item => {
                 const itemTagIds = new Set((item.tags || []).map(t => t.id));
@@ -136,6 +155,17 @@ export const Explore = () => {
         }
         return items;
     };
+
+    const handlePinAll = () => {
+        const itemsToPin = getFilteredItems();
+        if (itemsToPin.length === 0) return;
+
+        const newPinned = new Set(pinnedItems);
+        itemsToPin.forEach(item => newPinned.add(item.id));
+        setPinnedItems(newPinned);
+    };
+
+    const hasActiveFilters = filterText.trim().length > 0 || selectedTags.size > 0;
 
     const getCloudTags = () => {
         // Default view: "top used and recent tags"
@@ -233,43 +263,143 @@ export const Explore = () => {
                         </div>
                     </section>
 
-                    {/* Right Column: Content */}
-                    <section className="results-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                            <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
-                                Content
-                            </h3>
-                        </div>
-
-                        {loading && !searching ? (
-                            <div className="loading-small">Loading content...</div>
-                        ) : (
-                            <div className="items-grid" style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                gap: '1.5rem'
-                            }}>
-                                {getFilteredItems().slice(0, 50).map((item: ContentItem) => (
+                    {/* Right Column: Content Area (Combined or Expanded) */}
+                    {selectedItemId ? (
+                        (() => {
+                            const selectedItem = allItems.find(i => i.id === selectedItemId);
+                            if (!selectedItem) return null; // Should not happen if state is consistent
+                            return (
+                                <section className="results-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                         <button 
+                                            onClick={() => setSelectedItemId(null)}
+                                            style={{ 
+                                                background: 'none', 
+                                                border: 'none', 
+                                                color: 'var(--text-muted)', 
+                                                cursor: 'pointer',
+                                                fontSize: '0.8rem',
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '0.25rem'
+                                            }}
+                                         >
+                                            ← Back to list
+                                         </button>
+                                    </div>
                                     <FileCard
-                                        key={item.id}
-                                        item={item}
+                                        item={selectedItem}
                                         onDelete={handleDelete}
                                         onRefresh={refreshSearch}
-                                        isSelected={selectedItemId === item.id}
-                                        onSelect={() => setSelectedItemId(item.id)}
+                                        isSelected={true}
+                                        onSelect={() => {}} 
                                         onDeselect={() => setSelectedItemId(null)}
+                                        isPinned={pinnedItems.has(selectedItem.id)}
+                                        onTogglePin={togglePin}
                                     />
-                                ))}
+                                </section>
+                            );
+                        })()
+                    ) : (
+                        <>
+                            {/* Right Column: Content */}
+                            <section className="results-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                        <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
+                                            Content
+                                        </h3>
+                                        {hasActiveFilters && getFilteredItems().length > 0 && (
+                                            <button
+                                                onClick={handlePinAll}
+                                                style={{
+                                                    background: 'var(--bg-card)',
+                                                    border: '1px solid var(--border-subtle)',
+                                                    borderRadius: '6px',
+                                                    padding: '4px 8px',
+                                                    fontSize: '0.75rem',
+                                                    color: 'var(--text-primary)',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    fontWeight: 600
+                                                }}
+                                                title="Pin all visible items"
+                                            >
+                                                Pin All
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
 
-                                {filterText.trim() && searchResults?.items.length === 0 && (
-                                    <p className="empty-msg" style={{ fontSize: '0.8rem', paddingLeft: '0.25rem' }}>No matching content.</p>
+                                {loading && !searching ? (
+                                    <div className="loading-small">Loading content...</div>
+                                ) : (
+                                    <div className="items-grid" style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                                        gap: '1.5rem'
+                                    }}>
+                                        {getFilteredItems().slice(0, 50).map((item: ContentItem) => (
+                                            <FileCard
+                                                key={item.id}
+                                                item={item}
+                                                onDelete={handleDelete}
+                                                onRefresh={refreshSearch}
+                                                isSelected={false} /* Always false in list view since selection moves to expanded view */
+                                                onSelect={() => setSelectedItemId(item.id)}
+                                                onDeselect={() => setSelectedItemId(null)}
+                                                isPinned={pinnedItems.has(item.id)}
+                                                onTogglePin={togglePin}
+                                            />
+                                        ))}
+
+                                        {filterText.trim() && searchResults?.items.length === 0 && (
+                                            <p className="empty-msg" style={{ fontSize: '0.8rem', paddingLeft: '0.25rem' }}>No matching content.</p>
+                                        )}
+                                        {!filterText.trim() && allItems.length === 0 && (
+                                            <p className="empty-msg" style={{ fontSize: '0.8rem', paddingLeft: '0.25rem' }}>No content found.</p>
+                                        )}
+                                    </div>
                                 )}
-                                {!filterText.trim() && allItems.length === 0 && (
-                                    <p className="empty-msg" style={{ fontSize: '0.8rem', paddingLeft: '0.25rem' }}>No content found.</p>
-                                )}
-                            </div>
-                        )}
-                    </section>
+                            </section>
+
+                            {/* Right Column: Pinned Files */}
+                            {pinnedItems.size > 0 && (
+                                <section className="results-section" style={{ width: '280px', flexShrink: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--border-color)', paddingLeft: '1.5rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                                        <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
+                                            Pinned Files
+                                        </h3>
+                                        <button
+                                            onClick={() => setPinnedItems(new Set())}
+                                            style={{ background: 'none', border: 'none', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+
+                                    <div className="pinned-items-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        {allItems.filter(item => pinnedItems.has(item.id)).map(item => (
+                                            <FileCard
+                                                key={`pinned-${item.id}`}
+                                                item={item}
+                                                onDelete={handleDelete}
+                                                onRefresh={refreshSearch}
+                                                isSelected={false} /* Always false in list view */
+                                                onSelect={() => setSelectedItemId(item.id)}
+                                                onDeselect={() => setSelectedItemId(null)}
+                                                isPinned={true}
+                                                onTogglePin={togglePin}
+                                                variant="micro"
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+                        </>
+                    )}
                 </div>
             </div>
         </ViewContainer>

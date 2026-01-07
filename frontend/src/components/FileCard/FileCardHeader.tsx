@@ -1,5 +1,5 @@
 import React from 'react';
-import { Maximize2, Minimize2, X, Info, Eye, Database } from 'lucide-react';
+import { Maximize2, Minimize2, X, Info, Eye, Database, Pin } from 'lucide-react';
 import { type ContentItem } from '../../api';
 
 interface FileCardHeaderProps {
@@ -11,6 +11,8 @@ interface FileCardHeaderProps {
     onClose: () => void;
     getFileIcon: () => React.ReactNode;
     formatSize: (bytes?: number) => string;
+    isPinned?: boolean;
+    onTogglePin?: (e?: React.MouseEvent) => void;
 }
 
 export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
@@ -21,7 +23,9 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
     onToggleFullscreen,
     onClose,
     getFileIcon,
-    formatSize
+    formatSize,
+    isPinned,
+    onTogglePin
 }) => {
     // Parse metadata safely (already parsed in parent usually, but for robustness)
     let size = 0;
@@ -92,6 +96,16 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
             </div>
 
             <div className="header-actions">
+                {onTogglePin && (
+                    <button
+                        type="button"
+                        className={`action-btn-card pin-btn ${isPinned ? 'pinned' : ''}`}
+                        onClick={onTogglePin}
+                        title={isPinned ? "Unpin File" : "Pin File"}
+                    >
+                         <Pin size={20} fill={isPinned ? "currentColor" : "none"} />
+                    </button>
+                )}
                 <button
                     type="button"
                     className="action-btn-card expand-btn"
