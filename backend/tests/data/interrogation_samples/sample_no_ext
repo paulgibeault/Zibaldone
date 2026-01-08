@@ -1,0 +1,4 @@
+# No Extension
+
+This file has markdown content but no file extension.
+It should be detected as text/plain or text/markdown if we're smart.

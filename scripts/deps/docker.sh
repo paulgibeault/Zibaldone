@@ -31,8 +31,52 @@ install_docker() {
 
 start_docker_daemon() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        log_info "Starting Colima..."
-        colima start
+        # 1. Calculate Resources
+        local total_ram_bytes=$(sysctl -n hw.memsize)
+        local total_ram_gb=$((total_ram_bytes / 1024 / 1024 / 1024))
+        local total_cpu=$(sysctl -n hw.ncpu)
+
+        # Target: Half of system resources, but clamped
+        local target_ram=$((total_ram_gb / 2))
+        local target_cpu=$((total_cpu / 2))
+
+        # Clamp RAM: Min 4GB, Max 16GB
+        if (( target_ram < 4 )); then target_ram=4; fi
+        if (( target_ram > 16 )); then target_ram=16; fi
+
+        # Clamp CPU: Min 2, Max 8
+        if (( target_cpu < 2 )); then target_cpu=2; fi
+        if (( target_cpu > 8 )); then target_cpu=8; fi
+
+        log_info "Resource Planning: System has ${total_ram_gb}GB RAM / ${total_cpu} CPUs. Targeting Colima: ${target_ram}GB RAM / ${target_cpu} CPUs."
+
+        # 2. Check Colima Status
+        if ! command_exists colima; then
+             log_error "Colima not found. Install it first."
+             return 1
+        fi
+
+        if colima status >/dev/null 2>&1; then
+             # It is running. Check if we need to resize.
+             # Note: Parsing 'colima status' output is brittle, so we rely on user manually handling major changes usually,
+             # but we can check if it's running with *default* low resources (2GB).
+             # For robustness, we will just Log it for now, or force restart if specifically asked.
+             # BUT user asked to "update setup script to set comila up with more resources... when rebuilt"
+             # So we should probably default to restarting if config is wildly off or just rely on the start line.
+             
+             # Simpler approach: If running, just let it be, but warn. 
+             # Implementation: Stop and Start creates downtime. 
+             # Let's try to be smart: 'colima start' handles reconfiguration if flags are passed?
+             # No, colima start on running instance usually just ensures it's running.
+             
+             # We will just stop and clean start to ensure resources are applied if we are in a 'setup' phase that implies reconfiguration.
+             log_info "Colima is running. Restarting to ensure resource application..."
+             colima stop
+        fi
+
+        log_info "Starting Colima with ${target_ram}GB RAM and ${target_cpu} CPUs..."
+        colima start --cpu "$target_cpu" --memory "$target_ram"
+        
         docker context use colima >/dev/null 2>&1 || true
     else
         log_error "Please start Docker daemon manually."

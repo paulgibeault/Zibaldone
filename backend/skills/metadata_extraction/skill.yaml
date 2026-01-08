@@ -2,7 +2,7 @@ name: "Metadata Extraction"
 description: "Extracts title, summary, and initial tags using LLM."
 version: "1.0.0"
 triggers:
-  - event: file_created
+  - event: content_text_ready
     priority: 10
 parameters:
   llm_model:

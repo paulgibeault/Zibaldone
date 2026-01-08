@@ -1,0 +1,7 @@
+name: "File Interrogation"
+description: "Determines file type using magic numbers and updates content type."
+version: "1.0.0"
+triggers:
+  - event: file_created
+    priority: 20
+parameters: {}

@@ -7,7 +7,9 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-RUN npm run build
+# Increase Node memory limit for build
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN npx vite build
 
 # Production Stage
 FROM nginx:alpine
