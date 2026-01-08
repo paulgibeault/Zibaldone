@@ -19,6 +19,7 @@ class SkillResult(BaseModel):
     new_file_extension: Optional[str] = None # If content type changes
     new_version_created: bool = False
     events_to_emit: List[str] = Field(default_factory=list)
+    tags_to_add: List[str] = Field(default_factory=list)
     provenance_details: Dict[str, Any] = Field(default_factory=dict)
 
 class SkillContext:
@@ -58,7 +59,7 @@ class SkillContext:
             metadata_patch=metadata
         )
 
-    def create_result(self, metadata: Dict[str, Any] = None, events: List[str] = None, message: str = "Success") -> SkillResult:
+    def create_result(self, metadata: Dict[str, Any] = None, events: List[str] = None, tags: List[str] = None, message: str = "Success") -> SkillResult:
         """
         Generic helper to create a success result with metadata and events.
         """
@@ -66,7 +67,8 @@ class SkillContext:
             status="success",
             message=message,
             metadata_patch=metadata or {},
-            events_to_emit=events or []
+            events_to_emit=events or [],
+            tags_to_add=tags or []
         )
         
     def no_change(self, message: str = "No changes needed") -> SkillResult:

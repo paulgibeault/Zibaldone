@@ -60,6 +60,7 @@ async def test_markdown_with_extension(mock_context):
     assert result.status == "success"
     assert result.metadata_patch["mime_type"] == "text/markdown"
     assert "content_text_ready" in result.events_to_emit
+    assert "text/markdown" in result.tags_to_add
 
 @pytest.mark.asyncio
 async def test_python_script(mock_context):
@@ -78,6 +79,10 @@ async def test_python_script(mock_context):
     assert result.status == "success"
     assert result.metadata_patch["mime_type"] in ["text/x-python", "text/plain"]
     assert "content_text_ready" in result.events_to_emit
+    if result.metadata_patch["mime_type"] == "text/x-python":
+        assert "text/x-python" in result.tags_to_add
+    else:
+        assert "text/plain" in result.tags_to_add
 
 @pytest.mark.asyncio
 async def test_json_file(mock_context):
@@ -96,6 +101,7 @@ async def test_json_file(mock_context):
     assert result.status == "success"
     assert result.metadata_patch["mime_type"] == "application/json"
     assert "content_text_ready" in result.events_to_emit
+    assert "application/json" in result.tags_to_add
 
 @pytest.mark.asyncio
 async def test_binary_file(mock_context):
@@ -114,6 +120,7 @@ async def test_binary_file(mock_context):
     assert result.status == "success"
     assert result.metadata_patch["mime_type"] == "application/octet-stream"
     assert "content_text_ready" not in result.events_to_emit
+    assert "application/octet-stream" in result.tags_to_add
 
 @pytest.mark.asyncio
 async def test_markdown_no_extension(mock_context):
@@ -132,6 +139,7 @@ async def test_markdown_no_extension(mock_context):
     assert result.status == "success"
     assert result.metadata_patch["mime_type"] == "text/plain" 
     assert "content_text_ready" in result.events_to_emit
+    assert "text/plain" in result.tags_to_add
 
 @pytest.mark.asyncio
 async def test_missing_filename(mock_context):
@@ -150,3 +158,4 @@ async def test_missing_filename(mock_context):
     assert result.status == "success"
     assert result.metadata_patch["mime_type"] == "text/plain"
     assert "content_text_ready" in result.events_to_emit
+    assert "text/plain" in result.tags_to_add

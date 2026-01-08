@@ -144,6 +144,25 @@ async def execute_task(task_id: str):
             result = await skill_registry.execute_skill(task.name, ctx)
             
             # 1. Update Metadata
+            if result.tags_to_add:
+                 for tag_name in result.tags_to_add:
+                     # Check if tag exists for this user
+                     statement = select(Tag).where(Tag.name == tag_name).where(Tag.owner_id == item.owner_id)
+                     tag = session.exec(statement).first()
+                     if not tag:
+                         # Create unapproved tag owned by these user
+                         tag = Tag(
+                            name=tag_name, 
+                            owner_id=item.owner_id,
+                            is_autocreated=True,
+                            is_approved=False
+                         )
+                         session.add(tag)
+                     
+                     if tag not in item.tags:
+                         item.tags.append(tag)
+                         session.add(item)
+
             if result.metadata_patch:
                 current = item.item_metadata.copy() if item.item_metadata else {}
                 current.update(result.metadata_patch)

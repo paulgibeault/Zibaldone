@@ -89,5 +89,6 @@ async def run(ctx: SkillContext) -> SkillResult:
     return ctx.create_result(
         metadata=metadata_patch,
         events=events,
+        tags=[detected_type],
         message=f"Detected {detected_type}"
     )

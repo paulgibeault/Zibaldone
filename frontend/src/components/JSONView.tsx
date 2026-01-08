@@ -13,7 +13,12 @@ export const JSONView: React.FC<JSONViewProps> = ({ data }) => {
         if (typeof jsonInput !== 'string') {
             jsonStr = JSON.stringify(jsonInput, null, 2);
         } else {
-            jsonStr = jsonInput;
+            try {
+                const parsed = JSON.parse(jsonInput);
+                jsonStr = JSON.stringify(parsed, null, 2);
+            } catch (e) {
+                jsonStr = jsonInput;
+            }
         }
 
         // Simple regex-based syntax highlighting
