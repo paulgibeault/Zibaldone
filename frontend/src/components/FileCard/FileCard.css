@@ -1222,3 +1222,46 @@
     background-color: var(--border-subtle);
     border-radius: 20px;
 }
+
+/* Failed Task Styling */
+.failed-task-item {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.02);
+}
+
+.failed-task-item:hover {
+    border-color: var(--color-danger);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.status-text-FAILED {
+    color: var(--color-danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.restart-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-right: 8px;
+}
+
+.restart-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.restart-btn svg {
+    width: 12px;
+    height: 12px;
+}

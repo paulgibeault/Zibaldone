@@ -134,32 +134,75 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                 <div className="history-list custom-scrollbar">
                                     {[...item.tasks]
                                         .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
-                                        .map(task => (
-                                            <div
-                                                key={task.id}
-                                                className={`history-item ${task.result_json ? 'clickable' : ''}`}
-                                                onClick={() => task.result_json && setSelectedTaskId(task.id)}
-                                                title={task.result_json ? "Click to view details" : ""}
-                                            >
-                                                <div className="history-status">
-                                                    {task.status === 'COMPLETED' && <CheckCircle2 size={14} className="status-icon-completed" />}
-                                                    {task.status === 'RUNNING' && <Loader2 size={14} className="status-icon-running spin" />}
-                                                    {task.status === 'FAILED' && <XCircle size={14} className="status-icon-failed" />}
-                                                    {task.status === 'PENDING' && <Clock size={14} className="status-icon-pending" />}
-                                                </div>
-                                                <div className="history-details">
-                                                    <div className="history-name-row">
-                                                        <span className="history-name">{task.name}</span>
-                                                        <span className="history-status-text">{task.status}</span>
+                                        .map(task => {
+                                            // Determine effective status
+                                            let effectiveStatus = task.status;
+                                            if (task.status === 'COMPLETED' && task.result_json) {
+                                                try {
+                                                    const result = JSON.parse(task.result_json);
+                                                    if (result && result.status === 'failure') {
+                                                        effectiveStatus = 'FAILED';
+                                                    }
+                                                } catch (e) {
+                                                    // ignore json parse error
+                                                }
+                                            }
+
+                                            return (
+                                                <div
+                                                    key={task.id}
+                                                    className={`history-item ${task.result_json ? 'clickable' : ''} ${effectiveStatus === 'FAILED' ? 'failed-task-item' : ''}`}
+                                                    onClick={() => task.result_json && setSelectedTaskId(task.id)}
+                                                    title={task.result_json ? "Click to view details" : ""}
+                                                >
+                                                    <div className="history-status">
+                                                        {effectiveStatus === 'COMPLETED' && <CheckCircle2 size={14} className="status-icon-completed" />}
+                                                        {effectiveStatus === 'RUNNING' && <Loader2 size={14} className="status-icon-running spin" />}
+                                                        {effectiveStatus === 'FAILED' && <XCircle size={14} className="status-icon-failed" />}
+                                                        {effectiveStatus === 'PENDING' && <Clock size={14} className="status-icon-pending" />}
                                                     </div>
-                                                    {task.message && <div className="history-message">{task.message}</div>}
-                                                    <div className="history-time">
-                                                        {new Date(task.start_time).toLocaleString()}
-                                                        {task.end_time && ` - ${new Date(task.end_time).toLocaleTimeString()}`}
+                                                    <div className="history-details">
+                                                        <div className="history-name-row">
+                                                            <span className="history-name">{task.name}</span>
+                                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                {(effectiveStatus === 'FAILED' || effectiveStatus === 'COMPLETED') && (
+                                                                    <button
+                                                                        className="restart-btn"
+                                                                        onClick={async (e) => {
+                                                                            e.stopPropagation();
+                                                                            if (confirm('Restart this task?')) {
+                                                                                try {
+                                                                                    await import('../../api').then(m => m.restartTask(task.id));
+                                                                                    onRefresh();
+                                                                                } catch (err) {
+                                                                                    alert('Failed to restart task');
+                                                                                }
+                                                                            }
+                                                                        }}
+                                                                        title="Restart Task"
+                                                                    >
+                                                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                                                                            <path d="M21 3v5h-5" />
+                                                                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                                                                            <path d="M8 16H3v5" />
+                                                                        </svg>
+                                                                        Restart
+                                                                    </button>
+                                                                )}
+                                                                <span className={`history-status-text status-text-${effectiveStatus}`}>{effectiveStatus}</span>
+                                                            </div>
+                                                        </div>
+                                                        {task.message && <div className="history-message">{task.message}</div>}
+                                                        <div className="history-time">
+                                                            {new Date(task.start_time).toLocaleString()}
+                                                            {task.end_time && ` - ${new Date(task.end_time).toLocaleTimeString()}`}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })
+}
                                 </div>
                             </details>
                         </div>
