@@ -40,6 +40,15 @@ The application is built on a modern, containerized stack designed for performan
 
 The project includes helper scripts to simplify lifecycle management.
 
+### Initial Setup
+Before running the application for the first time, run the setup script to configure your environment and dependencies:
+```bash
+./setup             # Interactive setup wizard
+./setup --docker    # Quick setup for Docker mode
+./setup --local     # Quick setup for Local mode
+```
+This script will check for required tools (Docker, Python, Node.js), set up virtual environments, and generate necessary configuration files (`backend/.env`).
+
 ### Starting the Application
 Use the `./go` script to build and start the system:
 ```bash
@@ -63,8 +72,10 @@ To reset the environment or remove data, use the `./cleanup` script:
 To manage the system or recover access, you can generate an emergency admin token using the backend helper script.
 
 **Generate Admin Token:**
+Generate your first token manually:
+
 ```bash
 ./backend/new_admin_code
 ```
-This command executes the admin reset logic inside the running backend container and prints a new **Access Token** to your terminal. Use this token to log in if you are locked out.
+This command executes the admin reset logic inside the running backend container and prints a new **Access Token** to your terminal. Use this token to log in for the first time or if you are locked out.
 

@@ -42,9 +42,6 @@ def bootstrap_auth(session: Session):
         print("BOOTSTRAP: Creating Initial Admin User")
         user = create_user(session, "Admin", is_admin=True)
         
-        # Create Session/Token
-        device_session, token = create_session(session, user.id, "Admin Bootstrap Device")
-        
-        print(f"ADMIN TOKEN: {token}")
-        print("SAVE THIS TOKEN!")
+        print("Admin user created.")
+        print("Run 'python backend/reset_admin.py' (or use the helper script) to generate an admin token.")
         print("="*50 + "\n\n")
