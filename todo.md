@@ -6,18 +6,19 @@
 - [x] **Queue Management**: Efficiently manage upload and processing queues to handle large batches of files.
 - [x] **Smart Versioning**: Use client info and full file path to determine if a file is new or a new version of an existing file.
 - [x] **Dynamic File Processing**: Enable execution and tracking of processing tasks at the ContentItem level. Align to accepted task management standards/frameworks (e.g. Atomic Agents).
+- [ ] **Failed Task Visibility**: 
+    - [ ] Make failed tasks more visible in the UI.
+    - [ ] Allow restarting failed tasks individually or in bulk.
 
 ## Explore View
 - [x] **Tag Filtering**: 
     - [x] Clicking a tag should filter files containing that tag.
     - [x] Tags should behave as toggles (on/off).
     - [x] Support multi-select toggles with intersection logic (files must contain *all* selected tags).
-- [ ] **Project Creation**:
-    - [ ] Add "New Project" button to create a project from current view (selected tags + pinned files).
-- [ ] **File Pinning**:
-    - [ ] Support pinning files; pinned files remain visible regardless of search/tag filters.
-    - [ ] Display pinned files in a dedicated section on the right (visible only when items are pinned).
-    - [ ] Allow curation of disparate files into a single project via pinning.
+- [ ] **Project Tab**:
+    - [ ] Create a dedicated "Project" tab acting as a workspace.
+    - [ ] Define workspace semantics and how it supports creativity (heap exploration vs focused content creation).
+    - [ ] Allow curation of disparate files into a single project.
 
 ## Notebook Tab
 - [ ] **Project Definition**: Create a space to define "Projects" containing sets of tags.
@@ -36,6 +37,7 @@
 - [x] **Generated Titles**: Files should use a generated title displayed on file cards.
 - [x] **Rich Content Display**: 
     - [x] Attempt to display content directly in the file card view tab (Text, Markdown, Image, Video).
+    - [ ] **Markdown Rendering**: Ensure markdown is correctly rendered in rich content display.
     - [x] Provide an option to select an external tool for unrecognized file types.
 - [x] **Maximized View**: Maximized file cards should occupy the entire width of the screen.
 - [x] **File Card Tags**:
