@@ -4,6 +4,7 @@ import type { UploadItem } from '../stores/useUploadQueue';
 import { X, RefreshCw, Trash2, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react';
 import './UploadStatus.css';
 import { IdentityConflictModal } from './IdentityConflictModal';
+import { CopyButton } from './CopyButton';
 
 export const UploadStatus: React.FC = () => {
     const { queue, retry, remove, clearCompleted, resolveConflict } = useUploadQueue();
@@ -56,7 +57,11 @@ export const UploadStatus: React.FC = () => {
                                 <div className="item-info">
                                     <span className="item-name" title={item.path}>{item.path}</span>
                                     <span className="item-status">
-                                        {item.status === 'error' ? item.error : 
+                                        {item.status === 'error' ? (
+                                            <CopyButton text={item.error || 'Unknown error'}>
+                                                {item.error}
+                                            </CopyButton>
+                                        ) : 
                                          item.status === 'conflict' ? 'Conflict Detected' :
                                          item.status}
                                     </span>

@@ -5,6 +5,7 @@ import { MarkdownPreview } from '../MarkdownPreview';
 import { getFileCategory, isTextBased } from '../../utils/fileTypes';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { CopyButton } from '../CopyButton';
 
 interface FilePreviewProps {
     item: ContentItem;
@@ -45,7 +46,9 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
                 {isLoadingContent ? (
                     <div className="preview-loading">Loading content...</div>
                 ) : (
-                    <MarkdownPreview content={textContent || ''} />
+                    <CopyButton text={textContent || ''} className="preview-copy-wrapper">
+                        <MarkdownPreview content={textContent || ''} />
+                    </CopyButton>
                 )}
             </div>
         );
@@ -77,14 +80,16 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
                 {isLoadingContent ? (
                     <div className="preview-loading">Loading content...</div>
                 ) : (
-                    <SyntaxHighlighter
-                        style={vscDarkPlus}
-                        language={language}
-                        showLineNumbers={true}
-                        customStyle={{ margin: 0, height: '100%', borderRadius: 0, fontSize: '13px' }}
-                    >
-                        {textContent || ''}
-                    </SyntaxHighlighter>
+                    <CopyButton text={textContent || ''} className="preview-copy-wrapper">
+                        <SyntaxHighlighter
+                            style={vscDarkPlus}
+                            language={language}
+                            showLineNumbers={true}
+                            customStyle={{ margin: 0, height: '100%', borderRadius: 0, fontSize: '13px' }}
+                        >
+                            {textContent || ''}
+                        </SyntaxHighlighter>
+                    </CopyButton>
                 )}
             </div>
         );

@@ -1,5 +1,6 @@
 import React from 'react';
 import './JSONView.css';
+import { CopyButton } from './CopyButton';
 
 interface JSONViewProps {
     data: string | object | null | undefined;
@@ -43,9 +44,11 @@ export const JSONView: React.FC<JSONViewProps> = ({ data }) => {
     };
 
     return (
-        <pre
-            className="json-view"
-            dangerouslySetInnerHTML={{ __html: formatJSON(data) }}
-        />
+        <CopyButton text={typeof data === 'string' ? data : JSON.stringify(data, null, 2)} className="json-view-wrapper">
+            <pre
+                className="json-view"
+                dangerouslySetInnerHTML={{ __html: formatJSON(data) }}
+            />
+        </CopyButton>
     );
 };

@@ -3,6 +3,7 @@ import { Table, Code, CheckCircle2, Clock, XCircle, Loader2, Trash2, Play, Plus 
 import { type ContentItem } from '../../api';
 import { JSONView } from '../JSONView';
 import { FilePreview } from './FilePreview';
+import { CopyButton } from '../CopyButton';
 
 interface FileCardContentProps {
     item: ContentItem;
@@ -144,9 +145,11 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                 <div className="info-tab fade-in">
                     <div className="summary-section">
                         <h4>SUMMARY</h4>
-                        <p className="summary-text">
-                            {metadata.summary || "No summary available. Processing might still be in progress."}
-                        </p>
+                        <CopyButton text={metadata.summary || "No summary available. Processing might still be in progress."}>
+                            <p className="summary-text">
+                                {metadata.summary || "No summary available. Processing might still be in progress."}
+                            </p>
+                        </CopyButton>
                     </div>
 
                     <div className="metadata-grid" style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>

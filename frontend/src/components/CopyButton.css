@@ -1,0 +1,49 @@
+.copy-button-container {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    padding: 4px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background-color 0.2s;
+    color: var(--text-muted);
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.copy-button-container:hover .copy-btn,
+.copy-btn:focus,
+.copy-btn.copied {
+    opacity: 1;
+}
+
+.copy-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.copy-btn.copied {
+    background: var(--success-bg, #d1fae5);
+    color: var(--success-text, #065f46);
+    border-color: var(--success-border, #a7f3d0);
+}
+
+/* For darkly themed areas or dark mode adjustments if needed */
+@media (prefers-color-scheme: dark) {
+    .copy-btn.copied {
+        background: rgba(16, 185, 129, 0.2);
+        color: #34d399;
+        border-color: rgba(16, 185, 129, 0.3);
+    }
+}
