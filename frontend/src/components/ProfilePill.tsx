@@ -16,7 +16,6 @@ export const ProfilePill: React.FC = () => {
             <button
                 className="profile-pill"
                 onClick={() => setIsOpen(!isOpen)}
-                style={{ backgroundColor: 'var(--bg-secondary)' }}
             >
                 <div
                     className="profile-avatar"

@@ -7,21 +7,23 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--bg-card);
-    color: var(--text-primary);
-    border: 1px solid var(--border-subtle);
-    padding: 0.5rem 0.5rem;
-    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid transparent;
+    padding: 0.5rem;
+    border-radius: 99px; /* Pill shape */
     font-size: 0.875rem;
     cursor: pointer;
-    box-shadow: var(--shadow-sm);
+    transition: all 0.2s;
+    justify-content: center;
     transition: all 0.2s;
     justify-content: center;
 }
 
-.theme-toggle-btn:hover {
+.theme-toggle-btn:hover,
+.theme-toggle-btn[aria-expanded="true"] {
     background: var(--bg-card-hover);
-    border-color: var(--color-primary);
+    color: var(--text-primary);
 }
 
 .chevron {

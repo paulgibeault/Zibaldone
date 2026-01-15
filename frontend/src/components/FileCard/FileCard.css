@@ -145,47 +145,49 @@
 /* Header Styles V2 */
 .card-header-v2 {
     display: flex;
-    gap: 1.5rem;
-    align-items: flex-start;
+    gap: 1rem;
+    align-items: center;
     justify-content: space-between;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     flex-shrink: 0;
+    height: 44px; /* Fixed height for compact look */
 }
-
-
 
 .header-left {
     flex-shrink: 0;
 }
 
 .header-left .icon-wrapper {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--bg-canvas);
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
 }
 
 .header-left .icon-wrapper svg {
-    width: 32px;
-    height: 32px;
+    width: 20px;
+    height: 20px;
 }
 
 .header-left .status-dot {
     position: absolute;
-    bottom: 4px;
-    right: 4px;
-    width: 12px;
-    height: 12px;
+    bottom: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
     border: 2px solid var(--bg-card);
     border-radius: 50%;
 }
 
 .header-main-content {
     display: flex;
-    gap: 1rem;
-    align-items: flex-start;
+    gap: 0.75rem;
+    align-items: center;
     flex: 1;
     min-width: 0;
 }
@@ -195,19 +197,19 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    justify-content: center;
 }
 
 .title-row {
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    align-items: baseline;
+    gap: 0.75rem;
     min-width: 0;
 }
 
 .title-row .filename {
-    font-size: 1.15rem;
-    font-weight: 800;
+    font-size: 1rem;
+    font-weight: 700;
     margin: 0;
     color: var(--text-primary);
     white-space: nowrap;
@@ -216,12 +218,62 @@
     flex: 0 1 auto;
 }
 
-.sub-details {
+.compact-meta {
     display: flex;
-    gap: 0.5rem;
     align-items: center;
-    font-size: 0.8rem;
+    gap: 0.5rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    flex: 1;
+    min-width: 0;
+}
+
+.version-badge-compact {
+    background: var(--bg-canvas);
+    border: 1px solid var(--border-subtle);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.meta-text {
+    color: var(--text-secondary);
+}
+
+.source-path-compact {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.divider {
+    color: var(--border-subtle);
+    font-size: 0.6rem;
+}
+
+.header-actions-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    height: 100%;
+}
+
+.divider-vertical {
+    width: 1px;
+    height: 20px;
+    background: var(--border-subtle);
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 

@@ -51,77 +51,84 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
                         <h3 className="filename" title={item.original_filename}>
                             {title}
                         </h3>
-                        {item.client_file_path && (
-                            <div className="source-path" title={item.client_file_path} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                                <span style={{ opacity: 0.7 }}>Source: </span> {item.client_file_path}
-                            </div>
-                        )}
-                        <div className="card-tabs-nav-compact">
-                            <button
-                                type="button"
-                                className={`tab-link ${activeTab === 'info' ? 'active' : ''}`}
-                                onClick={(e) => { e.stopPropagation(); onTabChange('info'); }}
-                                title="Main Info"
-                            >
-                                <Info size={16} />
-                                {item.status === 'PROCESSING' && <span className="tab-indicator processing-indicator" />}
-                                {item.status === 'FAILED' && <span className="tab-indicator failed-indicator" />}
-                            </button>
-                            <button
-                                type="button"
-                                className={`tab-link ${activeTab === 'preview' ? 'active' : ''}`}
-                                onClick={(e) => { e.stopPropagation(); onTabChange('preview'); }}
-                                title="Preview Content"
-                            >
-                                <Eye size={16} />
-                            </button>
-                            <button
-                                type="button"
-                                className={`tab-link ${activeTab === 'metadata' ? 'active' : ''}`}
-                                onClick={(e) => { e.stopPropagation(); onTabChange('metadata'); }}
-                                title="Metadata & JSON"
-                            >
-                                <Database size={16} />
-                            </button>
+                        
+                        <div className="compact-meta">
+                             <span className="version-badge-compact">v{item.version}</span>
+                             <span className="divider">•</span>
+                             <span className="meta-text">{formatSize(size)}</span>
+                             {item.client_file_path && (
+                                <>
+                                    <span className="divider">•</span>
+                                    <span className="source-path-compact" title={item.client_file_path}>
+                                        {item.client_file_path}
+                                    </span>
+                                </>
+                             )}
                         </div>
-                    </div>
-                    <div className="sub-details">
-                        <span className="detail-item" style={{ fontWeight: 600 }}>v{item.version}</span>
-                        <span className="divider">|</span>
-                        <span className="detail-item">Size: {formatSize(size)}</span>
-                        <span className="divider">|</span>
-                        <span className="detail-item">Created: {new Date(item.created_at).toLocaleDateString()}</span>
                     </div>
                 </div>
             </div>
 
-            <div className="header-actions">
-                {onTogglePin && (
+            <div className="header-actions-group">
+                 <div className="card-tabs-nav-compact">
                     <button
                         type="button"
-                        className={`btn btn-ghost btn-icon pin-btn ${isPinned ? 'text-accent' : ''}`}
-                        onClick={onTogglePin}
-                        title={isPinned ? "Unpin File" : "Pin File"}
+                        className={`tab-link ${activeTab === 'info' ? 'active' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); onTabChange('info'); }}
+                        title="Main Info"
                     >
-                         <Pin size={20} fill={isPinned ? "currentColor" : "none"} />
+                        <Info size={16} />
+                        {item.status === 'PROCESSING' && <span className="tab-indicator processing-indicator" />}
+                        {item.status === 'FAILED' && <span className="tab-indicator failed-indicator" />}
                     </button>
-                )}
-                <button
-                    type="button"
-                    className="btn btn-ghost btn-icon expand-btn"
-                    onClick={onToggleFullscreen}
-                    title={isFullscreen ? "Restore View" : "Fullscreen"}
-                >
-                    {isFullscreen ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
-                </button>
-                <button
-                    type="button"
-                    className="btn btn-ghost btn-icon minimize-btn"
-                    onClick={onClose}
-                    title="Close Selection"
-                >
-                    <X size={18} />
-                </button>
+                    <button
+                        type="button"
+                        className={`tab-link ${activeTab === 'preview' ? 'active' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); onTabChange('preview'); }}
+                        title="Preview Content"
+                    >
+                        <Eye size={16} />
+                    </button>
+                    <button
+                        type="button"
+                        className={`tab-link ${activeTab === 'metadata' ? 'active' : ''}`}
+                        onClick={(e) => { e.stopPropagation(); onTabChange('metadata'); }}
+                        title="Metadata & JSON"
+                    >
+                        <Database size={16} />
+                    </button>
+                </div>
+
+                <div className="divider-vertical" />
+
+                <div className="action-buttons">
+                    {onTogglePin && (
+                        <button
+                            type="button"
+                            className={`btn btn-ghost btn-icon pin-btn ${isPinned ? 'text-accent' : ''}`}
+                            onClick={onTogglePin}
+                            title={isPinned ? "Unpin File" : "Pin File"}
+                        >
+                            <Pin size={18} fill={isPinned ? "currentColor" : "none"} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className="btn btn-ghost btn-icon expand-btn"
+                        onClick={onToggleFullscreen}
+                        title={isFullscreen ? "Restore View" : "Fullscreen"}
+                    >
+                        {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                    </button>
+                    <button
+                        type="button"
+                        className="btn btn-ghost btn-icon minimize-btn"
+                        onClick={onClose}
+                        title="Close Selection"
+                    >
+                        <X size={18} />
+                    </button>
+                </div>
             </div>
         </div>
     );

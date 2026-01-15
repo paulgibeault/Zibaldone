@@ -5,13 +5,13 @@
 }
 
 .header-controls {
-  position: absolute;
+  position: fixed;
   top: 1.5rem;
   right: 2rem;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  z-index: 100;
+  gap: 2rem;
+  z-index: 20000;
 }
 
 .logo {

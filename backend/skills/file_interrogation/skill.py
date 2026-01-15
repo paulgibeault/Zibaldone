@@ -4,7 +4,12 @@ from app.services.skill_sdk import SkillContext, SkillResult
 from app.services.storage import get_storage
 import logging
 
+
 logger = logging.getLogger(__name__)
+
+# Explicitly register markdown types to ensure consistency across environments
+mimetypes.add_type("text/markdown", ".md")
+mimetypes.add_type("text/markdown", ".markdown")
 
 async def run(ctx: SkillContext) -> SkillResult:
     item = ctx.item
