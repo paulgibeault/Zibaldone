@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Pin } from 'lucide-react';
+import { Pin, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import { type ContentItem } from '../../api';
 import { getFileCategory, getFileIcon, isTextBased } from '../../utils/fileTypes';
+import { isTaskFailed, isRunningTask, isPendingTask } from '../../utils/taskUtils';
 import { FileCardHeader } from './FileCardHeader';
 import { FileCardContent } from './FileCardContent';
 import { FileCardFooter } from './FileCardFooter';
@@ -159,6 +160,70 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
             <div className={`file-card-minimal ${variant === 'micro' ? 'file-card-micro' : ''}`} onClick={onSelect} title={`Tags: ${tagsString}`}>
                 <div className="minimal-icon">
                     {renderFileIcon()}
+                    
+                    {(() => {
+                        const failedCount = item.tasks?.filter(isTaskFailed).length || 0;
+                        const runningCount = item.tasks?.filter(isRunningTask).length || 0;
+                        const pendingCount = item.tasks?.filter(isPendingTask).length || 0;
+
+                        const badges = [
+                            { type: 'failed', count: failedCount, color: 'var(--color-danger)', icon: null },
+                            { type: 'running', count: runningCount, color: 'var(--color-primary)', icon: <Loader2 size={10} className="spin" /> },
+                            { type: 'pending', count: pendingCount, color: '#f59e0b', icon: null } // Warning color
+                        ].filter(b => b.count > 0);
+
+                        return (
+                            <div style={{ position: 'absolute', top: -4, right: -4, display: 'flex', flexDirection: 'column-reverse', alignItems: 'center' }}>
+                                {badges.map((badge, index) => {
+                                    // Stack them: The first one (Failed) is visually on top (z-index highest).
+                                    // We'll render them in reverse order of stacking in DOM, or manipulate z-index.
+                                    // Actually, standard stacking context: last one is on top.
+                                    // We want Failed on top. So if we render Failed LAST, it's on top.
+                                    // But list is [Failed, Running, Pending].
+                                    // So we should reverse map? Or set z-index manually.
+                                    // User wants "icons to stack vertically... tightly overlapped"
+                                    
+                                    const zIndex = badges.length - index; 
+                                    const offset = index * 4; // Shift down for each lower priority item
+                                    
+                                    return (
+                                        <span 
+                                            key={badge.type}
+                                            title={`${badge.count} ${badge.type} Tasks`}
+                                            style={{
+                                                position: 'absolute',
+                                                top: `${offset}px`, 
+                                                right: 0, // Align right
+                                                fontSize: '0.65rem',
+                                                fontWeight: 700,
+                                                color: 'white',
+                                                background: badge.color,
+                                                minWidth: '16px',
+                                                height: '16px',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                boxShadow: '0 0 0 2px var(--bg-card)',
+                                                zIndex: zIndex,
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {badge.icon ? (
+                                                <>
+                                                    {badge.count > 1 ? (
+                                                        <span style={{ fontSize: '0.55rem', fontWeight: 800 }}>{badge.count}</span>
+                                                    ) : badge.icon}
+                                                </>
+                                            ) : (
+                                                 badge.count
+                                            )}
+                                        </span>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
                 </div>
                 <div className="minimal-info">
                     <div className="minimal-filename" title={item.original_filename}>

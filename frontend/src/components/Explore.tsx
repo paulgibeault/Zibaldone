@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ArrowDownAZ, ArrowUpAZ, Calendar } from 'lucide-react';
-import { type Tag as TagType, getItems, type ContentItem, searchContent, deleteItem } from '../api';
+import { Search, ArrowDownAZ, ArrowUpAZ, Calendar, RefreshCw } from 'lucide-react';
+import { type Tag as TagType, getItems, type ContentItem, searchContent, deleteItem, restartAllFailedTasks } from '../api';
 import { useTags } from '../hooks/useTags';
 import { Tag } from './Tag';
 import { FileCard } from './FileCard';
@@ -227,6 +227,63 @@ export const Explore = ({ isActive = false }: { isActive?: boolean }) => {
     const visibleTags = visibleTagsRaw.filter(t => !selectedTags.has(t.id));
     const activeTagsList = tags.filter(t => selectedTags.has(t.id));
 
+    const visibleItems = getFilteredItems();
+    
+    // Calculate failed tasks for visible items (including pinned)
+    const failedTasksData = React.useMemo(() => {
+        let count = 0;
+        const taskIds: string[] = [];
+        
+        // Items to check: combined visible items + pinned items (if they aren't already in visible items)
+        // getFilteredItems already excludes pinned items from the main list, so we need to add them back for calculation
+        // if we want "filtered and pinned" as per requirements.
+        
+        const itemsToCheck = [...visibleItems];
+        // Add pinned items
+        pinnedItems.forEach(id => {
+            const item = allItems.find(i => i.id === id);
+            if (item) itemsToCheck.push(item);
+        });
+
+        itemsToCheck.forEach(item => {
+            item.tasks?.forEach(t => {
+                let isFailed = t.status === 'FAILED';
+                if (!isFailed && t.status === 'COMPLETED' && t.result_json) {
+                    try {
+                        const res = JSON.parse(t.result_json);
+                        if (res && res.status === 'failure') {
+                            isFailed = true;
+                        }
+                    } catch (e) {}
+                }
+
+                if (isFailed) {
+                    count++;
+                    taskIds.push(t.id);
+                }
+            });
+        });
+
+        return { count, taskIds };
+    }, [visibleItems, pinnedItems, allItems]);
+
+    const failedTasksCount = failedTasksData.count;
+
+    const handleRestartFailed = async () => {
+        if (failedTasksCount === 0) return;
+        
+        if (confirm(`Restart ${failedTasksCount} failed tasks?`)) {
+            try {
+                await restartAllFailedTasks(failedTasksData.taskIds);
+                // Ideally refresh tasks
+                fetchData();
+            } catch (error) {
+                console.error("Failed to restart tasks:", error);
+                alert("Failed to restart tasks");
+            }
+        }
+    };
+
     return (
         <ViewContainer>
             <ViewHeader
@@ -234,6 +291,28 @@ export const Explore = ({ isActive = false }: { isActive?: boolean }) => {
                 subtitle="Discover connections in your collection."
                 controls={
                     <>
+                        {failedTasksCount > 0 && (
+                            <button
+                                onClick={handleRestartFailed}
+                                className="action-button"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    padding: '0.4rem 0.8rem',
+                                    fontSize: '0.85rem',
+                                    background: 'var(--surface-hover)',
+                                    border: '1px solid var(--border-subtle)',
+                                    borderRadius: '0.5rem',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-main)',
+                                    marginRight: '1rem'
+                                }}
+                            >
+                                <RefreshCw size={14} />
+                                Restart Failed ({failedTasksCount})
+                            </button>
+                        )}
                         <div className="input-with-icon">
                             <Search size={16} className="input-icon" />
                             <input

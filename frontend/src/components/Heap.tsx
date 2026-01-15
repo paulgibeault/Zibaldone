@@ -4,6 +4,9 @@ import { type ContentItem } from '../api';
 import { ViewHeader } from './ViewHeader';
 import { ViewContainer } from './ViewContainer';
 
+import { RefreshCw } from 'lucide-react';
+import { restartAllFailedTasks } from '../api/endpoints/tasks';
+
 interface HeapProps {
     items: ContentItem[];
     onDelete: (id: string, e: React.MouseEvent) => Promise<void>;
@@ -14,15 +17,49 @@ interface HeapProps {
 }
 
 export const Heap = ({ items, onDelete, onRefresh, selectedItemId, onSelect, onDeselect }: HeapProps) => {
+    const failedTasksCount = items.reduce((acc, item) => acc + (item.tasks?.filter(t => t.status === 'FAILED').length || 0), 0);
+    
+    const handleRestartFailed = async () => {
+        try {
+            await restartAllFailedTasks();
+            onRefresh();
+        } catch (error) {
+            console.error("Failed to restart tasks:", error);
+        }
+    };
+
     return (
         <ViewContainer>
             <ViewHeader
                 title="The Heap"
                 subtitle="Your unstructured pile of everything."
                 controls={
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                        {items.length} items
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        {failedTasksCount > 0 && (
+                            <button 
+                                onClick={handleRestartFailed}
+                                className="action-button"
+                                style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.5rem',
+                                    padding: '0.4rem 0.8rem',
+                                    fontSize: '0.85rem',
+                                    background: 'var(--surface-hover)',
+                                    border: '1px solid var(--border-subtle)',
+                                    borderRadius: '0.5rem',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-main)'
+                                }}
+                            >
+                                <RefreshCw size={14} />
+                                Restart Failed ({failedTasksCount})
+                            </button>
+                        )}
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                            {items.length} items
+                        </span>
+                    </div>
                 }
             />
 

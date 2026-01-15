@@ -4,6 +4,7 @@ import { type ContentItem } from '../../api';
 import { JSONView } from '../JSONView';
 import { FilePreview } from './FilePreview';
 import { CopyButton } from '../CopyButton';
+import { isTaskFailed } from '../../utils/taskUtils';
 
 interface FileCardContentProps {
     item: ContentItem;
@@ -166,7 +167,14 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                 >
                                     <Plus size={14} />
                                 </button>
-                                <h4>PROCESSING HISTORY</h4>
+                                <h4>
+                                    PROCESSING HISTORY
+                                    {(item.tasks?.filter(isTaskFailed).length || 0) > 0 && (
+                                        <span style={{ color: 'var(--error)', marginLeft: '8px', fontSize: '0.8rem' }}>
+                                            ({item.tasks?.filter(isTaskFailed).length} Failed)
+                                        </span>
+                                    )}
+                                </h4>
                             </summary>
                             <div className="history-list custom-scrollbar">
                                 {(!item.tasks || item.tasks.length === 0) ? (

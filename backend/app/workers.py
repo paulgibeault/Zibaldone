@@ -185,13 +185,26 @@ async def execute_task(task_id: str):
                 # TODO: Implement full versioning logic
 
             # 3. Finalize Task
-            task.status = TaskStatus.COMPLETED
+            # Check for logical failure in result
+            is_failure = False
+            if hasattr(result, 'status') and result.status == 'failure':
+                is_failure = True
+            # Also check if it's a dict or Pydantic model with checks (though SkillResult usually has status)
+            
             task.end_time = datetime.now(timezone.utc)
+            
             # Use model_dump_json for Pydantic v2
             if hasattr(result, 'model_dump_json'):
                 task.result_json = result.model_dump_json()
             else:
-                task.result_json = result.json() 
+                task.result_json = result.json()
+
+            if is_failure:
+                task.status = TaskStatus.FAILED
+                task.message = getattr(result, 'message', 'Task failed (logical)')
+                logger.warning(f"Task {task.id} failed logically: {task.message}")
+            else:
+                task.status = TaskStatus.COMPLETED
                 
             session.add(task)
             session.commit()
