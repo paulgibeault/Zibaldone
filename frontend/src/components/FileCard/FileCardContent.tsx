@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, Code, CheckCircle2, Clock, XCircle, Loader2 } from 'lucide-react';
+import { Table, Code, CheckCircle2, Clock, XCircle, Loader2, Trash2, Play, Plus } from 'lucide-react';
 import { type ContentItem } from '../../api';
 import { JSONView } from '../JSONView';
 import { FilePreview } from './FilePreview';
@@ -37,6 +37,14 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     const [isEditing, setIsEditing] = React.useState(false);
     const [editMetadata, setEditMetadata] = React.useState<Record<string, any>>({});
     const [isSaving, setIsSaving] = React.useState(false);
+
+    // Skill Trigger State
+    const [showSkillModal, setShowSkillModal] = React.useState(false);
+    const [availableSkills, setAvailableSkills] = React.useState<any[]>([]);
+    const [isLoadingSkills, setIsLoadingSkills] = React.useState(false);
+    
+
+
 
     const selectedTask = React.useMemo(() =>
         item.tasks?.find(t => t.id === selectedTaskId),
@@ -110,6 +118,26 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
         return [...itemVersions].sort((a, b) => b.version - a.version);
     }, [itemVersions]);
 
+    React.useEffect(() => {
+        if (showSkillModal) {
+            setIsLoadingSkills(true);
+            import('../../api').then(m => m.listSkills())
+                .then(skills => setAvailableSkills(skills))
+                .catch(err => console.error("Failed to load skills", err))
+                .finally(() => setIsLoadingSkills(false));
+        }
+    }, [showSkillModal]);
+
+    const handleTriggerSkill = async (skillName: string) => {
+        try {
+            await import('../../api').then(m => m.triggerSkill(skillName, item.id));
+            setShowSkillModal(false);
+            onRefresh(); // Refresh to show new PENDING task
+        } catch (err) {
+            alert("Failed to trigger task");
+        }
+    };
+
     return (
         <div className="card-content-area-v2">
             {activeTab === 'info' && (
@@ -125,14 +153,25 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                         {/* Version moved to header */}
                     </div>
 
-                    {item.tasks && item.tasks.length > 0 && (
-                        <div className="history-section">
-                            <details className="history-details-container" open>
-                                <summary>
-                                    <h4>PROCESSING HISTORY</h4>
-                                </summary>
-                                <div className="history-list custom-scrollbar">
-                                    {[...item.tasks]
+                    <div className="history-section">
+                        <details className="history-details-container" open>
+                            <summary style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '1rem' }}>
+                                <button
+                                    className="btn btn-ghost btn-xs btn-icon"
+                                    onClick={(e) => { e.preventDefault(); setShowSkillModal(true); }}
+                                    title="Run Task"
+                                >
+                                    <Plus size={14} />
+                                </button>
+                                <h4>PROCESSING HISTORY</h4>
+                            </summary>
+                            <div className="history-list custom-scrollbar">
+                                {(!item.tasks || item.tasks.length === 0) ? (
+                                    <div style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center' }}>
+                                        No processing history. Click + to run a task.
+                                    </div>
+                                ) : (
+                                    [...item.tasks]
                                         .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
                                         .map(task => {
                                             // Determine effective status
@@ -190,6 +229,24 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                                                         Restart
                                                                     </button>
                                                                 )}
+                                                                <button
+                                                                    className="btn btn-ghost btn-icon btn-sm"
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        if (confirm('Delete this task record?')) {
+                                                                            try {
+                                                                                await import('../../api').then(m => m.deleteTask(task.id));
+                                                                                onRefresh();
+                                                                            } catch (err) {
+                                                                                alert('Failed to delete task');
+                                                                            }
+                                                                        }
+                                                                    }}
+                                                                    title="Delete Task"
+                                                                    style={{ marginLeft: '4px' }}
+                                                                >
+                                                                    <Trash2 size={12} />
+                                                                </button>
                                                                 <span className={`history-status-text status-text-${effectiveStatus}`}>{effectiveStatus}</span>
                                                             </div>
                                                         </div>
@@ -202,11 +259,10 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                                 </div>
                                             );
                                         })
-}
-                                </div>
-                            </details>
-                        </div>
-                    )}
+                                )}
+                            </div>
+                        </details>
+                    </div>
 
                     {selectedTask && (
                         <div className="task-details-overlay fade-in" onClick={() => setSelectedTaskId(null)}>
@@ -223,6 +279,59 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                             </div>
                         </div>
                     )}
+                </div>
+            )}
+
+
+
+            {showSkillModal && (
+                <div className="task-details-overlay fade-in" onClick={() => setShowSkillModal(false)}>
+                    <div className="task-details-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+                        <div className="task-details-header">
+                            <h4>Run New Task</h4>
+                            <button className="close-btn" onClick={() => setShowSkillModal(false)}>
+                                <XCircle size={16} />
+                            </button>
+                        </div>
+                        <div className="task-details-body">
+                            {isLoadingSkills ? (
+                                <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+                                    <Loader2 className="spin" />
+                                </div>
+                            ) : availableSkills.length === 0 ? (
+                                <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>No skills available.</p>
+                            ) : (
+                                <div className="skills-list">
+                                    {availableSkills.map((skill: any) => (
+                                        <div 
+                                            key={skill.name} 
+                                            className="skill-item"
+                                            onClick={() => handleTriggerSkill(skill.name)}
+                                            style={{ 
+                                                padding: '1rem', 
+                                                border: '1px solid var(--border-subtle)', 
+                                                marginBottom: '0.5rem', 
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                transition: 'background 0.2s',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
+                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                        >
+                                            <div>
+                                                <div style={{ fontWeight: 600 }}>{skill.name}</div>
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{skill.description}</div>
+                                            </div>
+                                            <Play size={16} style={{ color: 'var(--primary)' }} />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             )}
 

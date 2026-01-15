@@ -51,3 +51,19 @@ async def restart_task(
     background_tasks.add_task(execute_task, str(new_task.id))
     
     return {"message": "Task restart initiated", "new_task_id": new_task.id}
+
+@router.delete("/{task_id}")
+async def delete_task(
+    task_id: uuid.UUID,
+    session: Session = Depends(get_session)
+):
+    """
+    Deletes a task by its ID.
+    """
+    task = session.get(ProcessingTask, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    session.delete(task)
+    session.commit()
+    return {"message": "Task deleted successfully"}

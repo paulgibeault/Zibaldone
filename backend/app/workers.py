@@ -4,6 +4,7 @@ import json
 import traceback
 from datetime import datetime, timezone
 from typing import Dict, Any, List
+import uuid
 
 from sqlmodel import Session, select
 from app.models import (
@@ -120,6 +121,9 @@ async def execute_task(task_id: str):
     """
     Executes a single task by ID.
     """
+    if isinstance(task_id, str):
+        task_id = uuid.UUID(task_id)
+
     with Session(engine) as session:
         task = session.get(ProcessingTask, task_id)
         if not task or task.status != TaskStatus.PENDING:
