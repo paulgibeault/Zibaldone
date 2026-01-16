@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Pin } from 'lucide-react';
-import { RunningTaskSpinner } from './TaskIndicators';
+import { RunningTaskSpinner, FailedTaskBadge, PendingTaskBadge } from './TaskIndicators';
 import axios from 'axios';
 import { type ContentItem } from '../../api';
 import { getFileCategory, getFileIcon, isTextBased } from '../../utils/fileTypes';
@@ -166,11 +166,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                         const pendingCount = item.tasks?.filter(isPendingTask).length || 0;
 
                         if (failedCount > 0) {
-                            return (
-                                <div className="status-badge failed" title={`${failedCount} Failed Tasks`} style={{ position: 'static', transform: 'none' }}>
-                                    {failedCount}
-                                </div>
-                            );
+                            return <FailedTaskBadge count={failedCount} />;
                         }
 
                         if (runningCount > 0) {
@@ -183,11 +179,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                         }
 
                         if (pendingCount > 0) {
-                            return (
-                                <div className="status-badge pending" title={`${pendingCount} Pending Tasks`} style={{ position: 'static', transform: 'none' }}>
-                                    {pendingCount}
-                                </div>
-                            );
+                            return <PendingTaskBadge count={pendingCount} />;
                         }
 
                         return renderFileIcon();
