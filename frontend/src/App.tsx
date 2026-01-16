@@ -7,7 +7,6 @@ import './index.css';
 import './App.css';
 
 import TagManager from './components/TagManager';
-import { Explore } from './components/Explore';
 import { Heap } from './components/Heap';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
@@ -35,7 +34,7 @@ const ProtectedRoute = ({ children }: { children: React.JSX.Element }) => {
 // Main App Layout (Authenticated)
 function MainApp() {
   const { items, fetchItems, deleteItemAction } = useItems();
-  const [activeView, setActiveView] = useState<'heap' | 'tags' | 'explore'>('heap');
+  const [activeView, setActiveView] = useState<'heap' | 'tags'>('heap');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
@@ -73,16 +72,6 @@ function MainApp() {
       <div className="nav-tabs">
         <button
           type="button"
-          className={`nav-link ${activeView === 'explore' ? 'active' : ''}`}
-          onClick={(e) => {
-            e.preventDefault();
-            setActiveView('explore');
-          }}
-        >
-          Explore
-        </button>
-        <button
-          type="button"
           className={`nav-link ${activeView === 'heap' ? 'active' : ''}`}
           onClick={(e) => {
             e.preventDefault();
@@ -104,22 +93,11 @@ function MainApp() {
       </div>
 
       <div style={{ display: activeView === 'heap' ? 'block' : 'none' }}>
-        <Heap
-          items={items}
-          onDelete={handleDelete}
-          onRefresh={fetchItems}
-          selectedItemId={selectedItemId}
-          onSelect={(id) => setSelectedItemId(id)}
-          onDeselect={() => setSelectedItemId(null)}
-        />
+        <Heap isActive={activeView === 'heap'} />
       </div>
 
       <div style={{ display: activeView === 'tags' ? 'block' : 'none' }}>
         <TagManager isActive={activeView === 'tags'} />
-      </div>
-
-      <div style={{ display: activeView === 'explore' ? 'block' : 'none' }}>
-        <Explore isActive={activeView === 'explore'} />
       </div>
     </div>
   );
