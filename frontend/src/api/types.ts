@@ -24,12 +24,23 @@ export interface ContentItem {
     original_filename: string;
     storage_path: string;
     created_at: string;
-    metadata_json: string;
+    created_at: string;
+    item_metadata: any;
+    download_url?: string;
     download_url?: string;
     version: number;
     client_file_path?: string;
     tags: Tag[];
     tasks: ProcessingTask[];
+}
+
+export interface Notebook {
+    id: string;
+    title: string;
+    description?: string;
+    created_at: string;
+    updated_at: string;
+    items?: ContentItem[];
 }
 
 export interface SearchResponse {

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from sqlmodel import SQLModel
 from app.models import ContentStatus, TaskStatus
 
@@ -52,6 +52,29 @@ class ProcessingTaskRead(SQLModel):
     end_time: Optional[datetime]
     result_json: Optional[str] = None
 
+# --- Notebook Schemas ---
+class NotebookBase(SQLModel):
+    title: str
+    description: Optional[str] = None
+
+class NotebookCreate(NotebookBase):
+    pass
+
+class NotebookUpdate(SQLModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+class NotebookRead(NotebookBase):
+    id: uuid.UUID
+    created_at: datetime
+    updated_at: datetime
+
+class NotebookReadWithItems(NotebookRead):
+    items: List["ContentItemRead"] = []
+
+class NotebookAddItems(SQLModel):
+    item_ids: List[uuid.UUID]
+
 # --- ContentItem Schemas ---
 class ContentItemBase(SQLModel):
     original_filename: str
@@ -70,7 +93,7 @@ class ContentItemRead(SQLModel):
     client_file_path: Optional[str] = None
     storage_path: str
     created_at: datetime
-    metadata_json: Optional[str]
+    item_metadata: Dict[str, Any] = {}
     download_url: Optional[str] = None
     tags: List[TagRead] = []
     tasks: List[ProcessingTaskRead] = []

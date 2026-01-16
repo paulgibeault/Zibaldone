@@ -46,6 +46,21 @@ class ContentItemTagLink(SQLModel, table=True):
     item_id: uuid.UUID = Field(foreign_key="contentitem.id", primary_key=True)
     tag_id: uuid.UUID = Field(foreign_key="tag.id", primary_key=True)
 
+class ContentItemNotebookLink(SQLModel, table=True):
+    item_id: uuid.UUID = Field(foreign_key="contentitem.id", primary_key=True)
+    notebook_id: uuid.UUID = Field(foreign_key="notebook.id", primary_key=True)
+    added_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Notebook(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    title: str = Field(index=True)
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    owner_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id", index=True)
+
+    items: list["ContentItem"] = Relationship(back_populates="notebooks", link_model=ContentItemNotebookLink)
+
 class Tag(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str = Field(index=True)
@@ -98,6 +113,7 @@ class ContentItem(SQLModel, table=True):
     is_latest: bool = Field(default=True, index=True)
     
     tags: list[Tag] = Relationship(back_populates="items", link_model=ContentItemTagLink)
+    notebooks: list[Notebook] = Relationship(back_populates="items", link_model=ContentItemNotebookLink)
     tasks: list[ProcessingTask] = Relationship(back_populates="item", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 from pathlib import Path

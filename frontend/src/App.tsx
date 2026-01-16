@@ -31,11 +31,17 @@ const ProtectedRoute = ({ children }: { children: React.JSX.Element }) => {
   return children;
 };
 
+import { Notebooks } from './components/Notebooks';
+
 // Main App Layout (Authenticated)
 function MainApp() {
   const { items, fetchItems, deleteItemAction } = useItems();
-  const [activeView, setActiveView] = useState<'heap' | 'tags'>('heap');
+  const [activeView, setActiveView] = useState<'heap' | 'tags' | 'notebooks'>('heap');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const location = useLocation();
+  
+  // Shared state for pinned items
+  const [pinnedItems, setPinnedItems] = useState<Set<string>>(new Set());
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
   useEventSubscription(`${API_URL}/events`, fetchItems);
@@ -43,6 +49,13 @@ function MainApp() {
   useEffect(() => {
     fetchItems();
   }, [fetchItems]);
+
+  useEffect(() => {
+    // If navigating with specific state, switch to that view
+    if (location.state && (location.state as any).view) {
+        setActiveView((location.state as any).view);
+    }
+  }, [location]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -82,6 +95,16 @@ function MainApp() {
         </button>
         <button
           type="button"
+          className={`nav-link ${activeView === 'notebooks' ? 'active' : ''}`}
+          onClick={(e) => {
+            e.preventDefault();
+            setActiveView('notebooks');
+          }}
+        >
+          Notebooks
+        </button>
+        <button
+          type="button"
           className={`nav-link ${activeView === 'tags' ? 'active' : ''}`}
           onClick={(e) => {
             e.preventDefault();
@@ -93,7 +116,18 @@ function MainApp() {
       </div>
 
       <div style={{ display: activeView === 'heap' ? 'block' : 'none' }}>
-        <Heap isActive={activeView === 'heap'} />
+        <Heap 
+            isActive={activeView === 'heap'} 
+            pinnedItems={pinnedItems}
+            setPinnedItems={setPinnedItems}
+        />
+      </div>
+
+      <div style={{ display: activeView === 'notebooks' ? 'block' : 'none', height: '100%' }}>
+         <Notebooks 
+            isActive={activeView === 'notebooks'} 
+            pinnedItems={pinnedItems}
+         />
       </div>
 
       <div style={{ display: activeView === 'tags' ? 'block' : 'none' }}>

@@ -1,0 +1,153 @@
+from typing import List
+import uuid
+from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException
+from sqlmodel import Session, select
+from app.models import get_session, Notebook, ContentItem, ContentItemNotebookLink, User
+from app.schemas import NotebookCreate, NotebookRead, NotebookUpdate, NotebookReadWithItems, NotebookAddItems
+from app.api.endpoints.auth import get_current_user
+
+router = APIRouter(
+    prefix="/notebooks",
+    tags=["notebooks"],
+    responses={404: {"description": "Not found"}},
+)
+
+@router.post("/", response_model=NotebookRead)
+def create_notebook(
+    notebook: NotebookCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = Notebook.from_orm(notebook)
+    db_notebook.owner_id = current_user.id
+    session.add(db_notebook)
+    session.commit()
+    session.refresh(db_notebook)
+    return db_notebook
+
+@router.get("/", response_model=List[NotebookRead])
+def read_notebooks(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    # Retrieve notebooks owned by current user
+    # Or should we allow shared notebooks? For now, just owner.
+    statement = select(Notebook).where(Notebook.owner_id == current_user.id).order_by(Notebook.updated_at.desc())
+    results = session.exec(statement)
+    return results.all()
+
+@router.get("/{notebook_id}", response_model=NotebookReadWithItems)
+def read_notebook(
+    notebook_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    notebook = session.get(Notebook, notebook_id)
+    if not notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized to access this notebook")
+    return notebook
+
+@router.patch("/{notebook_id}", response_model=NotebookReadWithItems)
+def update_notebook(
+    notebook_id: uuid.UUID,
+    notebook_update: NotebookUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized to update this notebook")
+
+    notebook_data = notebook_update.dict(exclude_unset=True)
+    for key, value in notebook_data.items():
+        setattr(db_notebook, key, value)
+    
+    db_notebook.updated_at = datetime.now(timezone.utc)
+    session.add(db_notebook)
+    session.commit()
+    session.refresh(db_notebook)
+    return db_notebook
+
+@router.delete("/{notebook_id}")
+def delete_notebook(
+    notebook_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized to delete this notebook")
+    
+    session.delete(db_notebook)
+    session.commit()
+    return {"ok": True}
+
+@router.post("/{notebook_id}/items", response_model=NotebookReadWithItems)
+def add_items_to_notebook(
+    notebook_id: uuid.UUID,
+    payload: NotebookAddItems,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized to modify this notebook")
+
+    for item_id in payload.item_ids:
+        # Verify item exists
+        item = session.get(ContentItem, item_id)
+        if not item:
+            continue 
+            
+        # Check if already linked
+        existing_link = session.exec(
+            select(ContentItemNotebookLink)
+            .where(ContentItemNotebookLink.notebook_id == notebook_id)
+            .where(ContentItemNotebookLink.item_id == item_id)
+        ).first()
+
+        if not existing_link:
+            # Explicitly create link
+            link = ContentItemNotebookLink(notebook_id=notebook_id, item_id=item_id)
+            session.add(link)
+    
+    session.commit()
+    session.refresh(db_notebook)
+    return db_notebook
+
+@router.delete("/{notebook_id}/items/{item_id}", response_model=NotebookReadWithItems)
+def remove_item_from_notebook(
+    notebook_id: uuid.UUID,
+    item_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized to modify this notebook")
+
+    link = session.exec(
+            select(ContentItemNotebookLink)
+            .where(ContentItemNotebookLink.notebook_id == notebook_id)
+            .where(ContentItemNotebookLink.item_id == item_id)
+        ).first()
+        
+    if link:
+        session.delete(link)
+        db_notebook.updated_at = datetime.now(timezone.utc)
+        session.add(db_notebook)
+        session.commit()
+        session.refresh(db_notebook)
+        
+    return db_notebook

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, ArrowDownAZ, ArrowUpAZ, Calendar, RefreshCw, X } from 'lucide-react';
 import { type Tag as TagType, getItems, type ContentItem, searchContent, deleteItem, restartAllFailedTasks } from '../api';
 import { useTags } from '../hooks/useTags';
@@ -8,19 +9,28 @@ import { ViewHeader } from './ViewHeader';
 import { ViewContainer } from './ViewContainer';
 import './Heap.css';
 
-export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
+export const Heap = ({ 
+    isActive = false, 
+    pinnedItems = new Set(), 
+    setPinnedItems = () => {} 
+}: { 
+    isActive?: boolean;
+    pinnedItems?: Set<string>;
+    setPinnedItems?: (items: Set<string>) => void;
+}) => {
     const { allTags: tags, fetchTags } = useTags();
     const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
     const [allItems, setAllItems] = useState<ContentItem[]>([]);
     const [filterText, setFilterText] = useState<string>('');
     const [debouncedFilterText, setDebouncedFilterText] = useState<string>('');
-    const [loading, setLoading] = useState<boolean>(true);
-    const [searching, setSearching] = useState<boolean>(false);
+    const [loading, setLoading] = useState(true);
+    const [searching, setSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<{ tags: TagType[], items: ContentItem[] } | null>(null);
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-    const [pinnedItems, setPinnedItems] = useState<Set<string>>(new Set());
+    // const [pinnedItems, setPinnedItems] = useState<Set<string>>(new Set()); <-- Lifted to App
     const [sortMode, setSortMode] = useState<'alphabetical' | 'date'>('date');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+    const navigate = useNavigate();
 
     const handleSortChange = (mode: 'alphabetical' | 'date') => {
         if (sortMode === mode) {
@@ -532,15 +542,37 @@ export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
                             {pinnedItems.size > 0 && (
                                 <section className="heap-sidebar-right">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                        <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
-                                            Pinned Files
+                                    <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
+                                            Pinned Files ({pinnedItems.size})
                                         </h3>
-                                        <button
-                                            onClick={() => setPinnedItems(new Set())}
-                                            style={{ background: 'none', border: 'none', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
-                                        >
-                                            Clear
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                onClick={() => {
+                                                    // Navigate to Notebooks tab with pinned items
+                                                    // Since we are using state in App.tsx to switch tabs, we can use react-router navigate 
+                                                    // but we might need to pass state that App.tsx listens to
+                                                    // or simple use window.history.pushState? 
+                                                    // Ideally we used a Router for tabs, but App.tsx uses local state.
+                                                    // Let's use useNavigate which is available since Heap is inside Router
+                                                    navigate('/', { 
+                                                        state: { 
+                                                            view: 'notebooks', 
+                                                            createNotebook: true, 
+                                                            pinnedItemIds: Array.from(pinnedItems) 
+                                                        } 
+                                                    });
+                                                }}
+                                                style={{ background: 'none', border: 'none', fontSize: '0.75rem', color: 'var(--primary)', cursor: 'pointer', padding: 0, fontWeight: 600 }}
+                                            >
+                                                + Create Notebook
+                                            </button>
+                                            <button
+                                                onClick={() => setPinnedItems(new Set())}
+                                                style={{ background: 'none', border: 'none', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
+                                            >
+                                                Clear
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="pinned-items-list" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

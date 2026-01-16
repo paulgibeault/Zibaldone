@@ -56,3 +56,8 @@
 
 ## Known Issues
 - [x] **Profile UI**: Fix error when saving profile changes.
+
+### Ideas:
+- vm25 for semantic search
+- agui for dynamic file cards
+- puppy graph or other graph db for search twist
