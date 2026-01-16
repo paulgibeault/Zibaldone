@@ -272,15 +272,13 @@ export const Explore = ({ isActive = false }: { isActive?: boolean }) => {
     const handleRestartFailed = async () => {
         if (failedTasksCount === 0) return;
         
-        if (confirm(`Restart ${failedTasksCount} failed tasks?`)) {
-            try {
-                await restartAllFailedTasks(failedTasksData.taskIds);
-                // Ideally refresh tasks
-                fetchData();
-            } catch (error) {
-                console.error("Failed to restart tasks:", error);
-                alert("Failed to restart tasks");
-            }
+        try {
+            await restartAllFailedTasks(failedTasksData.taskIds);
+            // Ideally refresh tasks
+            fetchData();
+        } catch (error) {
+            console.error("Failed to restart tasks:", error);
+            alert("Failed to restart tasks");
         }
     };
 

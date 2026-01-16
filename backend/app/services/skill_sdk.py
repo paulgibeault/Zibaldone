@@ -73,7 +73,7 @@ class SkillContext:
         
     def no_change(self, message: str = "No changes needed") -> SkillResult:
         """Helper to return a no-op result."""
-        return SkillResult(status="skipped", message=message)
+        return SkillResult(status="success", message=message)
 
     def fail(self, message: str) -> SkillResult:
         """Helper to return a failure result."""

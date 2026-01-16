@@ -1,5 +1,6 @@
 import React from 'react';
-import { Table, Code, CheckCircle2, Clock, XCircle, Loader2, Trash2, Play, Plus } from 'lucide-react';
+import { Table, Code, CheckCircle2, Clock, XCircle, Trash2, Play, Plus } from 'lucide-react';
+import { RunningTaskSpinner } from './TaskIndicators';
 import { type ContentItem } from '../../api';
 import { JSONView } from '../JSONView';
 import { FilePreview } from './FilePreview';
@@ -45,7 +46,9 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     const [availableSkills, setAvailableSkills] = React.useState<any[]>([]);
     const [isLoadingSkills, setIsLoadingSkills] = React.useState(false);
     
-
+    // Restart Confirmation State
+    const [pendingRestartTaskId, setPendingRestartTaskId] = React.useState<string | null>(null);
+    const [dontAskRestart, setDontAskRestart] = React.useState(false);
 
 
     const selectedTask = React.useMemo(() =>
@@ -140,6 +143,36 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
         }
     };
 
+    const handleRestartClick = async (taskId: string) => {
+        const skipConfirm = localStorage.getItem('skipRestartTaskConfirm') === 'true';
+        if (skipConfirm) {
+            await performRestart(taskId);
+        } else {
+            setPendingRestartTaskId(taskId);
+            setDontAskRestart(false);
+        }
+    };
+
+    const performRestart = async (taskId: string) => {
+        try {
+            await import('../../api').then(m => m.restartTask(taskId));
+            onRefresh();
+        } catch (err) {
+            alert('Failed to restart task');
+        }
+    };
+
+    const handleConfirmRestart = async () => {
+        if (!pendingRestartTaskId) return;
+
+        if (dontAskRestart) {
+            localStorage.setItem('skipRestartTaskConfirm', 'true');
+        }
+        
+        await performRestart(pendingRestartTaskId);
+        setPendingRestartTaskId(null);
+    };
+
     return (
         <div className="card-content-area-v2">
             {activeTab === 'info' && (
@@ -207,7 +240,7 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                                 >
                                                     <div className="history-status">
                                                         {effectiveStatus === 'COMPLETED' && <CheckCircle2 size={14} className="status-icon-completed" />}
-                                                        {effectiveStatus === 'RUNNING' && <Loader2 size={14} className="status-icon-running spin" />}
+                                                        {effectiveStatus === 'RUNNING' && <RunningTaskSpinner size={14} />}
                                                         {effectiveStatus === 'FAILED' && <XCircle size={14} className="status-icon-failed" />}
                                                         {effectiveStatus === 'PENDING' && <Clock size={14} className="status-icon-pending" />}
                                                     </div>
@@ -218,16 +251,9 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                                                 {(effectiveStatus === 'FAILED' || effectiveStatus === 'COMPLETED') && (
                                                                     <button
                                                                         className="restart-btn"
-                                                                        onClick={async (e) => {
+                                                                        onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            if (confirm('Restart this task?')) {
-                                                                                try {
-                                                                                    await import('../../api').then(m => m.restartTask(task.id));
-                                                                                    onRefresh();
-                                                                                } catch (err) {
-                                                                                    alert('Failed to restart task');
-                                                                                }
-                                                                            }
+                                                                            handleRestartClick(task.id);
                                                                         }}
                                                                         title="Restart Task"
                                                                     >
@@ -275,21 +301,73 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                         </details>
                     </div>
 
-                    {selectedTask && (
-                        <div className="task-details-overlay fade-in" onClick={() => setSelectedTaskId(null)}>
-                            <div className="task-details-modal" onClick={e => e.stopPropagation()}>
-                                <div className="task-details-header">
-                                    <h4>{selectedTask.name} Result</h4>
-                                    <button className="close-btn" onClick={() => setSelectedTaskId(null)}>
-                                        <XCircle size={16} />
-                                    </button>
-                                </div>
-                                <div className="task-details-body">
-                                    <JSONView data={selectedTask.result_json} />
-                                </div>
+            {selectedTask && (
+                <div className="task-details-overlay fade-in" onClick={() => setSelectedTaskId(null)}>
+                    <div className="task-details-modal" onClick={e => e.stopPropagation()}>
+                        <div className="task-details-header">
+                            <h4>{selectedTask.name} Result</h4>
+                            <button className="close-btn" onClick={() => setSelectedTaskId(null)}>
+                                <XCircle size={16} />
+                            </button>
+                        </div>
+                        <div className="task-details-body">
+                            <JSONView data={selectedTask.result_json} />
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Restart Confirmation Modal */}
+            {pendingRestartTaskId && (
+                <div className="task-details-overlay fade-in" onClick={() => setPendingRestartTaskId(null)}>
+                    <div className="task-details-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+                        <div className="task-details-header">
+                            <h4>Confirm Restart</h4>
+                            <button className="close-btn" onClick={() => setPendingRestartTaskId(null)}>
+                                <XCircle size={16} />
+                            </button>
+                        </div>
+                        <div className="task-details-body" style={{ padding: '1.5rem' }}>
+                            <p style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
+                                Are you sure you want to restart this task?
+                            </p>
+                            
+                            <label style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px', 
+                                marginBottom: '1.5rem',
+                                cursor: 'pointer',
+                                color: 'var(--text-secondary)',
+                                fontSize: '0.9rem'
+                            }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={dontAskRestart}
+                                    onChange={e => setDontAskRestart(e.target.checked)}
+                                    style={{ width: '16px', height: '16px' }}
+                                />
+                                Don't ask me again
+                            </label>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                <button 
+                                    className="btn btn-outline-secondary btn-sm"
+                                    onClick={() => setPendingRestartTaskId(null)}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    className="btn btn-primary btn-sm"
+                                    onClick={handleConfirmRestart}
+                                >
+                                    Restart
+                                </button>
                             </div>
                         </div>
-                    )}
+                    </div>
+                </div>
+            )}
                 </div>
             )}
 
