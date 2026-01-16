@@ -256,3 +256,28 @@ async def process_unprocessed_items():
             logger.error(f"Worker Loop Error: {e}", exc_info=True)
         
         await asyncio.sleep(2)
+
+async def cleanup_stuck_tasks():
+    """
+    Called on startup to find tasks that were RUNNING when the server stopped.
+    Marks them as FAILED.
+    """
+    logger.info("Cleaning up stuck tasks...")
+    with Session(engine) as session:
+        statement = select(ProcessingTask).where(ProcessingTask.status == TaskStatus.RUNNING)
+        tasks = session.exec(statement).all()
+        
+        count = 0
+        for task in tasks:
+            logger.warning(f"Found stuck task {task.id} (Item: {task.item_id}, Name: {task.name})")
+            task.status = TaskStatus.FAILED
+            task.message = "Task interrupted by system restart"
+            task.end_time = datetime.now(timezone.utc)
+            session.add(task)
+            count += 1
+            
+        session.commit()
+        if count > 0:
+            logger.info(f"Cleaned up {count} stuck tasks.")
+        else:
+            logger.info("No stuck tasks found.")
