@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ArrowDownAZ, ArrowUpAZ, Calendar, RefreshCw } from 'lucide-react';
+import { Search, ArrowDownAZ, ArrowUpAZ, Calendar, RefreshCw, X } from 'lucide-react';
 import { type Tag as TagType, getItems, type ContentItem, searchContent, deleteItem, restartAllFailedTasks } from '../api';
 import { useTags } from '../hooks/useTags';
 import { Tag } from './Tag';
 import { FileCard } from './FileCard';
 import { ViewHeader } from './ViewHeader';
 import { ViewContainer } from './ViewContainer';
+import './Heap.css';
 
 export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
     const { allTags: tags, fetchTags } = useTags();
@@ -320,6 +321,15 @@ export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
                                 onChange={(e) => setFilterText(e.target.value)}
                                 className="filter-input-subtle"
                             />
+                            {filterText && (
+                                <button 
+                                    className="input-clear-btn"
+                                    onClick={() => setFilterText('')}
+                                    title="Clear search"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
                         <div className="sort-btn-group" style={{ marginLeft: '1rem', display: 'flex' }}>
                              <button
@@ -342,15 +352,36 @@ export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
             />
 
             <div className="heap-content">
-                <div className="search-layout" style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                <div className="heap-layout">
                     {/* Left Column: Tags */}
-                    <section className="results-section" style={{ width: '240px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                    <section className="heap-sidebar-left">
                         
                         {/* Active Filters Section */}
                         {selectedTags.size > 0 && (
                             <div className="active-tags-section" style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: '0 0 0.75rem 0', fontWeight: 700 }}>
+                                <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: '0 0 0.75rem 0', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     Active Filters
+                                    <button
+                                        onClick={() => {
+                                            setSelectedTags(new Set());
+                                            setFilterText('');
+                                        }}
+                                        style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            color: 'var(--text-muted)',
+                                            fontSize: '0.7rem',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            textTransform: 'none',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.25rem'
+                                        }}
+                                        className="hover:text-primary"
+                                    >
+                                        <X size={12} /> Clear All
+                                    </button>
                                 </h3>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem' }}>
                                     {activeTagsList.map(tag => (
@@ -405,7 +436,7 @@ export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
                             const selectedItem = allItems.find(i => i.id === selectedItemId);
                             if (!selectedItem) return null; // Should not happen if state is consistent
                             return (
-                                <section className="results-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                <section className="heap-center">
                                     <div style={{ marginBottom: '1rem' }}>
                                          <button 
                                             onClick={() => setSelectedItemId(null)}
@@ -439,7 +470,7 @@ export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
                     ) : (
                         <>
                             {/* Right Column: Content */}
-                            <section className="results-section" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                            <section className="heap-center">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                                         <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
@@ -472,11 +503,7 @@ export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
                                 {loading && !searching ? (
                                     <div className="loading-small">Loading content...</div>
                                 ) : (
-                                    <div className="items-grid" style={{
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                        gap: '1.5rem'
-                                    }}>
+                                    <div className="files-grid-fixed">
                                         {getFilteredItems().slice(0, 50).map((item: ContentItem) => (
                                             <FileCard
                                                 key={item.id}
@@ -503,7 +530,7 @@ export const Heap = ({ isActive = false }: { isActive?: boolean }) => {
 
                             {/* Right Column: Pinned Files */}
                             {pinnedItems.size > 0 && (
-                                <section className="results-section" style={{ width: '280px', flexShrink: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--border-color)', paddingLeft: '1.5rem' }}>
+                                <section className="heap-sidebar-right">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                         <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', margin: 0, fontWeight: 700 }}>
                                             Pinned Files

@@ -1,0 +1,83 @@
+.heap-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.heap-sidebar-left {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.heap-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Important for grid inside flex */
+}
+
+.heap-sidebar-right {
+  width: 280px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-subtle);
+  padding-left: 1.5rem;
+}
+
+.files-grid-fixed {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 1100px) {
+    /* Below 1100px, 3 columns might be too tight if sidebars are present.
+       But user requested 3 columns. Let's start with 2 if it gets cramped.
+       Actually, user said "Use entirety of horizontal space".
+       With 2 sidebars (240+280=520px) + gaps (2rem=32px), we have ~550px used.
+       On a 1280px screen, that leaves ~730px for content.
+       3 columns means ~240px per card. That's reasonable.
+       
+       On Tablet (e.g. 768px):
+       Total width 768. 550px used by sidebars? No way.
+       So we need to stack.
+    */
+}
+
+@media (max-width: 900px) {
+  .heap-layout {
+    flex-direction: column;
+  }
+  
+  .heap-sidebar-left, 
+  .heap-sidebar-right {
+    width: 100%;
+    border-left: none;
+    padding-left: 0;
+    margin-bottom: 2rem;
+  }
+
+  .heap-sidebar-left {
+      /* Keep tags at top */
+  }
+
+  .heap-center {
+      width: 100%;
+      margin-bottom: 2rem;
+  }
+
+  .heap-sidebar-right {
+     /* Pinned items at bottom on mobile */
+     border-top: 1px solid var(--border-subtle);
+     padding-top: 1.5rem;
+  }
+  
+  .files-grid-fixed {
+     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Auto-fill on mobile is safer than fixed 1 col */
+  }
+}
