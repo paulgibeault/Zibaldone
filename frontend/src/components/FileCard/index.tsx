@@ -8,6 +8,8 @@ import { isTaskFailed, isRunningTask, isPendingTask } from '../../utils/taskUtil
 import { FileCardHeader } from './FileCardHeader';
 import { FileCardContent } from './FileCardContent';
 import { FileCardFooter } from './FileCardFooter';
+import { RestartConfirmationModal } from './Modals/RestartConfirmationModal';
+import { SkillSelectionModal } from './Modals/SkillSelectionModal';
 import './FileCard.css';
 
 type ViewMode = 'minimal' | 'standard' | 'fullscreen';
@@ -34,6 +36,11 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
     // Internal state for version switching
     const [currentItem, setCurrentItem] = useState<ContentItem>(item);
     const [versions, setVersions] = useState<ContentItem[]>([]);
+
+    // Modal States
+    const [pendingRestartTaskId, setPendingRestartTaskId] = useState<string | null>(null);
+    const [showSkillModal, setShowSkillModal] = useState(false);
+
 
     useEffect(() => {
         setCurrentItem(item);
@@ -146,6 +153,44 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
         return <Icon className={`file-icon-${fileCategory}`} />;
     }, [fileCategory]);
 
+    // --- Action Handlers ---
+
+    const handleRestartTask = (taskId: string) => {
+        const skipConfirm = localStorage.getItem('skipRestartTaskConfirm') === 'true';
+        if (skipConfirm) {
+            import('../../api').then(m => m.restartTask(taskId))
+                .then(() => onRefresh())
+                .catch(() => alert('Failed to restart task'));
+        } else {
+            setPendingRestartTaskId(taskId);
+        }
+    };
+
+    const handleConfirmRestart = async (taskId: string, dontAskAgain: boolean) => {
+        if (dontAskAgain) {
+            localStorage.setItem('skipRestartTaskConfirm', 'true');
+        }
+        try {
+            await import('../../api').then(m => m.restartTask(taskId));
+            onRefresh();
+        } catch (err) {
+            alert('Failed to restart task');
+        } finally {
+            setPendingRestartTaskId(null);
+        }
+    };
+
+    const handleTriggerSkill = async (skillName: string) => {
+        try {
+            await import('../../api').then(m => m.triggerSkill(skillName, displayItem.id));
+            setShowSkillModal(false);
+            onRefresh();
+        } catch (err) {
+            alert("Failed to trigger task");
+        }
+    };
+
+
     const renderMinimalView = () => {
         const sortedTags = [...(item.tags || [])].sort((a, b) => {
             const isUnapprovedA = a.is_autocreated && !a.is_approved;
@@ -225,6 +270,22 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
 
     const renderStandardView = (isFull: boolean = false) => (
         <div className={`file-card-inner ${isFull ? 'expanded-inner' : ''}`}>
+             {/* Modals placed relative to the inner content but overlaying it */}
+             {pendingRestartTaskId && (
+                <RestartConfirmationModal
+                    taskId={pendingRestartTaskId}
+                    onClose={() => setPendingRestartTaskId(null)}
+                    onConfirm={handleConfirmRestart}
+                />
+            )}
+            {showSkillModal && (
+                <SkillSelectionModal
+                    itemId={displayItem.id}
+                    onClose={() => setShowSkillModal(false)}
+                    onTriggerSkill={handleTriggerSkill}
+                />
+            )}
+
             <FileCardHeader
                 item={displayItem}
                 activeTab={activeTab}
@@ -254,6 +315,8 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                 onRefresh={onRefresh}
                 itemVersions={versions}
                 onVersionSelect={setCurrentItem}
+                onRestartTask={handleRestartTask}
+                onLaunchTask={() => setShowSkillModal(true)}
             />
 
             <FileCardFooter
@@ -272,6 +335,22 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
             <div className="fullscreen-overlay" onClick={closeFullscreen}>
                 <div className="fullscreen-container" onClick={(e) => e.stopPropagation()}>
                     <div className={`file-card-inner expanded-inner`}>
+                         {/* Modals for fullscreen mode */}
+                        {pendingRestartTaskId && (
+                            <RestartConfirmationModal
+                                taskId={pendingRestartTaskId}
+                                onClose={() => setPendingRestartTaskId(null)}
+                                onConfirm={handleConfirmRestart}
+                            />
+                        )}
+                        {showSkillModal && (
+                            <SkillSelectionModal
+                                itemId={displayItem.id}
+                                onClose={() => setShowSkillModal(false)}
+                                onTriggerSkill={handleTriggerSkill}
+                            />
+                        )}
+
                         <FileCardHeader
                             item={displayItem}
                             activeTab={activeTab}
@@ -301,6 +380,8 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                             onRefresh={onRefresh}
                             itemVersions={versions}
                             onVersionSelect={setCurrentItem}
+                            onRestartTask={handleRestartTask}
+                            onLaunchTask={() => setShowSkillModal(true)}
                         />
 
                         <FileCardFooter

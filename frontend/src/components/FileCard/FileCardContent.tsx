@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, Code, CheckCircle2, Clock, XCircle, Trash2, Play, Plus } from 'lucide-react';
+import { Table, Code, CheckCircle2, Clock, XCircle, Trash2, Play, Plus, Loader2 } from 'lucide-react';
 import { RunningTaskSpinner } from './TaskIndicators';
 import { type ContentItem } from '../../api';
 import { JSONView } from '../JSONView';
@@ -20,6 +20,8 @@ interface FileCardContentProps {
     onRefresh: () => void;
     itemVersions?: ContentItem[];
     onVersionSelect?: (versionItem: ContentItem) => void;
+    onRestartTask: (taskId: string) => void;
+    onLaunchTask: () => void;
 }
 
 export const FileCardContent: React.FC<FileCardContentProps> = ({
@@ -34,21 +36,14 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     formatMetadataValue,
     onRefresh,
     itemVersions = [],
-    onVersionSelect
+    onVersionSelect,
+    onRestartTask,
+    onLaunchTask
 }) => {
     const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
     const [isEditing, setIsEditing] = React.useState(false);
     const [editMetadata, setEditMetadata] = React.useState<Record<string, any>>({});
     const [isSaving, setIsSaving] = React.useState(false);
-
-    // Skill Trigger State
-    const [showSkillModal, setShowSkillModal] = React.useState(false);
-    const [availableSkills, setAvailableSkills] = React.useState<any[]>([]);
-    const [isLoadingSkills, setIsLoadingSkills] = React.useState(false);
-    
-    // Restart Confirmation State
-    const [pendingRestartTaskId, setPendingRestartTaskId] = React.useState<string | null>(null);
-    const [dontAskRestart, setDontAskRestart] = React.useState(false);
 
 
     const selectedTask = React.useMemo(() =>
@@ -123,55 +118,6 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
         return [...itemVersions].sort((a, b) => b.version - a.version);
     }, [itemVersions]);
 
-    React.useEffect(() => {
-        if (showSkillModal) {
-            setIsLoadingSkills(true);
-            import('../../api').then(m => m.listSkills())
-                .then(skills => setAvailableSkills(skills))
-                .catch(err => console.error("Failed to load skills", err))
-                .finally(() => setIsLoadingSkills(false));
-        }
-    }, [showSkillModal]);
-
-    const handleTriggerSkill = async (skillName: string) => {
-        try {
-            await import('../../api').then(m => m.triggerSkill(skillName, item.id));
-            setShowSkillModal(false);
-            onRefresh(); // Refresh to show new PENDING task
-        } catch (err) {
-            alert("Failed to trigger task");
-        }
-    };
-
-    const handleRestartClick = async (taskId: string) => {
-        const skipConfirm = localStorage.getItem('skipRestartTaskConfirm') === 'true';
-        if (skipConfirm) {
-            await performRestart(taskId);
-        } else {
-            setPendingRestartTaskId(taskId);
-            setDontAskRestart(false);
-        }
-    };
-
-    const performRestart = async (taskId: string) => {
-        try {
-            await import('../../api').then(m => m.restartTask(taskId));
-            onRefresh();
-        } catch (err) {
-            alert('Failed to restart task');
-        }
-    };
-
-    const handleConfirmRestart = async () => {
-        if (!pendingRestartTaskId) return;
-
-        if (dontAskRestart) {
-            localStorage.setItem('skipRestartTaskConfirm', 'true');
-        }
-        
-        await performRestart(pendingRestartTaskId);
-        setPendingRestartTaskId(null);
-    };
 
     return (
         <div className="card-content-area-v2">
@@ -195,7 +141,7 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                             <summary style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '1rem' }}>
                                 <button
                                     className="btn btn-ghost btn-xs btn-icon"
-                                    onClick={(e) => { e.preventDefault(); setShowSkillModal(true); }}
+                                    onClick={(e) => { e.preventDefault(); onLaunchTask(); }}
                                     title="Run Task"
                                 >
                                     <Plus size={14} />
@@ -253,7 +199,7 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                                                         className="restart-btn"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
-                                                                            handleRestartClick(task.id);
+                                                                            onRestartTask(task.id);
                                                                         }}
                                                                         title="Restart Task"
                                                                     >
@@ -316,111 +262,6 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                     </div>
                 </div>
             )}
-
-            {/* Restart Confirmation Modal */}
-            {pendingRestartTaskId && (
-                <div className="task-details-overlay fade-in" onClick={() => setPendingRestartTaskId(null)}>
-                    <div className="task-details-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-                        <div className="task-details-header">
-                            <h4>Confirm Restart</h4>
-                            <button className="close-btn" onClick={() => setPendingRestartTaskId(null)}>
-                                <XCircle size={16} />
-                            </button>
-                        </div>
-                        <div className="task-details-body" style={{ padding: '1.5rem' }}>
-                            <p style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>
-                                Are you sure you want to restart this task?
-                            </p>
-                            
-                            <label style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '8px', 
-                                marginBottom: '1.5rem',
-                                cursor: 'pointer',
-                                color: 'var(--text-secondary)',
-                                fontSize: '0.9rem'
-                            }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={dontAskRestart}
-                                    onChange={e => setDontAskRestart(e.target.checked)}
-                                    style={{ width: '16px', height: '16px' }}
-                                />
-                                Don't ask me again
-                            </label>
-
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                                <button 
-                                    className="btn btn-outline-secondary btn-sm"
-                                    onClick={() => setPendingRestartTaskId(null)}
-                                >
-                                    Cancel
-                                </button>
-                                <button 
-                                    className="btn btn-primary btn-sm"
-                                    onClick={handleConfirmRestart}
-                                >
-                                    Restart
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-                </div>
-            )}
-
-
-
-            {showSkillModal && (
-                <div className="task-details-overlay fade-in" onClick={() => setShowSkillModal(false)}>
-                    <div className="task-details-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-                        <div className="task-details-header">
-                            <h4>Run New Task</h4>
-                            <button className="close-btn" onClick={() => setShowSkillModal(false)}>
-                                <XCircle size={16} />
-                            </button>
-                        </div>
-                        <div className="task-details-body">
-                            {isLoadingSkills ? (
-                                <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-                                    <Loader2 className="spin" />
-                                </div>
-                            ) : availableSkills.length === 0 ? (
-                                <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>No skills available.</p>
-                            ) : (
-                                <div className="skills-list">
-                                    {availableSkills.map((skill: any) => (
-                                        <div 
-                                            key={skill.name} 
-                                            className="skill-item"
-                                            onClick={() => handleTriggerSkill(skill.name)}
-                                            style={{ 
-                                                padding: '1rem', 
-                                                border: '1px solid var(--border-subtle)', 
-                                                marginBottom: '0.5rem', 
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                transition: 'background 0.2s',
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center'
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-hover)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                        >
-                                            <div>
-                                                <div style={{ fontWeight: 600 }}>{skill.name}</div>
-                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{skill.description}</div>
-                                            </div>
-                                            <Play size={16} style={{ color: 'var(--primary)' }} />
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
                 </div>
             )}
 

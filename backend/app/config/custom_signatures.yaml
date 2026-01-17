@@ -1,0 +1,17 @@
+# Custom Signature Matcher Configuration
+# Define your proprietary file types here.
+# The 'signature' is a hex string string of the magic bytes.
+# The 'offset' is optional (default 0).
+
+custom_types:
+  - name: "Custom Report"
+    mime_type: "application/x-custom-report"
+    extension: ".crp"
+    signature: "CRPT" # Hex: 43 52 50 54
+    rendering_strategy: "HighChartDashboard"
+
+  - name: "Encrypted Log"
+    mime_type: "application/x-encrypted-log"
+    extension: ".elog"
+    signature: "ELOG" 
+    rendering_strategy: "EnhancedLogViewer"

@@ -103,6 +103,23 @@ async def process_queued_items():
                 session.commit()
                 
                 # Trigger 'file_created'
+                # Detect File Type
+                try:
+                    from app.services.file_detection import file_detector
+                    detection_result = file_detector.detect(item.storage_path, item.original_filename)
+                    
+                    # Update Metadata
+                    current_meta = item.item_metadata or {}
+                    current_meta.update(detection_result)
+                    item.item_metadata = current_meta
+                    item.content_type = detection_result.get("mime_type", item.content_type)
+                    
+                    logger.info(f"Detected type for {item.original_filename}: {detection_result}")
+                    session.add(item)
+                    session.commit()
+                except Exception as e:
+                    logger.error(f"File detection failed for {item.id}: {e}")
+
                 await handle_event(session, "file_created", item.id)
                 
         except Exception as e:
