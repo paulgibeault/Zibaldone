@@ -36,11 +36,15 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
         return <iframe src={url} className="preview-pdf" title="PDF Preview" />;
     }
 
-    if (type === 'text/html' || type.includes('html')) {
+    if (type === 'text/html' || type.includes('html') || item.original_filename.toLowerCase().endsWith('.html') || item.original_filename.toLowerCase().endsWith('.htm')) {
         return <iframe src={url} className="preview-html" title="HTML Preview" style={{ width: '100%', height: '100%', border: 'none', backgroundColor: '#fff' }} />;
     }
 
-    if (type.includes('markdown')) {
+    const isMarkdown = type.includes('markdown') || 
+                       item.original_filename.toLowerCase().endsWith('.md') || 
+                       item.original_filename.toLowerCase().endsWith('.markdown');
+
+    if (isMarkdown) {
         return (
             <div className="preview-markdown-wrapper">
                 {isLoadingContent ? (

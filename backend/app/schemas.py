@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from sqlmodel import SQLModel
-from app.models import ContentStatus, TaskStatus
+from app.models import ContentStatus, TaskStatus, NotebookViewMode
 
 # --- Tag Schemas ---
 class UserRead(SQLModel):
@@ -56,6 +56,7 @@ class ProcessingTaskRead(SQLModel):
 class NotebookBase(SQLModel):
     title: str
     description: Optional[str] = None
+    view_mode: NotebookViewMode = NotebookViewMode.GRID
 
 class NotebookCreate(NotebookBase):
     pass
@@ -63,6 +64,7 @@ class NotebookCreate(NotebookBase):
 class NotebookUpdate(SQLModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    view_mode: Optional[NotebookViewMode] = None
 
 class NotebookRead(NotebookBase):
     id: uuid.UUID
@@ -74,6 +76,27 @@ class NotebookReadWithItems(NotebookRead):
 
 class NotebookAddItems(SQLModel):
     item_ids: List[uuid.UUID]
+
+# --- NotebookTask Schemas ---
+class NotebookTaskBase(SQLModel):
+    name: str
+    definition_json: Dict[str, Any] = {}
+    trigger_config_json: Dict[str, Any] = {}
+    is_active: bool = True
+
+class NotebookTaskCreate(NotebookTaskBase):
+    notebook_id: uuid.UUID
+
+class NotebookTaskUpdate(SQLModel):
+    name: Optional[str] = None
+    definition_json: Optional[Dict[str, Any]] = None
+    trigger_config_json: Optional[Dict[str, Any]] = None
+    is_active: Optional[bool] = None
+
+class NotebookTaskRead(NotebookTaskBase):
+    id: uuid.UUID
+    notebook_id: uuid.UUID
+    last_run_at: Optional[datetime] = None
 
 # --- ContentItem Schemas ---
 class ContentItemBase(SQLModel):

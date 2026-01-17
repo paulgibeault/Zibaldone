@@ -11,6 +11,12 @@ class ContentStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 
+class NotebookViewMode(str, Enum):
+    FEED = "FEED"
+    CALENDAR = "CALENDAR"
+    PROJECT = "PROJECT"
+    GRID = "GRID"
+
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     display_name: str = Field(index=True)
@@ -58,6 +64,9 @@ class Notebook(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     owner_id: Optional[uuid.UUID] = Field(default=None, foreign_key="user.id", index=True)
+    view_mode: NotebookViewMode = Field(default=NotebookViewMode.GRID)
+
+    notebook_tasks: list["NotebookTask"] = Relationship(back_populates="notebook", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
     items: list["ContentItem"] = Relationship(back_populates="notebooks", link_model=ContentItemNotebookLink)
 
@@ -95,6 +104,17 @@ class ProcessingTask(SQLModel, table=True):
     provenance_output: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
 
     item: "ContentItem" = Relationship(back_populates="tasks")
+
+class NotebookTask(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    notebook_id: uuid.UUID = Field(foreign_key="notebook.id", index=True)
+    name: str
+    definition_json: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
+    trigger_config_json: Dict[str, Any] = Field(default={}, sa_column=Column(JSON))
+    is_active: bool = Field(default=True)
+    last_run_at: Optional[datetime] = None
+    
+    notebook: "Notebook" = Relationship(back_populates="notebook_tasks")
 
 class ContentItem(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

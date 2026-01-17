@@ -3,8 +3,8 @@ import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
-from app.models import get_session, Notebook, ContentItem, ContentItemNotebookLink, User
-from app.schemas import NotebookCreate, NotebookRead, NotebookUpdate, NotebookReadWithItems, NotebookAddItems
+from app.models import get_session, Notebook, ContentItem, ContentItemNotebookLink, User, NotebookTask
+from app.schemas import NotebookCreate, NotebookRead, NotebookUpdate, NotebookReadWithItems, NotebookAddItems, NotebookTaskCreate, NotebookTaskRead, NotebookTaskUpdate
 from app.api.endpoints.auth import get_current_user
 
 router = APIRouter(
@@ -151,3 +151,93 @@ def remove_item_from_notebook(
         session.refresh(db_notebook)
         
     return db_notebook
+
+# --- Notebook Task Endpoints ---
+
+@router.post("/{notebook_id}/tasks", response_model=NotebookTaskRead)
+def create_notebook_task(
+    notebook_id: uuid.UUID,
+    task_create: NotebookTaskCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Ensure notebook_id matches route
+    if task_create.notebook_id != notebook_id:
+        raise HTTPException(status_code=400, detail="Notebook ID mismatch")
+        
+    db_task = NotebookTask.from_orm(task_create)
+    session.add(db_task)
+    session.commit()
+    session.refresh(db_task)
+    return db_task
+
+@router.get("/{notebook_id}/tasks", response_model=List[NotebookTaskRead])
+def read_notebook_tasks(
+    notebook_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized")
+         
+    statement = select(NotebookTask).where(NotebookTask.notebook_id == notebook_id)
+    return session.exec(statement).all()
+
+@router.patch("/{notebook_id}/tasks/{task_id}", response_model=NotebookTaskRead)
+def update_notebook_task(
+    notebook_id: uuid.UUID,
+    task_id: uuid.UUID,
+    task_update: NotebookTaskUpdate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized")
+         
+    db_task = session.get(NotebookTask, task_id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    if db_task.notebook_id != notebook_id:
+        raise HTTPException(status_code=404, detail="Task not in this notebook")
+        
+    task_data = task_update.dict(exclude_unset=True)
+    for key, value in task_data.items():
+        setattr(db_task, key, value)
+        
+    session.add(db_task)
+    session.commit()
+    session.refresh(db_task)
+    return db_task
+
+@router.delete("/{notebook_id}/tasks/{task_id}")
+def delete_notebook_task(
+    notebook_id: uuid.UUID,
+    task_id: uuid.UUID,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized")
+         
+    db_task = session.get(NotebookTask, task_id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    session.delete(db_task)
+    session.commit()
+    return {"ok": True}

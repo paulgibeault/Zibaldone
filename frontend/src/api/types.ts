@@ -34,13 +34,27 @@ export interface ContentItem {
     tasks: ProcessingTask[];
 }
 
+export type NotebookViewMode = 'FEED' | 'CALENDAR' | 'PROJECT' | 'GRID';
+
+export interface NotebookTask {
+    id: string;
+    notebook_id: string;
+    name: string;
+    definition_json: any;
+    trigger_config_json: any;
+    is_active: boolean;
+    last_run_at?: string;
+}
+
 export interface Notebook {
     id: string;
     title: string;
     description?: string;
     created_at: string;
     updated_at: string;
+    view_mode: NotebookViewMode;
     items?: ContentItem[];
+    notebook_tasks?: NotebookTask[];
 }
 
 export interface SearchResponse {

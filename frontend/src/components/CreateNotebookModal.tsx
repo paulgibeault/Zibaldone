@@ -12,6 +12,7 @@ interface CreateNotebookModalProps {
 export const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({ isOpen, onClose, onCreated, initialItemIds = [] }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [viewMode, setViewMode] = useState('GRID');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +26,7 @@ export const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({ isOpen
     setError(null);
 
     try {
-      const notebook = await createNotebook(title, description);
+      const notebook = await createNotebook(title, description, viewMode);
       
       if (initialItemIds.length > 0) {
         try {
@@ -89,6 +90,24 @@ export const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({ isOpen
               className="text-input"
               style={{ width: '100%', padding: '0.5rem', minHeight: '80px' }}
             />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>View Mode</label>
+            <select
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value)}
+                className="text-input"
+                style={{ width: '100%', padding: '0.5rem' }}
+            >
+                <option value="GRID">Grid (Default)</option>
+                <option value="FEED">Feed</option>
+                <option value="CALENDAR">Calendar</option>
+                <option value="PROJECT">Project</option>
+            </select>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                How should this notebook display its content?
+            </div>
           </div>
 
           {initialItemIds.length > 0 && (

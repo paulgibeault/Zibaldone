@@ -24,6 +24,10 @@ export const getFileCategory = (contentType: string = '', filename: string = '')
         return 'code';
     }
 
+    if (/\.(py|js|ts|tsx|jsx|html|css|json|yaml|yml|xml|sq|c|cpp|h|hpp|go|rs|java|php|rb|sh|bash|zsh)$/i.test(name)) {
+        return 'code';
+    }
+
     if (type.includes('zip') || type.includes('tar') || type.includes('gzip')) return 'archive';
 
     if (type.includes('text/') || type.includes('markdown') || name.endsWith('.txt') || name.endsWith('.md')) {

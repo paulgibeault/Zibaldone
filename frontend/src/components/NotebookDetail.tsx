@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Trash2, Plus, Pin } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, LayoutList, Grid, Calendar, Layout, Bot } from 'lucide-react';
 import { getNotebook, removeItemFromNotebook, deleteNotebook, updateNotebook } from '../api';
-import { Notebook, ContentItem } from '../api/types';
+import { Notebook, ContentItem, NotebookViewMode } from '../api/types';
 import { FileCard } from './FileCard';
 import './Notebooks.css'; // Shared styles
 import { AddFilesModal } from './AddFilesModal';
+import { NotebookFeed } from './NotebookFeed';
+import { NotebookCalendar } from './NotebookCalendar';
+import { NotebookProject } from './NotebookProject';
+import { NotebookAutomationModal } from './NotebookAutomationModal';
 
 interface NotebookDetailProps {
   notebookId: string;
@@ -17,8 +21,10 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [viewMode, setViewMode] = useState<NotebookViewMode>('GRID');
   
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAutomationOpen, setIsAutomationOpen] = useState(false);
   
   const fetchNotebook = async () => {
     setLoading(true);
@@ -27,6 +33,9 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
         setNotebook(data);
         setTitle(data.title);
         setDescription(data.description || '');
+        if (data.view_mode) {
+            setViewMode(data.view_mode);
+        }
     } catch (error) {
         console.error("Failed to fetch notebook:", error);
     } finally {
@@ -44,9 +53,8 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
       if (title === notebook.title && description === (notebook.description || '')) return;
       
       try {
-          // Optimistically update local state if needed, but here we just wait for API
-          const updated = await updateNotebook(notebookId, title, description);
-          // Preserve items if backend doesn't return them (though we fixed backend to return them)
+          // Optimistically update local state if needed
+          const updated = await updateNotebook(notebookId, title, description, notebook.view_mode);
           setNotebook(prev => {
               if (!prev) return updated;
               return {
@@ -56,10 +64,24 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
           }); 
       } catch (error) {
           console.error("Failed to update notebook:", error);
-          // Revert on error?
           fetchNotebook();
       }
   };
+
+  const handleViewModeChange = async (mode: NotebookViewMode) => {
+      setViewMode(mode);
+      if (notebook) {
+          try {
+             const updated = await updateNotebook(notebookId, title, description, mode);
+             setNotebook(prev => {
+                if (!prev) return updated;
+                return { ...updated, view_mode: mode };
+             });
+          } catch (error) {
+              console.error("Failed to update view mode:", error);
+          }
+      }
+  }
 
   const handleRemoveItem = async (itemId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -110,7 +132,7 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                         padding: '0.2rem 0.5rem',
                         marginLeft: '-0.5rem', // Align with other text
                         width: '100%',
-                        maxWidth: '600px',
+                        maxWidth: '400px',
                         outline: 'none',
                         transition: 'border-color 0.2s',
                     }} 
@@ -119,6 +141,44 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                     onMouseEnter={(e) => e.target.style.borderColor = 'var(--border-subtle)'}
                 />
                 
+                {/* View Mode Selector */}
+                <div className="view-mode-selector" style={{ display: 'flex', gap: '4px', background: 'var(--bg-subtle)', padding: '4px', borderRadius: '6px' }}>
+                    <button 
+                        onClick={() => handleViewModeChange('GRID')}
+                        className={`view-mode-btn ${viewMode === 'GRID' ? 'active' : ''}`}
+                        title="Grid View"
+                        style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'GRID' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
+                    >
+                        <Grid size={16} color={viewMode === 'GRID' ? 'var(--primary)' : 'var(--text-subtle)'} />
+                    </button>
+                    <button 
+                         onClick={() => handleViewModeChange('FEED')}
+                         className={`view-mode-btn ${viewMode === 'FEED' ? 'active' : ''}`}
+                         title="Feed View"
+                         style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'FEED' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
+                    >
+                        <LayoutList size={16} color={viewMode === 'FEED' ? 'var(--primary)' : 'var(--text-subtle)'} />
+                    </button>
+                    <button 
+                         onClick={() => handleViewModeChange('CALENDAR')}
+                         className={`view-mode-btn ${viewMode === 'CALENDAR' ? 'active' : ''}`}
+                         title="Calendar View"
+                         style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'CALENDAR' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
+                    >
+                        <Calendar size={16} color={viewMode === 'CALENDAR' ? 'var(--primary)' : 'var(--text-subtle)'} />
+                    </button>
+                    <button 
+                         onClick={() => handleViewModeChange('PROJECT')}
+                         className={`view-mode-btn ${viewMode === 'PROJECT' ? 'active' : ''}`}
+                         title="Project View"
+                         style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'PROJECT' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
+                    >
+                        <Layout size={16} color={viewMode === 'PROJECT' ? 'var(--primary)' : 'var(--text-subtle)'} />
+                    </button>
+                </div>
+
+                <div style={{ flex: 1 }}></div>
+
                 <button 
                     onClick={() => setIsAddModalOpen(true)}
                     className="action-button-primary"
@@ -127,6 +187,9 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                     <Plus size={14} /> Add Files
                 </button>
             </div>
+             <button onClick={() => setIsAutomationOpen(true)} className="action-button-secondary" title="Automation" style={{ background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: '4px', padding: '0.3rem', cursor: 'pointer', color: 'var(--text-subtle)' }}>
+                <Bot size={16} />
+            </button>
              <button onClick={handleDeleteNotebook} className="delete-notebook-btn" title="Delete Notebook">
                 <Trash2 size={16} />
             </button>
@@ -165,32 +228,53 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
       </div>
 
       <div className="notebook-content">
-        <div className="files-grid-fixed">
-          {notebook.items && notebook.items.length > 0 ? (
-            notebook.items.map((item: ContentItem) => (
-              <FileCard
-                key={item.id}
-                item={item}
-                onDelete={(id, e) => handleRemoveItem(id, e)}
+        {viewMode === 'GRID' && (
+             <div className="files-grid-fixed">
+                {notebook.items && notebook.items.length > 0 ? (
+                    notebook.items.map((item: ContentItem) => (
+                    <FileCard
+                        key={item.id}
+                        item={item}
+                        onDelete={(id, e) => handleRemoveItem(id, e)}
+                        onRefresh={fetchNotebook}
+                        isSelected={selectedItemId === item.id}
+                        onSelect={() => setSelectedItemId(item.id)}
+                        onDeselect={() => setSelectedItemId(null)}
+                        isPinned={false}
+                        onTogglePin={() => {}}
+                    />
+                    ))
+                ) : (
+                    <div className="empty-notebook">
+                    <p>This notebook is empty.</p>
+                    <p>Click "Add Files" to search and add content to this notebook.</p>
+                    </div>
+                )}
+             </div>
+        )}
+
+        {viewMode === 'FEED' && notebook.items && (
+            <NotebookFeed 
+                items={notebook.items} 
+                onRemoveItem={handleRemoveItem}
                 onRefresh={fetchNotebook}
-                isSelected={selectedItemId === item.id}
-                onSelect={() => setSelectedItemId(item.id)}
+                selectedItemId={selectedItemId}
+                onSelect={(id) => setSelectedItemId(id)}
                 onDeselect={() => setSelectedItemId(null)}
-                isPinned={false}
-                onTogglePin={() => {}}
-              />
-            ))
-          ) : (
-            <div className="empty-notebook">
-              <p>This notebook is empty.</p>
-              <p>Click "Add Files" to search and add content to this notebook.</p>
-            </div>
-          )}
-        </div>
+            />
+        )}
+        
+        {viewMode === 'CALENDAR' && notebook.items && (
+            <NotebookCalendar items={notebook.items} />
+        )}
+        
+        {viewMode === 'PROJECT' && notebook.items && (
+            <NotebookProject items={notebook.items} />
+        )}
       </div>
       
-      {/* Detail View for Selected Item */}
-      {selectedItemId && (
+      {/* Detail View for Selected Item (Only for Grid/Calendar/Project if they support it, Feed probably doesn't need overlay) */}
+      {selectedItemId && viewMode !== 'FEED' && (
            <div className="notebook-item-detail-overlay" onClick={() => setSelectedItemId(null)}>
                 <div className="notebook-item-detail-content" onClick={e => e.stopPropagation()}>
                      {(() => {
@@ -219,6 +303,12 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
         notebookId={notebook.id}
         existingItemIds={new Set(notebook.items?.map(i => i.id))}
         onAdded={fetchNotebook}
+      />
+
+      <NotebookAutomationModal
+        isOpen={isAutomationOpen}
+        onClose={() => setIsAutomationOpen(false)}
+        notebookId={notebook.id}
       />
     </div>
   );

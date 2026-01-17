@@ -91,7 +91,14 @@ export const Notebooks: React.FC<NotebooksProps> = ({ isActive, pinnedItems = ne
                 subtitle="Curated collections of your content."
                 controls={
                      <button
-                        onClick={() => setIsCreateModalOpen(true)}
+                        onClick={() => {
+                            // If there are pinned items from the parent (Heap), use them.
+                            // Convert Set to Array
+                            if (pinnedItems && pinnedItems.size > 0) {
+                                setInitialPinnedItems(Array.from(pinnedItems));
+                            }
+                            setIsCreateModalOpen(true);
+                        }}
                         className="action-button-primary"
                     >
                         <Plus size={16} />
