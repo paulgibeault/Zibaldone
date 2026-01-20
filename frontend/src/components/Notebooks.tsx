@@ -92,11 +92,7 @@ export const Notebooks: React.FC<NotebooksProps> = ({ isActive, pinnedItems = ne
                 controls={
                      <button
                         onClick={() => {
-                            // If there are pinned items from the parent (Heap), use them.
-                            // Convert Set to Array
-                            if (pinnedItems && pinnedItems.size > 0) {
-                                setInitialPinnedItems(Array.from(pinnedItems));
-                            }
+                            setInitialPinnedItems([]);
                             setIsCreateModalOpen(true);
                         }}
                         className="action-button-primary"
@@ -170,7 +166,10 @@ export const Notebooks: React.FC<NotebooksProps> = ({ isActive, pinnedItems = ne
                     setIsCreateModalOpen(false);
                     setInitialPinnedItems([]); // Reset
                 }}
-                onCreated={fetchNotebooks}
+                onCreated={(id) => {
+                    fetchNotebooks();
+                    setSelectedNotebookId(id);
+                }}
                 initialItemIds={initialPinnedItems}
             />
         </ViewContainer>

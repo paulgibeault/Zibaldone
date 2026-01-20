@@ -5,7 +5,8 @@ import { createNotebook, addItemsToNotebook } from '../api';
 interface CreateNotebookModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (notebookId: string) => void;
+
   initialItemIds?: string[]; // If creating from Heap with pinned items
 }
 
@@ -36,13 +37,13 @@ export const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({ isOpen
             // We successfully created the notebook, but failed to add items.
             // Warn the user but close the modal as the primary action succeeded.
             alert(`Notebook created, but failed to add pinned files: ${itemErr.response?.data?.detail || itemErr.message}`);
-            onCreated();
+            onCreated(notebook.id);
             onClose();
             return;
         }
       }
 
-      onCreated();
+      onCreated(notebook.id);
       onClose();
       setTitle('');
       setDescription('');
@@ -147,3 +148,4 @@ export const CreateNotebookModal: React.FC<CreateNotebookModalProps> = ({ isOpen
     </div>
   );
 };
+
