@@ -20,7 +20,7 @@ export const NotebookFeed: React.FC<NotebookFeedProps> = ({
   onDeselect
 }) => {
   return (
-    <div className="notebook-feed" style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div className="notebook-feed" style={{ width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {items.map((item) => (
         <FileCard
           key={item.id}
@@ -31,8 +31,9 @@ export const NotebookFeed: React.FC<NotebookFeedProps> = ({
           onSelect={() => onSelect(item.id)}
           onDeselect={onDeselect}
           isPinned={false}
-          onTogglePin={() => {}}
-          expanded={true} // Feed view always expanded
+          onTogglePin={undefined}
+          forceExpanded={true}
+          defaultTab="preview"
         />
       ))}
     </div>

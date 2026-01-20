@@ -24,10 +24,24 @@ interface FileCardProps {
     isPinned?: boolean;
     onTogglePin?: (id: string, e: React.MouseEvent) => void;
     variant?: 'default' | 'micro';
+    forceExpanded?: boolean;
+    defaultTab?: 'info' | 'preview' | 'metadata';
 }
 
-export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, isSelected, onSelect, onDeselect, isPinned, onTogglePin, variant = 'default' }) => {
-    const [activeTab, setActiveTab] = useState<'info' | 'preview' | 'metadata'>('info');
+export const FileCard: React.FC<FileCardProps> = ({ 
+    item, 
+    onDelete, 
+    onRefresh, 
+    isSelected, 
+    onSelect, 
+    onDeselect, 
+    isPinned, 
+    onTogglePin, 
+    variant = 'default',
+    forceExpanded = false,
+    defaultTab = 'info'
+}) => {
+    const [activeTab, setActiveTab] = useState<'info' | 'preview' | 'metadata'>(defaultTab);
     const [metadataView, setMetadataView] = useState<'rendered' | 'raw'>('rendered');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [textContent, setTextContent] = useState<string | null>(null);
@@ -61,7 +75,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
     // Update dependent variables to use currentItem
     const displayItem = currentItem;
 
-    const viewMode: ViewMode = isFullscreen ? 'fullscreen' : (isSelected ? 'standard' : 'minimal');
+    const viewMode: ViewMode = isFullscreen ? 'fullscreen' : ((isSelected || forceExpanded) ? 'standard' : 'minimal');
 
     const metadata = useMemo(() => {
         try {

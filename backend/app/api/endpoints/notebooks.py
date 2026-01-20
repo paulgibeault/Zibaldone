@@ -37,6 +37,8 @@ def read_notebooks(
     results = session.exec(statement)
     return results.all()
 
+from app.services import item_service
+
 @router.get("/{notebook_id}", response_model=NotebookReadWithItems)
 def read_notebook(
     notebook_id: uuid.UUID,
@@ -48,7 +50,14 @@ def read_notebook(
         raise HTTPException(status_code=404, detail="Notebook not found")
     if notebook.owner_id != current_user.id:
          raise HTTPException(status_code=403, detail="Not authorized to access this notebook")
-    return notebook
+    
+    # Enrich items to include download_url and other computed fields
+    enriched_items = [item_service.enrich_item(item) for item in notebook.items]
+    
+    # Construct response manually to ensure items are enriched
+    response = NotebookReadWithItems.from_orm(notebook)
+    response.items = enriched_items
+    return response
 
 @router.patch("/{notebook_id}", response_model=NotebookReadWithItems)
 def update_notebook(
@@ -71,7 +80,11 @@ def update_notebook(
     session.add(db_notebook)
     session.commit()
     session.refresh(db_notebook)
-    return db_notebook
+
+    enriched_items = [item_service.enrich_item(item) for item in db_notebook.items]
+    response = NotebookReadWithItems.from_orm(db_notebook)
+    response.items = enriched_items
+    return response
 
 @router.delete("/{notebook_id}")
 def delete_notebook(
@@ -128,7 +141,11 @@ def add_items_to_notebook(
     
     session.commit()
     session.refresh(db_notebook)
-    return db_notebook
+
+    enriched_items = [item_service.enrich_item(item) for item in db_notebook.items]
+    response = NotebookReadWithItems.from_orm(db_notebook)
+    response.items = enriched_items
+    return response
 
 @router.delete("/{notebook_id}/items/{item_id}", response_model=NotebookReadWithItems)
 def remove_item_from_notebook(
@@ -156,7 +173,10 @@ def remove_item_from_notebook(
         session.commit()
         session.refresh(db_notebook)
         
-    return db_notebook
+    enriched_items = [item_service.enrich_item(item) for item in db_notebook.items]
+    response = NotebookReadWithItems.from_orm(db_notebook)
+    response.items = enriched_items
+    return response
 
 # --- Notebook Task Endpoints ---
 

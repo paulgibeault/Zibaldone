@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Trash2, Plus, LayoutList, Grid, Calendar, Layout, Bot, Check, X } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, LayoutList, Grid, Calendar, Layout, Bot, Check, X, ArrowDownAZ, ArrowUpAZ, Search } from 'lucide-react';
 import { getNotebook, removeItemFromNotebook, deleteNotebook, updateNotebook } from '../api';
 import { Notebook, ContentItem, NotebookViewMode } from '../api/types';
 import { FileCard } from './FileCard';
@@ -24,8 +24,65 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
   const [description, setDescription] = useState('');
   const [viewMode, setViewMode] = useState<NotebookViewMode>('GRID');
   
+  const [filterText, setFilterText] = useState('');
+  const [sortMode, setSortMode] = useState<'alphabetical' | 'date'>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAutomationOpen, setIsAutomationOpen] = useState(false);
+
+  // Sorting and Filtering Logic
+  const filteredAndSortedItems = React.useMemo(() => {
+      if (!notebook?.items) return [];
+
+      let items = [...notebook.items];
+
+      // Filtering
+      if (filterText.trim()) {
+          const lowerFilter = filterText.toLowerCase();
+          items = items.filter(item => {
+              const meta = JSON.parse(item.metadata_json || '{}');
+              const title = meta.title || item.original_filename || '';
+              const content = meta.summary || ''; // Basic search on summary + title
+              return title.toLowerCase().includes(lowerFilter) || content.toLowerCase().includes(lowerFilter);
+          });
+      }
+
+      // Sorting
+      return items.sort((a, b) => {
+          let comparison = 0;
+          if (sortMode === 'alphabetical') {
+                const getTitle = (item: ContentItem) => {
+                    try {
+                        const meta = JSON.parse(item.metadata_json || '{}');
+                        return meta.title || item.original_filename;
+                    } catch {
+                        return item.original_filename;
+                    }
+                };
+                const nameA = getTitle(a);
+                const nameB = getTitle(b);
+                comparison = nameA.localeCompare(nameB);
+          } else if (sortMode === 'date') {
+              const dateA = new Date(a.created_at).getTime();
+              const dateB = new Date(b.created_at).getTime();
+              comparison = dateA - dateB;
+          }
+          return sortDirection === 'asc' ? comparison : -comparison;
+      });
+  }, [notebook?.items, filterText, sortMode, sortDirection]);
+
+  const handleSortChange = (mode: 'alphabetical' | 'date') => {
+        if (sortMode === mode) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortMode(mode);
+            setSortDirection('desc');
+            if (mode === 'alphabetical') {
+                setSortDirection('asc'); 
+            }
+        }
+  };
   
   const fetchNotebook = async () => {
     setLoading(true);
@@ -147,6 +204,27 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
 
                 <div style={{ flex: 1 }}></div>
 
+                <div className="input-with-icon" style={{ marginRight: '1rem' }}>
+                    <Search size={16} className="input-icon" />
+                    <input
+                        type="text"
+                        placeholder="Search notebook..."
+                        value={filterText}
+                        onChange={(e) => setFilterText(e.target.value)}
+                        className="filter-input-subtle"
+                        style={{ width: '200px' }}
+                    />
+                    {filterText && (
+                        <button 
+                            className="input-clear-btn"
+                            onClick={() => setFilterText('')}
+                            title="Clear search"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
+                </div>
+
                 <button 
                     onClick={() => setIsAddModalOpen(true)}
                     className="action-button-primary"
@@ -177,85 +255,104 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
         </div>
 
         <div className="notebook-meta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Created: {new Date(notebook.created_at).toLocaleDateString()} · {notebook.items?.length || 0} items</span>
+            <span>Created: {new Date(notebook.created_at).toLocaleDateString()} · {filteredAndSortedItems.length} items</span>
             
-             {/* View Mode Selector */}
-             <div className="view-mode-selector" style={{ 
-                display: 'flex', 
-                gap: '4px', 
-                background: 'var(--bg-subtle)', 
-                padding: '4px', 
-                borderRadius: '8px',
-                border: '1px solid var(--border-subtle)'
-            }}>
-                <button 
-                    onClick={() => handleViewModeChange('GRID')}
-                    className={`view-mode-btn ${viewMode === 'GRID' ? 'active' : ''}`}
-                    title="Grid View"
-                    style={{ 
-                        padding: '6px', 
-                        borderRadius: '6px', 
-                        border: 'none', 
-                        background: viewMode === 'GRID' ? 'var(--bg-card-hover)' : 'transparent', 
-                        cursor: 'pointer', 
-                        display: 'flex',
-                        color: viewMode === 'GRID' ? 'var(--primary)' : 'var(--text-subtle)',
-                        transition: 'all 0.2s'
-                    }}
-                >
-                    <Grid size={18} />
-                </button>
-                <button 
-                     onClick={() => handleViewModeChange('FEED')}
-                     className={`view-mode-btn ${viewMode === 'FEED' ? 'active' : ''}`}
-                     title="Notebook View"
-                     style={{ 
-                        padding: '6px', 
-                        borderRadius: '6px', 
-                        border: 'none', 
-                        background: viewMode === 'FEED' ? 'var(--bg-card-hover)' : 'transparent', 
-                        cursor: 'pointer', 
-                        display: 'flex',
-                        color: viewMode === 'FEED' ? 'var(--primary)' : 'var(--text-subtle)',
-                        transition: 'all 0.2s'
-                    }}
-                >
-                    <LayoutList size={18} />
-                </button>
-                <button 
-                     onClick={() => handleViewModeChange('CALENDAR')}
-                     className={`view-mode-btn ${viewMode === 'CALENDAR' ? 'active' : ''}`}
-                     title="Calendar View"
-                     style={{ 
-                        padding: '6px', 
-                        borderRadius: '6px', 
-                        border: 'none', 
-                        background: viewMode === 'CALENDAR' ? 'var(--bg-card-hover)' : 'transparent', 
-                        cursor: 'pointer', 
-                        display: 'flex',
-                        color: viewMode === 'CALENDAR' ? 'var(--primary)' : 'var(--text-subtle)',
-                        transition: 'all 0.2s'
-                    }}
-                >
-                    <Calendar size={18} />
-                </button>
-                <button 
-                     onClick={() => handleViewModeChange('PROJECT')}
-                     className={`view-mode-btn ${viewMode === 'PROJECT' ? 'active' : ''}`}
-                     title="Project View"
-                     style={{ 
-                        padding: '6px', 
-                        borderRadius: '6px', 
-                        border: 'none', 
-                        background: viewMode === 'PROJECT' ? 'var(--bg-card-hover)' : 'transparent', 
-                        cursor: 'pointer', 
-                        display: 'flex',
-                        color: viewMode === 'PROJECT' ? 'var(--primary)' : 'var(--text-subtle)',
-                        transition: 'all 0.2s'
-                    }}
-                >
-                    <Layout size={18} />
-                </button>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div className="sort-btn-group" style={{ display: 'flex' }}>
+                        <button
+                        className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
+                        onClick={() => handleSortChange('alphabetical')}
+                        title="Sort A-Z"
+                    >
+                        {sortMode === 'alphabetical' && sortDirection === 'desc' ? <ArrowUpAZ size={18} /> : <ArrowDownAZ size={18} />}
+                    </button>
+                    <button
+                        className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
+                        onClick={() => handleSortChange('date')}
+                        title="Sort by Date"
+                    >
+                        <Calendar size={18} />
+                    </button>
+                </div>
+            
+                {/* View Mode Selector */}
+                <div className="view-mode-selector" style={{ 
+                    display: 'flex', 
+                    gap: '4px', 
+                    background: 'var(--bg-subtle)', 
+                    padding: '4px', 
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-subtle)'
+                }}>
+                    <button 
+                        onClick={() => handleViewModeChange('GRID')}
+                        className={`view-mode-btn ${viewMode === 'GRID' ? 'active' : ''}`}
+                        title="Grid View"
+                        style={{ 
+                            padding: '6px', 
+                            borderRadius: '6px', 
+                            border: 'none', 
+                            background: viewMode === 'GRID' ? 'var(--bg-card-hover)' : 'transparent', 
+                            cursor: 'pointer', 
+                            display: 'flex',
+                            color: viewMode === 'GRID' ? 'var(--primary)' : 'var(--text-subtle)',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <Grid size={18} />
+                    </button>
+                    <button 
+                        onClick={() => handleViewModeChange('FEED')}
+                        className={`view-mode-btn ${viewMode === 'FEED' ? 'active' : ''}`}
+                        title="Notebook View"
+                        style={{ 
+                            padding: '6px', 
+                            borderRadius: '6px', 
+                            border: 'none', 
+                            background: viewMode === 'FEED' ? 'var(--bg-card-hover)' : 'transparent', 
+                            cursor: 'pointer', 
+                            display: 'flex',
+                            color: viewMode === 'FEED' ? 'var(--primary)' : 'var(--text-subtle)',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <LayoutList size={18} />
+                    </button>
+                    <button 
+                        onClick={() => handleViewModeChange('CALENDAR')}
+                        className={`view-mode-btn ${viewMode === 'CALENDAR' ? 'active' : ''}`}
+                        title="Calendar View"
+                        style={{ 
+                            padding: '6px', 
+                            borderRadius: '6px', 
+                            border: 'none', 
+                            background: viewMode === 'CALENDAR' ? 'var(--bg-card-hover)' : 'transparent', 
+                            cursor: 'pointer', 
+                            display: 'flex',
+                            color: viewMode === 'CALENDAR' ? 'var(--primary)' : 'var(--text-subtle)',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        <Calendar size={18} />
+                    </button>
+                    <button 
+                        onClick={() => handleViewModeChange('PROJECT')}
+                        className={`view-mode-btn ${viewMode === 'PROJECT' ? 'active' : ''}`}
+                        title="Project View"
+                        style={{ 
+                            padding: '6px', 
+                            borderRadius: '6px', 
+                            border: 'none', 
+                            background: viewMode === 'PROJECT' ? 'var(--bg-card-hover)' : 'transparent', 
+                            cursor: 'pointer', 
+                            display: 'flex',
+                            color: viewMode === 'PROJECT' ? 'var(--primary)' : 'var(--text-subtle)',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                         <Layout size={18} />
+                    </button>
+                </div>
             </div>
         </div>
       </div>
@@ -263,8 +360,8 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
       <div className="notebook-content">
         {viewMode === 'GRID' && (
              <div className="files-grid-fixed">
-                {notebook.items && notebook.items.length > 0 ? (
-                    notebook.items.map((item: ContentItem) => (
+                {filteredAndSortedItems && filteredAndSortedItems.length > 0 ? (
+                    filteredAndSortedItems.map((item: ContentItem) => (
                     <FileCard
                         key={item.id}
                         item={item}
@@ -274,23 +371,22 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                         onSelect={() => setSelectedItemId(item.id)}
                         onDeselect={() => setSelectedItemId(null)}
                         isPinned={false}
-                        isPinned={false}
                         // onTogglePin explicitly undefined to hide pin icon
                         onTogglePin={undefined}
                     />
                     ))
                 ) : (
                     <div className="empty-notebook">
-                    <p>This notebook is empty.</p>
+                    <p>This notebook is empty or no items match your search.</p>
                     <p>Click "Add Files" to search and add content to this notebook.</p>
                     </div>
                 )}
              </div>
         )}
 
-        {viewMode === 'FEED' && notebook.items && (
+        {viewMode === 'FEED' && filteredAndSortedItems && (
             <NotebookFeed 
-                items={notebook.items} 
+                items={filteredAndSortedItems} 
                 onRemoveItem={handleRemoveItem}
                 onRefresh={fetchNotebook}
                 selectedItemId={selectedItemId}
@@ -299,12 +395,12 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
             />
         )}
         
-        {viewMode === 'CALENDAR' && notebook.items && (
-            <NotebookCalendar items={notebook.items} />
+        {viewMode === 'CALENDAR' && filteredAndSortedItems && (
+            <NotebookCalendar items={filteredAndSortedItems} />
         )}
         
-        {viewMode === 'PROJECT' && notebook.items && (
-            <NotebookProject items={notebook.items} />
+        {viewMode === 'PROJECT' && filteredAndSortedItems && (
+            <NotebookProject items={filteredAndSortedItems} />
         )}
       </div>
       
