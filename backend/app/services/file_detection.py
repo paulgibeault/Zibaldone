@@ -159,6 +159,9 @@ class FileDetectionService:
             return "AudioRenderer"
         if mime == "application/pdf":
             return "PdfRenderer"
+        if mime == "text/html":
+            return "HtmlRenderer"
+            
         if mime.startswith("text/") or "json" in mime or "xml" in mime or "javascript" in mime:
             # Maybe refine for code?
             return "CodeRenderer"
@@ -167,7 +170,24 @@ class FileDetectionService:
         fname = filename.lower()
         if fname.endswith(".md") or fname.endswith(".markdown"):
             return "MarkdownRenderer"
-        if fname.endswith(".py") or fname.endswith(".js") or fname.endswith(".ts") or fname.endswith(".tsx"):
+            
+        if fname.endswith(".html") or fname.endswith(".htm"):
+            return "HtmlRenderer"
+            
+        # Expanded list of code/text extensions
+        code_strategies = {
+            ".py", ".js", ".ts", ".tsx", ".jsx", 
+            ".rb", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".hpp",
+            ".sh", ".bash", ".zsh", 
+            ".yaml", ".yml", ".json", ".xml", ".sql", ".css", ".html", ".php", 
+            ".dockerfile"
+        }
+        
+        # Check extensions
+        if any(fname.endswith(ext) for ext in code_strategies):
+            return "CodeRenderer"
+            
+        if fname == "dockerfile" or fname == "makefile":
             return "CodeRenderer"
             
         return "Default"

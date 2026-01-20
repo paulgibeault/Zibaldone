@@ -22,6 +22,7 @@ interface FileCardContentProps {
     onVersionSelect?: (versionItem: ContentItem) => void;
     onRestartTask: (taskId: string) => void;
     onLaunchTask: () => void;
+    onRequestTextContent?: () => void;
 }
 
 export const FileCardContent: React.FC<FileCardContentProps> = ({
@@ -38,7 +39,8 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     itemVersions = [],
     onVersionSelect,
     onRestartTask,
-    onLaunchTask
+    onLaunchTask,
+    onRequestTextContent
 }) => {
     const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
     const [isEditing, setIsEditing] = React.useState(false);
@@ -292,6 +294,7 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                             metadata={metadata}
                             textContent={textContent}
                             isLoadingContent={isLoadingContent}
+                            onRequestTextContent={onRequestTextContent}
                         />
                     </div>
                 </div>

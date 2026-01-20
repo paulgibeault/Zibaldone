@@ -7,9 +7,17 @@ interface FilePreviewProps {
     metadata: Record<string, any>;
     textContent: string | null;
     isLoadingContent: boolean;
+    onRequestTextContent?: () => void;
 }
 
-export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textContent, isLoadingContent }) => {
+export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textContent, isLoadingContent, onRequestTextContent }) => {
+    const [forceTextMode, setForceTextMode] = React.useState(false);
+    
+    // Reset force mode when item changes
+    React.useEffect(() => {
+        setForceTextMode(false);
+    }, [item.id]);
+
     const type = (metadata.mime_type || metadata.type || '').toLowerCase();
     const url = item.download_url ? (item.download_url.startsWith('http') ? item.download_url : `http://${window.location.hostname}:8000${item.download_url}`) : '';
     
@@ -27,10 +35,40 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
        else if (type.startsWith('audio/')) strategy = 'AudioRenderer';
        else if (type === 'application/pdf') strategy = 'PdfRenderer';
        else if (type.includes('markdown') || item.original_filename.endsWith('.md')) strategy = 'MarkdownRenderer';
-       else if (type.startsWith('text/') || type.includes('json') || type.includes('javascript') || type.includes('xml') || type.includes('yaml')) strategy = 'CodeRenderer';
-       else strategy = 'DefaultRenderer'; // Was 'Default' but registry might expect 'Default' or 'DefaultRenderer'? Registry.ts says 'Default': DefaultRenderer. Let's start with 'Default' but be robust.
+       else {
+            // Enhanced code/text detection fallback
+            const fname = item.original_filename.toLowerCase();
+            const codeExtensions = [
+                '.js', '.ts', '.tsx', '.jsx', 
+                '.py', '.rb', '.go', '.rs', '.java', '.c', '.cpp', '.h', '.hpp',
+                '.sh', '.bash', '.zsh', 
+                '.yaml', '.yml', '.json', '.xml', '.sql', '.css', '.html', '.php', 
+                '.dockerfile'
+            ];
+            
+            const isCode = type.startsWith('text/') || 
+                           type.includes('json') || 
+                           type.includes('javascript') || 
+                           type.includes('xml') || 
+                           type.includes('yaml') ||
+                           codeExtensions.some(ext => fname.endsWith(ext)) ||
+                           fname === 'dockerfile' || fname === 'makefile';
+
+            if (type === 'text/html' || fname.endsWith('.html') || fname.endsWith('.htm')) {
+                 strategy = 'HtmlRenderer';
+            } else if (isCode) {
+                 strategy = 'CodeRenderer';
+            } else {
+                 strategy = 'DefaultRenderer';
+            }
+       }
        
        console.log(`[FilePreview] No explicit strategy for ${item.original_filename} (${type}). Fallback to: ${strategy}`);
+    }
+
+    // Override strategy if forceTextMode is active
+    if (forceTextMode) {
+        strategy = 'CodeRenderer';
     }
 
     // Ensure we have a valid key for the registry
@@ -43,6 +81,11 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
     }
 
     const SpecificRenderer = Renderers[strategy] || Renderers.Default;
+    
+    const handleViewAsText = () => {
+        setForceTextMode(true);
+        if (onRequestTextContent) onRequestTextContent();
+    };
 
     return (
         <SpecificRenderer 
@@ -51,6 +94,7 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
             metadata={metadata}
             textContent={textContent}
             isLoadingContent={isLoadingContent}
+            onViewAsText={handleViewAsText}
         />
     );
 };

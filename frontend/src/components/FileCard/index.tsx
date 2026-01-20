@@ -31,6 +31,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
     const [metadataView, setMetadataView] = useState<'rendered' | 'raw'>('rendered');
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [textContent, setTextContent] = useState<string | null>(null);
+    const [forceLoadContent, setForceLoadContent] = useState(false);
     const [isLoadingContent, setIsLoadingContent] = useState(false);
 
     // Internal state for version switching
@@ -76,7 +77,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
     useEffect(() => {
         const textBased = isTextBased(fileCategory);
 
-        if (activeTab === 'preview' && textBased && displayItem.download_url && !textContent && !isLoadingContent) {
+        if (activeTab === 'preview' && (textBased || forceLoadContent) && displayItem.download_url && !textContent && !isLoadingContent) {
             // Reset content when item changes?
             // See dependency list.
 
@@ -97,11 +98,12 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
             };
             fetchContent();
         }
-    }, [activeTab, displayItem.download_url, fileCategory, textContent, isLoadingContent, displayItem.id]);
+    }, [activeTab, displayItem.download_url, fileCategory, textContent, isLoadingContent, displayItem.id, forceLoadContent]);
 
     // Clear text content when item changes
     useEffect(() => {
         setTextContent(null);
+        setForceLoadContent(false);
     }, [displayItem.id]);
 
     const formatSize = useCallback((bytes?: number): string => {
@@ -317,6 +319,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                 onVersionSelect={setCurrentItem}
                 onRestartTask={handleRestartTask}
                 onLaunchTask={() => setShowSkillModal(true)}
+                onRequestTextContent={() => setForceLoadContent(true)}
             />
 
             <FileCardFooter
@@ -382,6 +385,7 @@ export const FileCard: React.FC<FileCardProps> = ({ item, onDelete, onRefresh, i
                             onVersionSelect={setCurrentItem}
                             onRestartTask={handleRestartTask}
                             onLaunchTask={() => setShowSkillModal(true)}
+                            onRequestTextContent={() => setForceLoadContent(true)}
                         />
 
                         <FileCardFooter

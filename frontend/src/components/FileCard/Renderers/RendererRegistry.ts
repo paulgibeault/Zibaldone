@@ -6,6 +6,7 @@ import { PdfRenderer } from './PdfRenderer';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { CodeRenderer } from './CodeRenderer';
 import { DefaultRenderer } from './DefaultRenderer';
+import { HtmlRenderer } from './HtmlRenderer';
 import { RendererProps } from './types';
 
 export const Renderers: Record<string, React.FC<RendererProps>> = {
@@ -15,5 +16,6 @@ export const Renderers: Record<string, React.FC<RendererProps>> = {
     'PdfRenderer': PdfRenderer,
     'MarkdownRenderer': MarkdownRenderer,
     'CodeRenderer': CodeRenderer,
+    'HtmlRenderer': HtmlRenderer,
     'Default': DefaultRenderer
 };

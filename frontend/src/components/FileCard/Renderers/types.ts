@@ -6,4 +6,5 @@ export interface RendererProps {
     metadata: Record<string, any>;
     textContent: string | null;
     isLoadingContent: boolean;
+    onViewAsText?: () => void;
 }
