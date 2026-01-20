@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Trash2, Plus, LayoutList, Grid, Calendar, Layout, Bot } from 'lucide-react';
+import { ArrowLeft, Trash2, Plus, LayoutList, Grid, Calendar, Layout, Bot, Check, X } from 'lucide-react';
 import { getNotebook, removeItemFromNotebook, deleteNotebook, updateNotebook } from '../api';
 import { Notebook, ContentItem, NotebookViewMode } from '../api/types';
 import { FileCard } from './FileCard';
 import './Notebooks.css'; // Shared styles
 import { AddFilesModal } from './AddFilesModal';
+import { EditableField } from './common/EditableField';
 import { NotebookFeed } from './NotebookFeed';
 import { NotebookCalendar } from './NotebookCalendar';
 import { NotebookProject } from './NotebookProject';
@@ -47,23 +48,32 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
     fetchNotebook();
   }, [notebookId]);
 
-  const handleUpdate = async () => {
+  const handleSaveTitle = async (newTitle: string) => {
       if (!notebook) return;
-      // Only update if changed
-      if (title === notebook.title && description === (notebook.description || '')) return;
-      
       try {
-          // Optimistically update local state if needed
-          const updated = await updateNotebook(notebookId, title, description, notebook.view_mode);
+          const updated = await updateNotebook(notebookId, newTitle, description, notebook.view_mode);
           setNotebook(prev => {
               if (!prev) return updated;
-              return {
-                  ...updated,
-                  items: updated.items || prev.items
-              };
-          }); 
+              return { ...updated, title: updated.title };
+          });
+          setTitle(updated.title);
       } catch (error) {
-          console.error("Failed to update notebook:", error);
+          console.error("Failed to update title:", error);
+          fetchNotebook();
+      }
+  };
+
+  const handleSaveDescription = async (newDesc: string) => {
+      if (!notebook) return;
+      try {
+           const updated = await updateNotebook(notebookId, title, newDesc, notebook.view_mode);
+           setNotebook(prev => {
+               if (!prev) return updated;
+               return { ...updated, description: updated.description };
+           });
+           setDescription(updated.description || '');
+      } catch (error) {
+          console.error("Failed to update description:", error);
           fetchNotebook();
       }
   };
@@ -120,26 +130,14 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
         </button>
         <div className="notebook-title-section">
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                <input 
-                    className="notebook-title" 
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onBlur={handleUpdate}
-                    style={{
-                        background: 'transparent',
-                        border: '1px solid transparent',
-                        borderRadius: '4px',
-                        padding: '0.2rem 0.5rem',
-                        marginLeft: '-0.5rem', // Align with other text
-                        width: '100%',
-                        maxWidth: '400px',
-                        outline: 'none',
-                        transition: 'border-color 0.2s',
-                    }} 
-                    onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
-                    onMouseLeave={(e) => { if(document.activeElement !== e.target) e.target.style.borderColor = 'transparent'; }}
-                    onMouseEnter={(e) => e.target.style.borderColor = 'var(--border-subtle)'}
-                />
+                <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+                     <EditableField 
+                        value={title}
+                        onSave={handleSaveTitle}
+                        className="notebook-title"
+                        style={{ color: 'var(--text-primary)' }}
+                     />
+                </div>
                 
                 {/* View Mode Selector */}
                 <div className="view-mode-selector" style={{ display: 'flex', gap: '4px', background: 'var(--bg-subtle)', padding: '4px', borderRadius: '6px' }}>
@@ -154,7 +152,7 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                     <button 
                          onClick={() => handleViewModeChange('FEED')}
                          className={`view-mode-btn ${viewMode === 'FEED' ? 'active' : ''}`}
-                         title="Feed View"
+                         title="Notebook View"
                          style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'FEED' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
                     >
                         <LayoutList size={16} color={viewMode === 'FEED' ? 'var(--primary)' : 'var(--text-subtle)'} />
@@ -196,30 +194,16 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
         </div>
         
         <div className="notebook-description-container" style={{ margin: '0 0 1rem 0' }}>
-            <textarea
-                className="notebook-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={handleUpdate}
-                placeholder="Add a description..."
-                style={{
-                    background: 'transparent',
-                    border: '1px solid transparent',
-                    borderRadius: '4px',
-                    padding: '0.5rem',
-                    marginLeft: '-0.5rem',
-                    width: '100%',
-                    maxWidth: '800px',
-                    fontFamily: 'inherit',
-                    resize: 'none', // vertical resize only?
-                    minHeight: '60px',
-                    outline: 'none',
-                    transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = 'var(--primary)'}
-                onMouseLeave={(e) => { if(document.activeElement !== e.target) e.target.style.borderColor = 'transparent'; }}
-                onMouseEnter={(e) => e.target.style.borderColor = 'var(--border-subtle)'}
-            />
+            <div style={{ position: 'relative', maxWidth: '800px' }}>
+                <EditableField 
+                    value={description}
+                    onSave={handleSaveDescription}
+                    multiline={true}
+                    placeholder="Add a description..."
+                    className="notebook-description"
+                    style={{ color: 'var(--text-secondary)' }}
+                />
+            </div>
         </div>
 
         <div className="notebook-meta">
@@ -241,7 +225,9 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                         onSelect={() => setSelectedItemId(item.id)}
                         onDeselect={() => setSelectedItemId(null)}
                         isPinned={false}
-                        onTogglePin={() => {}}
+                        isPinned={false}
+                        // onTogglePin explicitly undefined to hide pin icon
+                        onTogglePin={undefined}
                     />
                     ))
                 ) : (
@@ -289,7 +275,8 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                                   onSelect={() => {}}
                                   onDeselect={() => setSelectedItemId(null)}
                                   isPinned={false}
-                                  onTogglePin={() => {}}
+                                  isPinned={false}
+                                  onTogglePin={undefined}
                               />
                          );
                      })()}

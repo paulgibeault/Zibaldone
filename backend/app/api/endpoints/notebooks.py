@@ -85,6 +85,12 @@ def delete_notebook(
     if db_notebook.owner_id != current_user.id:
          raise HTTPException(status_code=403, detail="Not authorized to delete this notebook")
     
+    # Manually delete links first (if cascade is not handling it or to be safe)
+    statement = select(ContentItemNotebookLink).where(ContentItemNotebookLink.notebook_id == notebook_id)
+    links = session.exec(statement).all()
+    for link in links:
+        session.delete(link)
+    
     session.delete(db_notebook)
     session.commit()
     return {"ok": True}

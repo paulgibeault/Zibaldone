@@ -107,6 +107,7 @@
     margin: 0 0 0.5rem 0;
     font-size: 2rem;
     font-weight: 700;
+    color: var(--text-primary);
 }
 
 .delete-notebook-btn {

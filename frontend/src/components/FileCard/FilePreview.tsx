@@ -27,8 +27,19 @@ export const FilePreview: React.FC<FilePreviewProps> = ({ item, metadata, textCo
        else if (type.startsWith('audio/')) strategy = 'AudioRenderer';
        else if (type === 'application/pdf') strategy = 'PdfRenderer';
        else if (type.includes('markdown') || item.original_filename.endsWith('.md')) strategy = 'MarkdownRenderer';
-       else if (type.startsWith('text/') || type.includes('json') || type.includes('javascript')) strategy = 'CodeRenderer';
-       else strategy = 'Default';
+       else if (type.startsWith('text/') || type.includes('json') || type.includes('javascript') || type.includes('xml') || type.includes('yaml')) strategy = 'CodeRenderer';
+       else strategy = 'DefaultRenderer'; // Was 'Default' but registry might expect 'Default' or 'DefaultRenderer'? Registry.ts says 'Default': DefaultRenderer. Let's start with 'Default' but be robust.
+       
+       console.log(`[FilePreview] No explicit strategy for ${item.original_filename} (${type}). Fallback to: ${strategy}`);
+    }
+
+    // Ensure we have a valid key for the registry
+    if (!Renderers[strategy] && strategy === 'DefaultRenderer') strategy = 'Default';
+    
+    // Safety check if strangely the strategy is still not in registry
+    if (!Renderers[strategy]) {
+        console.warn(`[FilePreview] Strategy '${strategy}' not found in registry. Using 'Default'.`);
+        strategy = 'Default';
     }
 
     const SpecificRenderer = Renderers[strategy] || Renderers.Default;
