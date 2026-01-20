@@ -79,16 +79,21 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
   };
 
   const handleViewModeChange = async (mode: NotebookViewMode) => {
+      // Optimistic update
       setViewMode(mode);
       if (notebook) {
           try {
-             const updated = await updateNotebook(notebookId, title, description, mode);
+             // Pass undefined for title/description to avoid overwriting with stale state
+             // The API client or backend should handle partial updates or we may need to check the API client implementation
+             const updated = await updateNotebook(notebookId, undefined, undefined, mode);
              setNotebook(prev => {
                 if (!prev) return updated;
                 return { ...updated, view_mode: mode };
              });
           } catch (error) {
               console.error("Failed to update view mode:", error);
+              // Revert on failure
+              setViewMode(notebook.view_mode); 
           }
       }
   }
@@ -138,42 +143,7 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                         style={{ color: 'var(--text-primary)' }}
                      />
                 </div>
-                
-                {/* View Mode Selector */}
-                <div className="view-mode-selector" style={{ display: 'flex', gap: '4px', background: 'var(--bg-subtle)', padding: '4px', borderRadius: '6px' }}>
-                    <button 
-                        onClick={() => handleViewModeChange('GRID')}
-                        className={`view-mode-btn ${viewMode === 'GRID' ? 'active' : ''}`}
-                        title="Grid View"
-                        style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'GRID' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
-                    >
-                        <Grid size={16} color={viewMode === 'GRID' ? 'var(--primary)' : 'var(--text-subtle)'} />
-                    </button>
-                    <button 
-                         onClick={() => handleViewModeChange('FEED')}
-                         className={`view-mode-btn ${viewMode === 'FEED' ? 'active' : ''}`}
-                         title="Notebook View"
-                         style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'FEED' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
-                    >
-                        <LayoutList size={16} color={viewMode === 'FEED' ? 'var(--primary)' : 'var(--text-subtle)'} />
-                    </button>
-                    <button 
-                         onClick={() => handleViewModeChange('CALENDAR')}
-                         className={`view-mode-btn ${viewMode === 'CALENDAR' ? 'active' : ''}`}
-                         title="Calendar View"
-                         style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'CALENDAR' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
-                    >
-                        <Calendar size={16} color={viewMode === 'CALENDAR' ? 'var(--primary)' : 'var(--text-subtle)'} />
-                    </button>
-                    <button 
-                         onClick={() => handleViewModeChange('PROJECT')}
-                         className={`view-mode-btn ${viewMode === 'PROJECT' ? 'active' : ''}`}
-                         title="Project View"
-                         style={{ padding: '4px', borderRadius: '4px', border: 'none', background: viewMode === 'PROJECT' ? 'var(--bg-paper)' : 'transparent', cursor: 'pointer', display: 'flex' }}
-                    >
-                        <Layout size={16} color={viewMode === 'PROJECT' ? 'var(--primary)' : 'var(--text-subtle)'} />
-                    </button>
-                </div>
+
 
                 <div style={{ flex: 1 }}></div>
 
@@ -206,8 +176,87 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
             </div>
         </div>
 
-        <div className="notebook-meta">
-            Created: {new Date(notebook.created_at).toLocaleDateString()} · {notebook.items?.length || 0} items
+        <div className="notebook-meta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>Created: {new Date(notebook.created_at).toLocaleDateString()} · {notebook.items?.length || 0} items</span>
+            
+             {/* View Mode Selector */}
+             <div className="view-mode-selector" style={{ 
+                display: 'flex', 
+                gap: '4px', 
+                background: 'var(--bg-subtle)', 
+                padding: '4px', 
+                borderRadius: '8px',
+                border: '1px solid var(--border-subtle)'
+            }}>
+                <button 
+                    onClick={() => handleViewModeChange('GRID')}
+                    className={`view-mode-btn ${viewMode === 'GRID' ? 'active' : ''}`}
+                    title="Grid View"
+                    style={{ 
+                        padding: '6px', 
+                        borderRadius: '6px', 
+                        border: 'none', 
+                        background: viewMode === 'GRID' ? 'var(--bg-card-hover)' : 'transparent', 
+                        cursor: 'pointer', 
+                        display: 'flex',
+                        color: viewMode === 'GRID' ? 'var(--primary)' : 'var(--text-subtle)',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    <Grid size={18} />
+                </button>
+                <button 
+                     onClick={() => handleViewModeChange('FEED')}
+                     className={`view-mode-btn ${viewMode === 'FEED' ? 'active' : ''}`}
+                     title="Notebook View"
+                     style={{ 
+                        padding: '6px', 
+                        borderRadius: '6px', 
+                        border: 'none', 
+                        background: viewMode === 'FEED' ? 'var(--bg-card-hover)' : 'transparent', 
+                        cursor: 'pointer', 
+                        display: 'flex',
+                        color: viewMode === 'FEED' ? 'var(--primary)' : 'var(--text-subtle)',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    <LayoutList size={18} />
+                </button>
+                <button 
+                     onClick={() => handleViewModeChange('CALENDAR')}
+                     className={`view-mode-btn ${viewMode === 'CALENDAR' ? 'active' : ''}`}
+                     title="Calendar View"
+                     style={{ 
+                        padding: '6px', 
+                        borderRadius: '6px', 
+                        border: 'none', 
+                        background: viewMode === 'CALENDAR' ? 'var(--bg-card-hover)' : 'transparent', 
+                        cursor: 'pointer', 
+                        display: 'flex',
+                        color: viewMode === 'CALENDAR' ? 'var(--primary)' : 'var(--text-subtle)',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    <Calendar size={18} />
+                </button>
+                <button 
+                     onClick={() => handleViewModeChange('PROJECT')}
+                     className={`view-mode-btn ${viewMode === 'PROJECT' ? 'active' : ''}`}
+                     title="Project View"
+                     style={{ 
+                        padding: '6px', 
+                        borderRadius: '6px', 
+                        border: 'none', 
+                        background: viewMode === 'PROJECT' ? 'var(--bg-card-hover)' : 'transparent', 
+                        cursor: 'pointer', 
+                        display: 'flex',
+                        color: viewMode === 'PROJECT' ? 'var(--primary)' : 'var(--text-subtle)',
+                        transition: 'all 0.2s'
+                    }}
+                >
+                    <Layout size={18} />
+                </button>
+            </div>
         </div>
       </div>
 
