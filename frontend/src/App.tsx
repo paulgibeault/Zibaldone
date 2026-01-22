@@ -33,11 +33,15 @@ const ProtectedRoute = ({ children }: { children: React.JSX.Element }) => {
 
 import { Notebooks } from './components/Notebooks';
 
+import { TaskManagerModal } from './components/TaskManager/TaskManagerModal';
+import { Activity } from 'lucide-react';
+
 // Main App Layout (Authenticated)
 function MainApp() {
   const { items, fetchItems, deleteItemAction } = useItems();
   const [activeView, setActiveView] = useState<'heap' | 'tags' | 'notebooks'>('heap');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [isTaskManagerOpen, setIsTaskManagerOpen] = useState(false);
   const location = useLocation();
   
   // Shared state for pinned items
@@ -71,9 +75,26 @@ function MainApp() {
   return (
     <div className="container">
       <WelcomeModal />
+      <TaskManagerModal 
+        isOpen={isTaskManagerOpen} 
+        onClose={() => setIsTaskManagerOpen(false)} 
+        onOpenFile={(itemId) => {
+            setSelectedItemId(itemId);
+            setActiveView('heap');
+            setIsTaskManagerOpen(false);
+        }}
+      />
 
 
       <div className="header-controls">
+        <button 
+            className="btn btn-ghost btn-icon" 
+            onClick={() => setIsTaskManagerOpen(true)}
+            title="Task Manager"
+            style={{ marginRight: '0.5rem' }}
+        >
+            <Activity size={20} />
+        </button>
         <ThemeSwitcher />
         <ProfilePill />
       </div>
@@ -120,6 +141,8 @@ function MainApp() {
             isActive={activeView === 'heap'} 
             pinnedItems={pinnedItems}
             setPinnedItems={setPinnedItems}
+            selectedItemId={selectedItemId}
+            onSelectItem={setSelectedItemId}
         />
       </div>
 

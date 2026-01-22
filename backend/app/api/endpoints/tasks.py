@@ -17,6 +17,65 @@ router = APIRouter(
 
 logger = logging.getLogger(__name__)
 
+@router.get("/")
+async def get_tasks(
+    limit: int = 50,
+    offset: int = 0,
+    status: Optional[TaskStatus] = None,
+    session: Session = Depends(get_session)
+):
+    """
+    List tasks with optional status filter.
+    """
+    query = select(ProcessingTask).order_by(ProcessingTask.start_time.desc())
+    
+    if status:
+        query = query.where(ProcessingTask.status == status)
+        
+    query = query.offset(offset).limit(limit)
+    tasks = session.exec(query).all()
+    
+    # Get total count (separate query for pagination metadata if needed, 
+    # but for now we just return the list)
+    
+    return tasks
+
+@router.post("/{task_id}/cancel")
+async def cancel_task(
+    task_id: uuid.UUID,
+    session: Session = Depends(get_session)
+):
+    """
+    Cancels a running or pending task by setting its status to FAILED.
+    """
+    task = session.get(ProcessingTask, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    if task.status in [TaskStatus.COMPLETED, TaskStatus.FAILED]:
+        return {"message": "Task is already finished", "status": task.status}
+    
+    # Try cancelling the running asyncio task
+    from app.workers import cancel_running_task
+    was_running = cancel_running_task(str(task_id))
+    
+    if was_running:
+        # The worker's exception handler will update the DB status
+        # We wait a brief moment to allow the update to persist? 
+        # Or we can just return success saying cancellation initiated.
+        return {"message": "Cancellation initiated", "task": task}
+        
+    # If not running (e.g. pending or worker died without updating), update manually
+    task.status = TaskStatus.FAILED
+    task.message = "Cancelled by user"
+    task.end_time = datetime.now(timezone.utc)
+    
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    
+    return {"message": "Task cancelled", "task": task}
+
 @router.post("/{task_id}/restart")
 async def restart_task(
     task_id: uuid.UUID, 
@@ -125,12 +184,44 @@ async def delete_task(
     session: Session = Depends(get_session)
 ):
     """
-    Deletes a task by its ID.
+    Deletes a task record.
     """
     task = session.get(ProcessingTask, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
+    # If the task is running, we MUST cancel the asyncio task to unblock the worker
+    if task.status == TaskStatus.RUNNING:
+        from app.workers import cancel_running_task
+        cancel_running_task(str(task_id))
+        
     session.delete(task)
     session.commit()
     return {"message": "Task deleted successfully"}
+
+@router.post("/control/pause")
+async def pause_system():
+    """
+    Pauses the background task processing system.
+    """
+    from app.workers import pause_processing
+    pause_processing()
+    return {"message": "Task processing paused", "status": "paused"}
+
+@router.post("/control/resume")
+async def resume_system():
+    """
+    Resumes the background task processing system.
+    """
+    from app.workers import resume_processing
+    resume_processing()
+    return {"message": "Task processing resumed", "status": "running"}
+
+@router.get("/control/status")
+async def get_system_status():
+    """
+    Gets the current status of the task processing system.
+    """
+    from app.workers import get_processing_status
+    status = get_processing_status()
+    return {"status": status}

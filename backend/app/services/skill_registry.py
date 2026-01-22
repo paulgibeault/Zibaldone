@@ -28,6 +28,7 @@ class SkillConfig(BaseModel):
     name: str 
     description: str
     version: str = "0.0.1"
+    timeout: Optional[int] = None
     triggers: List[SkillTrigger] = Field(default_factory=list)
     parameters: Dict[str, SkillParameter] = Field(default_factory=dict)
     path: Optional[Path] = None

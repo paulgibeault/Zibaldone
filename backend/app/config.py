@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     S3_REGION: str = "us-east-1"
     S3_PUBLIC_URL: Optional[str] = None
     
+    MAX_CONCURRENT_TASKS: int = 5
+    DEFAULT_TASK_TIMEOUT: int = 300
+
     # LLM
     LITELLM_URL: str = "http://localhost:4000"
     ENABLE_LLM_LOGGING: bool = False

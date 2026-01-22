@@ -12,12 +12,17 @@ import './Heap.css';
 export const Heap = ({ 
     isActive = false, 
     pinnedItems = new Set(), 
-    setPinnedItems = () => {} 
+    setPinnedItems = () => {},
+    selectedItemId,
+    onSelectItem
 }: { 
     isActive?: boolean;
     pinnedItems?: Set<string>;
     setPinnedItems?: (items: Set<string>) => void;
+    selectedItemId?: string | null;
+    onSelectItem?: (id: string | null) => void;
 }) => {
+
     const { allTags: tags, fetchTags } = useTags();
     const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
     const [allItems, setAllItems] = useState<ContentItem[]>([]);
@@ -26,7 +31,7 @@ export const Heap = ({
     const [loading, setLoading] = useState(true);
     const [searching, setSearching] = useState(false);
     const [searchResults, setSearchResults] = useState<{ tags: TagType[], items: ContentItem[] } | null>(null);
-    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    // const [selectedItemId, setSelectedItemId] = useState<string | null>(null); <-- Lifted to App
     // const [pinnedItems, setPinnedItems] = useState<Set<string>>(new Set()); <-- Lifted to App
     const [sortMode, setSortMode] = useState<'alphabetical' | 'date'>('date');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
@@ -131,10 +136,12 @@ export const Heap = ({
 
         try {
             await deleteItem(id);
+            await deleteItem(id);
             // If the deleted item was selected, deselect it
             if (selectedItemId === id) {
-                setSelectedItemId(null);
+                onSelectItem && onSelectItem(null);
             }
+
             // Refresh search results to remove the item
             refreshSearch();
         } catch (error) {
@@ -449,7 +456,7 @@ export const Heap = ({
                                 <section className="heap-center">
                                     <div style={{ marginBottom: '1rem' }}>
                                          <button 
-                                            onClick={() => setSelectedItemId(null)}
+                                            onClick={() => onSelectItem && onSelectItem(null)}
                                             style={{ 
                                                 background: 'none', 
                                                 border: 'none', 
@@ -470,8 +477,9 @@ export const Heap = ({
                                         onRefresh={refreshSearch}
                                         isSelected={true}
                                         onSelect={() => {}} 
-                                        onDeselect={() => setSelectedItemId(null)}
+                                        onDeselect={() => onSelectItem && onSelectItem(null)}
                                         isPinned={pinnedItems.has(selectedItem.id)}
+
                                         onTogglePin={togglePin}
                                     />
                                 </section>
@@ -521,9 +529,10 @@ export const Heap = ({
                                                 onDelete={handleDelete}
                                                 onRefresh={refreshSearch}
                                                 isSelected={false} /* Always false in list view since selection moves to expanded view */
-                                                onSelect={() => setSelectedItemId(item.id)}
-                                                onDeselect={() => setSelectedItemId(null)}
+                                                onSelect={() => onSelectItem && onSelectItem(item.id)}
+                                                onDeselect={() => onSelectItem && onSelectItem(null)}
                                                 isPinned={pinnedItems.has(item.id)}
+
                                                 onTogglePin={togglePin}
                                             />
                                         ))}
@@ -583,9 +592,10 @@ export const Heap = ({
                                                 onDelete={handleDelete}
                                                 onRefresh={refreshSearch}
                                                 isSelected={false} /* Always false in list view */
-                                                onSelect={() => setSelectedItemId(item.id)}
-                                                onDeselect={() => setSelectedItemId(null)}
+                                                onSelect={() => onSelectItem && onSelectItem(item.id)}
+                                                onDeselect={() => onSelectItem && onSelectItem(null)}
                                                 isPinned={true}
+
                                                 onTogglePin={togglePin}
                                                 variant="micro"
                                             />

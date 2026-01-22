@@ -1,0 +1,332 @@
+/* Task Manager Modal */
+.task-manager-modal {
+    width: 1000px;
+    max-width: 95vw;
+    /* Use fixed height for consistency in "manager" type views, but ensure fits in viewport */
+    height: 85vh;
+    max-height: 900px;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important; /* Override default modal padding to control layout internally */
+    overflow: hidden; /* Ensure rounded corners clip content */
+    background: var(--bg-card); /* Ensure background is solid */
+    box-shadow: 0 40px 80px -20px rgba(0, 0, 0, 0.6);
+}
+
+/* Ensure the modal body inside flexes to fill space and doesn't scroll itself unless needed (we scroll inner container) */
+.task-manager-modal .modal-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0; /* Remove default padding from body since we handle it */
+}
+
+/* Remove default modal header margin since we have our own structure if needed,
+   or if we rely on default header, we ensure it doesn't break flow.
+   Actually, we are using default Title from Modal prop, so .modal-header is present.
+   Let's just ensure .modal-header doesn't have huge margin-bottom in this context if we want tight control.
+*/
+.task-manager-modal .modal-header {
+    padding: 1.5rem 2rem;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-secondary);
+    flex-shrink: 0;
+}
+.task-list-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-secondary);
+}
+
+.task-list-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.task-manager-content {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    /* Remove padding from content since header is separate */
+}
+
+/* Table / List Container */
+.task-list-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+}
+
+/* Premium Table Styling */
+.task-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.task-table th {
+    text-align: left;
+    padding: 1rem 1.5rem;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-subtle);
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.task-table th.clickable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.task-table th.clickable:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+
+.task-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+    color: var(--text-secondary);
+    transition: color 0.2s;
+}
+
+.task-row {
+    transition: background-color 0.2s;
+}
+
+.task-row:last-child td {
+    border-bottom: none;
+}
+
+.task-row:hover {
+    background: var(--bg-hover);
+}
+
+.task-row:hover td {
+    color: var(--text-primary);
+}
+
+/* Columns */
+.col-name { width: 30%; }
+.active-sort { color: var(--text-primary); background: var(--bg-hover); }
+.col-id { width: 15%; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; opacity: 0.7; }
+
+.col-id.clickable {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    transition: all 0.2s;
+}
+.col-id.clickable:hover {
+    text-decoration-color: var(--text-muted);
+    opacity: 1;
+    color: var(--primary);
+}
+
+.col-status { width: 15%; }
+.col-time { width: 20%; font-variant-numeric: tabular-nums; }
+.col-actions { width: 20%; text-align: right; }
+
+/* Status Badges */
+.task-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.task-status-badge.pending { 
+    background: rgba(148, 163, 184, 0.15); 
+    color: #94a3b8; 
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.task-status-badge.running { 
+    background: rgba(59, 130, 246, 0.15); 
+    color: #60a5fa; 
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+}
+
+.task-status-badge.completed { 
+    background: rgba(34, 197, 94, 0.15); 
+    color: #4ade80; 
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.task-status-badge.failed { 
+    background: rgba(248, 113, 113, 0.15); 
+    color: #f87171; 
+    border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+/* Group Headers removed as we switched to sorting */
+
+/* Actions */
+
+.task-actions {
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.task-row:hover .task-actions {
+    opacity: 1;
+}
+
+.action-btn {
+    background: transparent;
+    border: none; /* Icon actions usually no border */
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 6px;
+    border-radius: 6px; /* Match standard radius */
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Removed fixed sizes */
+}
+
+.action-btn:hover {
+    background: var(--bg-tertiary); /* Standard hover effect */
+    color: var(--text-primary);
+    /* Removed transform scale */
+}
+
+.action-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.action-btn.primary:hover {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+/* Refresh Control */
+.task-list-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    background: var(--bg-card);
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.refresh-btn:hover:not(:disabled) {
+    background: var(--bg-hover);
+    border-color: var(--text-muted);
+    color: var(--text-primary);
+}
+
+.refresh-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Control Button (Pause/Resume) - Aligned with Action Button style */
+.control-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: none;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.2s;
+}
+
+.control-btn:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.control-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.control-btn svg {
+    display: block; 
+}
+
+/* Pause Action (When Running) -> Mimic Cancel (Danger) Style */
+.control-btn.pause-btn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: #ef4444;
+}
+
+/* Resume Action (When Paused) -> Mimic Success/Restart Style */
+.control-btn.resume-btn:hover:not(:disabled) {
+    background: rgba(34, 197, 94, 0.15) !important;
+    color: #22c55e;
+}
+
+/* Empty State */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem;
+    color: var(--text-muted);
+    font-style: italic;
+}

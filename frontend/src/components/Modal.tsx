@@ -9,6 +9,7 @@ interface ModalProps {
     children: React.ReactNode;
     width?: string;
     showCloseButton?: boolean;
+    className?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -17,7 +18,8 @@ export const Modal: React.FC<ModalProps> = ({
     title,
     children,
     width = '600px',
-    showCloseButton = true
+    showCloseButton = true,
+    className = ''
 }) => {
     const overlayRef = useRef<HTMLDivElement>(null);
     const [mounted, setMounted] = useState(false);
@@ -56,7 +58,7 @@ export const Modal: React.FC<ModalProps> = ({
             aria-modal="true"
             role="dialog"
         >
-            <div className="modal-content" style={{ width }}>
+            <div className={`modal-content ${className}`} style={{ width }}>
                 {(title || showCloseButton) && (
                     <div className="modal-header">
                         {title && <h2>{title}</h2>}

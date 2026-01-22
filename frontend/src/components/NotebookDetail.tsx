@@ -420,7 +420,6 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                                   onSelect={() => {}}
                                   onDeselect={() => setSelectedItemId(null)}
                                   isPinned={false}
-                                  isPinned={false}
                                   onTogglePin={undefined}
                               />
                          );
