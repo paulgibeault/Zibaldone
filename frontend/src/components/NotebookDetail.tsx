@@ -3,6 +3,7 @@ import { ArrowLeft, Trash2, Plus, LayoutList, Grid, Calendar, Layout, Bot, Check
 import { getNotebook, removeItemFromNotebook, deleteNotebook, updateNotebook } from '../api';
 import { Notebook, ContentItem, NotebookViewMode } from '../api/types';
 import { FileCard } from './FileCard';
+import { ExpandedFileView } from './FileCard/ExpandedFileView';
 import './Notebooks.css'; // Shared styles
 import { AddFilesModal } from './AddFilesModal';
 import { EditableField } from './common/EditableField';
@@ -361,29 +362,46 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
 
       <div className="notebook-content">
         {viewMode === 'GRID' && (
-             <div className="files-grid-fixed">
-                {filteredAndSortedItems && filteredAndSortedItems.length > 0 ? (
-                    filteredAndSortedItems.map((item: ContentItem) => (
-                    <FileCard
-                        key={item.id}
-                        item={item}
-                        onDelete={(id, e) => handleRemoveItem(id, e)}
-                        onRefresh={fetchNotebook}
-                        isSelected={selectedItemId === item.id}
-                        onSelect={() => setSelectedItemId(item.id)}
-                        onDeselect={() => setSelectedItemId(null)}
-                        isPinned={false}
-                        // onTogglePin explicitly undefined to hide pin icon
-                        onTogglePin={undefined}
-                    />
-                    ))
-                ) : (
-                    <div className="empty-notebook">
-                    <p>This notebook is empty or no items match your search.</p>
-                    <p>Click "Add Files" to search and add content to this notebook.</p>
-                    </div>
-                )}
-             </div>
+             selectedItemId ? (
+                 (() => {
+                    const item = notebook.items?.find(i => i.id === selectedItemId);
+                    if (!item) return null;
+                    return (
+                        <ExpandedFileView
+                            item={item}
+                            onBack={() => setSelectedItemId(null)}
+                            onDelete={(id, e) => handleRemoveItem(id, e)}
+                            onRefresh={fetchNotebook}
+                            isPinned={false}
+                            onTogglePin={undefined}
+                        />
+                    );
+                 })()
+             ) : (
+                 <div className="files-grid-fixed">
+                    {filteredAndSortedItems && filteredAndSortedItems.length > 0 ? (
+                        filteredAndSortedItems.map((item: ContentItem) => (
+                        <FileCard
+                            key={item.id}
+                            item={item}
+                            onDelete={(id, e) => handleRemoveItem(id, e)}
+                            onRefresh={fetchNotebook}
+                            isSelected={false}
+                            onSelect={() => setSelectedItemId(item.id)}
+                            onDeselect={() => setSelectedItemId(null)}
+                            isPinned={false}
+                            // onTogglePin explicitly undefined to hide pin icon
+                            onTogglePin={undefined}
+                        />
+                        ))
+                    ) : (
+                        <div className="empty-notebook">
+                        <p>This notebook is empty or no items match your search.</p>
+                        <p>Click "Add Files" to search and add content to this notebook.</p>
+                        </div>
+                    )}
+                 </div>
+             )
         )}
 
         {viewMode === 'FEED' && filteredAndSortedItems && (
@@ -405,30 +423,6 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
             <NotebookProject items={filteredAndSortedItems} />
         )}
       </div>
-      
-      {/* Detail View for Selected Item (Only for Grid/Calendar/Project if they support it, Feed probably doesn't need overlay) */}
-      {selectedItemId && viewMode !== 'FEED' && (
-           <div className="notebook-item-detail-overlay" onClick={() => setSelectedItemId(null)}>
-                <div className="notebook-item-detail-content" onClick={e => e.stopPropagation()}>
-                     {(() => {
-                        const item = notebook.items?.find(i => i.id === selectedItemId);
-                         if (!item) return null;
-                         return (
-                              <FileCard
-                                  item={item}
-                                  onDelete={(id, e) => handleRemoveItem(id, e)}
-                                  onRefresh={fetchNotebook}
-                                  isSelected={true}
-                                  onSelect={() => {}}
-                                  onDeselect={() => setSelectedItemId(null)}
-                                  isPinned={false}
-                                  onTogglePin={undefined}
-                              />
-                         );
-                     })()}
-                </div>
-           </div>
-      )}
       
       <AddFilesModal 
         isOpen={isAddModalOpen}

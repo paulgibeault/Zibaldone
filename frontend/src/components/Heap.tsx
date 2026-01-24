@@ -5,6 +5,7 @@ import { type Tag as TagType, getItems, type ContentItem, searchContent, deleteI
 import { useTags } from '../hooks/useTags';
 import { Tag } from './Tag';
 import { FileCard } from './FileCard';
+import { ExpandedFileView } from './FileCard/ExpandedFileView';
 import { ViewHeader } from './ViewHeader';
 import { ViewContainer } from './ViewContainer';
 import './Heap.css';
@@ -454,32 +455,12 @@ export const Heap = ({
                             if (!selectedItem) return null; // Should not happen if state is consistent
                             return (
                                 <section className="heap-center">
-                                    <div style={{ marginBottom: '1rem' }}>
-                                         <button 
-                                            onClick={() => onSelectItem && onSelectItem(null)}
-                                            style={{ 
-                                                background: 'none', 
-                                                border: 'none', 
-                                                color: 'var(--text-muted)', 
-                                                cursor: 'pointer',
-                                                fontSize: '0.8rem',
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                gap: '0.25rem'
-                                            }}
-                                         >
-                                            ← Back to list
-                                         </button>
-                                    </div>
-                                    <FileCard
+                                    <ExpandedFileView
                                         item={selectedItem}
+                                        onBack={() => onSelectItem && onSelectItem(null)}
                                         onDelete={handleDelete}
                                         onRefresh={refreshSearch}
-                                        isSelected={true}
-                                        onSelect={() => {}} 
-                                        onDeselect={() => onSelectItem && onSelectItem(null)}
                                         isPinned={pinnedItems.has(selectedItem.id)}
-
                                         onTogglePin={togglePin}
                                     />
                                 </section>
