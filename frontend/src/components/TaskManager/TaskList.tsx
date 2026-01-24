@@ -13,7 +13,6 @@ export const TaskList: React.FC<TaskListProps> = ({ refreshTrigger, onOpenFile }
     const [tasks, setTasks] = useState<ProcessingTask[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-    const [itemsMap, setItemsMap] = useState<Record<string, string>>({}); // itemId -> filename
     const [isPaused, setIsPaused] = useState<boolean>(false);
     const [isProcessingAction, setIsProcessingAction] = useState(false);
 
@@ -33,10 +32,7 @@ export const TaskList: React.FC<TaskListProps> = ({ refreshTrigger, onOpenFile }
             }
             
             // Collect unique item IDs to fetch filenames if needed
-            // In a real app one might do this differently or have item info in task
-            // For now, let's just make a best effort or skip if too expensive.
-            // Actually, tasks usually don't have item details embedded in list view unless expanded.
-            // Let's rely on item_id for now.
+            // Backend now includes nested item info in response
         } catch (error) {
             console.error("Failed to load tasks", error);
         } finally {
@@ -115,8 +111,18 @@ export const TaskList: React.FC<TaskListProps> = ({ refreshTrigger, onOpenFile }
 
                 // Special handling for calculated duration if needed, 
                 // but checking schema, we have start_time/end_time.
-                // Assuming we just sort by raw fields for now. 
                 
+                // Special handling for file name sort
+                if (sortConfig.key === 'item_name') {
+                    // Derive the same string we display in the cell
+                    aValue = a.item?.item_metadata?.title || a.item?.original_filename || a.item_id;
+                    bValue = b.item?.item_metadata?.title || b.item?.original_filename || b.item_id;
+                    
+                    // Case insensitive string comparison
+                    aValue = (aValue || '').toLowerCase();
+                    bValue = (bValue || '').toLowerCase();
+                }
+
                 if (aValue < bValue) {
                     return sortConfig.direction === 'asc' ? -1 : 1;
                 }
@@ -188,7 +194,13 @@ export const TaskList: React.FC<TaskListProps> = ({ refreshTrigger, onOpenFile }
                             >
                                 Task Name {getSortIndicator('name')}
                             </th>
-                            <th className="col-id">Target Item ID</th>
+                            <th 
+                                className={`col-id clickable ${sortConfig?.key === 'item_name' ? 'active-sort' : ''}`}
+                                onClick={() => handleSort('item_name')}
+                                title="Sort by File Name"
+                            >
+                                Target File {getSortIndicator('item_name')}
+                            </th>
                             <th 
                                 className={`col-status clickable ${sortConfig?.key === 'status' ? 'active-sort' : ''}`}
                                 onClick={() => handleSort('status')}
@@ -256,9 +268,14 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onCancel, onRestart, onDelete, 
             <td 
                 className="col-id clickable" 
                 onClick={() => onOpenFile(task.item_id)}
-                title="View Item"
+                title={`View '${task.item?.item_metadata?.title || task.item?.original_filename || task.item_id}'`}
             >
-                {task.item_id.substring(0, 8)}... <ExternalLink size={12} style={{display: 'inline', marginLeft: 4, opacity: 0.5}}/>
+                <div className="file-info-cell">
+                    <span className="text-truncate">
+                        {task.item?.item_metadata?.title || task.item?.original_filename || task.item_id.substring(0, 8) + '...'}
+                    </span>
+                    <ExternalLink size={12} style={{flexShrink: 0, opacity: 0.5}}/>
+                </div>
             </td>
             <td className="col-status">
                 <span 

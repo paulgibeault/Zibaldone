@@ -6,9 +6,11 @@ from sqlmodel import Session, select
 from datetime import datetime, timezone
 import logging
 
-from app.models import get_session, ProcessingTask, TaskStatus
+from app.models import get_session, ProcessingTask, TaskStatus, ContentItem
 from app.workers import execute_task
 from app import crud
+from app.schemas import ProcessingTaskRead
+from sqlalchemy.orm import joinedload
 
 router = APIRouter(
     prefix="/tasks",
@@ -17,7 +19,7 @@ router = APIRouter(
 
 logger = logging.getLogger(__name__)
 
-@router.get("/")
+@router.get("/", response_model=List[ProcessingTaskRead])
 async def get_tasks(
     limit: int = 50,
     offset: int = 0,
@@ -27,16 +29,13 @@ async def get_tasks(
     """
     List tasks with optional status filter.
     """
-    query = select(ProcessingTask).order_by(ProcessingTask.start_time.desc())
+    query = select(ProcessingTask).options(joinedload(ProcessingTask.item)).order_by(ProcessingTask.start_time.desc())
     
     if status:
         query = query.where(ProcessingTask.status == status)
         
     query = query.offset(offset).limit(limit)
     tasks = session.exec(query).all()
-    
-    # Get total count (separate query for pagination metadata if needed, 
-    # but for now we just return the list)
     
     return tasks
 

@@ -16,6 +16,10 @@ export interface ProcessingTask {
     start_time: string;
     end_time?: string;
     result_json?: string;
+    item?: {
+        original_filename: string;
+        item_metadata: any;
+    };
 }
 
 export interface ContentItem {

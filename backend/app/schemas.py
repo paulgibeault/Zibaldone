@@ -41,6 +41,12 @@ class TagRead(TagBase):
     is_autocreated: bool
     is_approved: bool
 
+# --- ContentItem Schemas (Basic) ---
+class ContentItemBasic(SQLModel):
+    id: uuid.UUID
+    original_filename: str
+    item_metadata: Dict[str, Any] = {}
+
 # --- ProcessingTask Schemas ---
 class ProcessingTaskRead(SQLModel):
     id: uuid.UUID
@@ -51,6 +57,8 @@ class ProcessingTaskRead(SQLModel):
     start_time: datetime
     end_time: Optional[datetime]
     result_json: Optional[str] = None
+    
+    item: Optional[ContentItemBasic] = None
 
 # --- Notebook Schemas ---
 class NotebookBase(SQLModel):

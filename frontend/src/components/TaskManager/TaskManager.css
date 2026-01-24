@@ -1,6 +1,6 @@
 /* Task Manager Modal */
 .task-manager-modal {
-    width: 1000px;
+    width: 1200px;
     max-width: 95vw;
     /* Use fixed height for consistency in "manager" type views, but ensure fits in viewport */
     height: 85vh;
@@ -36,7 +36,7 @@
     flex-shrink: 0;
 }
 .task-list-header {
-    padding: 1.5rem 2rem;
+    padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--border-subtle);
     display: flex;
     justify-content: space-between;
@@ -77,11 +77,12 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
+    table-layout: fixed;
 }
 
 .task-table th {
     text-align: left;
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 0.5rem;
     background: var(--bg-card);
     border-bottom: 1px solid var(--border-subtle);
     font-weight: 600;
@@ -109,7 +110,7 @@
 
 
 .task-table td {
-    padding: 1rem 1.5rem;
+    padding: 0.75rem 0.5rem;
     border-bottom: 1px solid var(--border-subtle);
     vertical-align: middle;
     color: var(--text-secondary);
@@ -133,25 +134,39 @@
 }
 
 /* Columns */
-.col-name { width: 30%; }
+.col-name { width: 20%; }
 .active-sort { color: var(--text-primary); background: var(--bg-hover); }
-.col-id { width: 15%; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; opacity: 0.7; }
+.col-id { width: 20%; font-size: 0.85rem; }
 
 .col-id.clickable {
     cursor: pointer;
-    text-decoration: underline;
-    text-decoration-color: transparent;
+    text-decoration: none; /* Removed underline as we might have complex content */
     transition: all 0.2s;
 }
 .col-id.clickable:hover {
-    text-decoration-color: var(--text-muted);
-    opacity: 1;
     color: var(--primary);
 }
 
 .col-status { width: 15%; }
-.col-time { width: 20%; font-variant-numeric: tabular-nums; }
+.col-time { width: 12.5%; font-variant-numeric: tabular-nums; }
 .col-actions { width: 20%; text-align: right; }
+
+.text-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    min-width: 0;
+    flex: 1;
+}
+
+.file-info-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+}
+
 
 /* Status Badges */
 .task-status-badge {
