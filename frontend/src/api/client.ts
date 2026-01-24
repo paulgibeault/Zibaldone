@@ -6,6 +6,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 export const apiClient = axios.create({
     baseURL: API_URL,
     timeout: 30000, // 30 seconds timeout
+    headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    }
 });
 
 // Log requests and responses for debugging

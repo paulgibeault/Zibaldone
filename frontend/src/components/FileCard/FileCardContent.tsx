@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, Code, CheckCircle2, Clock, XCircle, Trash2, Play, Plus, Loader2 } from 'lucide-react';
+import { Table, Code, CheckCircle2, Clock, XCircle, Trash2, Play, Plus, Loader2, RefreshCw } from 'lucide-react';
 import { RunningTaskSpinner } from './TaskIndicators';
 import { type ContentItem } from '../../api';
 import { JSONView } from '../JSONView';
@@ -121,6 +121,19 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     }, [itemVersions]);
 
 
+    // Poll for updates if tasks are running
+    React.useEffect(() => {
+        const hasActiveTasks = item.tasks?.some(t => t.status === 'RUNNING' || t.status === 'PENDING');
+        if (!hasActiveTasks) return;
+
+        const intervalId = setInterval(() => {
+            // console.log("Smart polling refresh for task update...");
+            onRefresh();
+        }, 3000);
+
+        return () => clearInterval(intervalId);
+    }, [item.tasks, onRefresh]);
+
     return (
         <div className="card-content-area-v2">
             {activeTab === 'info' && (
@@ -141,13 +154,22 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                     <div className="history-section">
                         <details className="history-details-container" open>
                             <summary style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '1rem' }}>
-                                <button
-                                    className="btn btn-ghost btn-xs btn-icon"
-                                    onClick={(e) => { e.preventDefault(); onLaunchTask(); }}
-                                    title="Run Task"
-                                >
-                                    <Plus size={14} />
-                                </button>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button
+                                        className="btn btn-ghost btn-xs btn-icon"
+                                        onClick={(e) => { e.preventDefault(); onLaunchTask(); }}
+                                        title="Run Task"
+                                    >
+                                        <Plus size={14} />
+                                    </button>
+                                    <button
+                                        className="btn btn-ghost btn-xs btn-icon"
+                                        onClick={(e) => { e.preventDefault(); onRefresh(); }}
+                                        title="Refresh Task Status"
+                                    >
+                                        <RefreshCw size={14} />
+                                    </button>
+                                </div>
                                 <h4>
                                     PROCESSING HISTORY
                                     {(item.tasks?.filter(isTaskFailed).length || 0) > 0 && (

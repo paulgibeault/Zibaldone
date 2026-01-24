@@ -105,6 +105,8 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
     fetchNotebook();
   }, [notebookId]);
 
+
+
   const handleSaveTitle = async (newTitle: string) => {
       if (!notebook) return;
       try {

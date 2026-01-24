@@ -183,7 +183,7 @@ async def execute_task(task_id: str):
     
     global _running_tasks
     """
-    Executes a single task by ID.
+    Executes a single task by ID using TaskContext.
     """
     if isinstance(task_id, str):
         task_uuid = uuid.UUID(task_id)
@@ -202,138 +202,102 @@ async def execute_task(task_id: str):
         _running_tasks[task_id] = current_async_task
 
     try:
-        with Session(engine) as session:
-            task = session.get(ProcessingTask, task_uuid)
-            if not task or task.status != TaskStatus.PENDING:
-                return
+        from app.services.task_runner import TaskContext
+        
+        # We pass a session factory to TaskContext so it can manage its own session lifecycle
+        # independent of the calling scope (though here we are top level task).
+        session_factory = lambda: Session(engine)
 
-            # Lock / Set RUNNING
-            task.status = TaskStatus.RUNNING
-            task.start_time = datetime.now(timezone.utc)
-            session.add(task)
-            session.commit()
-            session.refresh(task)
-            # Yield after sync commit
-            await asyncio.sleep(0.01)
-            # Notify start
-            try:
-                await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(task.item_id)}))
-            except: pass
+        async with TaskContext(session_factory, task_uuid) as (session, task, ctx):
+            # Task is already in RUNNING state here
+            
+            # Determine timeout
+            skill_config = skill_registry.get_skill(task.name)
+            timeout = skill_config.timeout if skill_config and skill_config.timeout else settings.DEFAULT_TASK_TIMEOUT
 
-            try:
-                item = task.item
-                ctx = SkillContext(session, task, item)
-                
-                logger.info(f"Executing Skill {task.name} for item {item.id}")
-                
-                # Determine timeout
-                skill_config = skill_registry.get_skill(task.name)
-                timeout = skill_config.timeout if skill_config and skill_config.timeout else settings.DEFAULT_TASK_TIMEOUT
+            # Execute Skill
+            result = await asyncio.wait_for(skill_registry.execute_skill(task.name, ctx), timeout=timeout)
+            
+            # Post-execution logic (Metadata, Tags, etc.)
+            item = task.item
+            if not item: # Should be loaded by TaskContext/SQLModel relationship
+                # Force reload if missing? TaskContext probably loaded task with default relationship loading
+                # If lazy loading is on, accessing task.item works if session is open (it is).
+                pass
 
-                result = await asyncio.wait_for(skill_registry.execute_skill(task.name, ctx), timeout=timeout)
-                
-                # 1. Update Metadata
-                if result.tags_to_add:
-                     for tag_name in result.tags_to_add:
-                         # Check if tag exists for this user
-                         statement = select(Tag).where(Tag.name == tag_name).where(Tag.owner_id == item.owner_id)
-                         tag = session.exec(statement).first()
-                         if not tag:
-                             # Create unapproved tag owned by these user
-                             tag = Tag(
-                                name=tag_name, 
-                                owner_id=item.owner_id,
-                                is_autocreated=True,
-                                is_approved=False
-                             )
-                             session.add(tag)
+            # 1. Update Metadata
+            if result.tags_to_add:
+                 for tag_name in result.tags_to_add:
+                     # Check if tag exists for this user
+                     statement = select(Tag).where(Tag.name == tag_name).where(Tag.owner_id == item.owner_id)
+                     tag = session.exec(statement).first()
+                     if not tag:
+                         # Create unapproved tag owned by these user
+                         tag = Tag(
+                            name=tag_name, 
+                            owner_id=item.owner_id,
+                            is_autocreated=True,
+                            is_approved=False
+                         )
+                         session.add(tag)
+                     
+                     if tag not in item.tags:
+                         item.tags.append(tag)
+                         session.add(item)
                          
-                         if tag not in item.tags:
-                             item.tags.append(tag)
-                             session.add(item)
-                             
-                if result.metadata_patch:
-                    current = item.item_metadata.copy() if item.item_metadata else {}
-                    current.update(result.metadata_patch)
-                    
-                    # Add Provenance info
-                    prov = current.get('provenance', {})
-                    prov['last_task'] = str(task.id) # simple tracking
-                    current['provenance'] = prov
-                    
-                    item.item_metadata = current
-                    session.add(item)
-
-                # 2. Update Content (Versioning) - Placeholder
-                if result.new_version_created and result.new_content:
-                    logger.info("New version creation requested - Not yet implemented fully")
-                    # TODO: Implement full versioning logic
-
-                # 3. Finalize Task
-                # Check for logical failure in result
-                is_failure = False
-                if hasattr(result, 'status') and result.status == 'failure':
-                    is_failure = True
-                # Also check if it's a dict or Pydantic model with checks (though SkillResult usually has status)
+            if result.metadata_patch:
+                current = item.item_metadata.copy() if item.item_metadata else {}
+                current.update(result.metadata_patch)
                 
-                task.end_time = datetime.now(timezone.utc)
+                # Add Provenance info
+                prov = current.get('provenance', {})
+                prov['last_task'] = str(task.id)
+                current['provenance'] = prov
                 
-                # Use model_dump_json for Pydantic v2
-                if hasattr(result, 'model_dump_json'):
-                    task.result_json = result.model_dump_json()
-                else:
-                    task.result_json = result.json()
+                item.item_metadata = current
+                session.add(item)
 
-                if is_failure:
-                    task.status = TaskStatus.FAILED
-                    task.message = getattr(result, 'message', 'Task failed (logical)')
-                    logger.warning(f"Task {task.id} failed logically: {task.message}")
-                else:
-                    task.status = TaskStatus.COMPLETED
-                    
-                session.add(task)
-                session.commit()
-                
-                # 4. Emit Events (AFTER commit to ensure data is visible)
-                for evt in result.events_to_emit:
-                    # We need to trigger these events.
-                    await handle_event(session, evt, item.id)
+            # 2. Update Content (Versioning) - Placeholder
+            if result.new_version_created and result.new_content:
+                logger.info("New version creation requested - Not yet implemented fully")
+                # TODO: Implement full versioning logic
 
-            except asyncio.TimeoutError:
-                logger.warning(f"Task {task.id} timed out after {timeout} seconds")
+            # 3. Finalize Task (Result JSON)
+            
+            # Use model_dump_json for Pydantic v2
+            if hasattr(result, 'model_dump_json'):
+                task.result_json = result.model_dump_json()
+            else:
+                task.result_json = result.json()
+
+            # Check for logical failure in result
+            is_failure = False
+            if hasattr(result, 'status') and result.status == 'failure':
+                is_failure = True
                 task.status = TaskStatus.FAILED
-                task.message = f"Task timed out after {timeout} seconds"
-                task.end_time = datetime.now(timezone.utc)
-                session.add(task)
-                session.commit()
-                
-            except asyncio.CancelledError:
-                logger.info(f"Task {task.id} was cancelled.")
-                task.status = TaskStatus.FAILED
-                task.message = "Task cancelled by user"
-                task.end_time = datetime.now(timezone.utc)
-                session.add(task)
-                session.commit()
-                # Re-raise to clean up properly if needed, but we handled status update
-                # Actually, standard pattern is to re-raise CancelledError to let asyncio know
-                raise
-
-            except Exception as e:
-                logger.error(f"Task {task.id} failed: {e}", exc_info=True)
-                task.status = TaskStatus.FAILED
-                task.message = str(e)
-                task.end_time = datetime.now(timezone.utc)
-                session.add(task)
-                session.commit()
-                
-            # Notify end
-            try:
-                await broadcaster.broadcast(json.dumps({"type": "update", "item_id": str(task.item_id)}))
-            except: pass
+                task.message = getattr(result, 'message', 'Task failed (logical)')
+                logger.warning(f"Task {task.id} failed logically: {task.message}")
+            
+            # Note: TaskContext __aexit__ will see the status change (if any) or existing RUNNING status 
+            # and update to COMPLETED if it's still RUNNING and no exception occurred.
+            
+            session.add(task)
+            session.add(item)
+            session.commit()
+            
+            # 4. Emit Events (AFTER commit to ensure data is visible)
+            for evt in result.events_to_emit:
+                await handle_event(session, evt, item.id)
 
     except Exception as e:
-         # Fallback for outer failures (session creation etc)
-         logger.error(f"Execution wrapper failed for {task_id}: {e}")
+         # TaskContext already handles logging and status updates for exceptions INSIDE the block.
+         # This catch block is for anything OUTSIDE the context (like session creation failure)
+         # or if TaskContext decided to re-raise (e.g. CancelledError).
+         if isinstance(e, asyncio.CancelledError):
+             # Expected
+             pass
+         else:
+             logger.error(f"Execution wrapper caught exception for {task_id}: {e}")
 
     finally:
         # Deregister

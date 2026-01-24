@@ -13,7 +13,7 @@ import Login from './components/Login';
 import { ProfilePill } from './components/ProfilePill';
 import { UploadStatus } from './components/UploadStatus';
 import { useItems } from './hooks/useItems';
-import { useEventSubscription } from './hooks/useEventSubscription';
+
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.JSX.Element }) => {
@@ -47,8 +47,7 @@ function MainApp() {
   // Shared state for pinned items
   const [pinnedItems, setPinnedItems] = useState<Set<string>>(new Set());
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-  useEventSubscription(`${API_URL}/events`, fetchItems);
+
 
   useEffect(() => {
     fetchItems();

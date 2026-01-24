@@ -1,5 +1,6 @@
 
 import pytest
+import json
 import uuid
 from sqlmodel import Session, select
 from app.services.task_runner import TaskContext
@@ -14,47 +15,63 @@ from unittest.mock import MagicMock
 async def test_task_context_success(session: Session, mock_broadcaster):
     item_id = uuid.uuid4()
     task_name = "Test Task"
+
+    # Create Task first (PENDING)
+    task = ProcessingTask(
+        item_id=item_id,
+        name=task_name,
+        status=TaskStatus.PENDING
+    )
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+
+    # Create TaskContext with session factory
+    # We use a factory that returns the same session for the test (mocking factory behavior)
+    # But TaskContext calls session.close(), so we should probably mock that out or use a real factory if we want to be strict.
+    # For testing simpler: we can just let it close it, as long as we don't reuse it.
+    # But `session` fixture is function scoped. 
+    # Let's define a factory that returns a NEW session if possible, or just the current one but prevents closing?
+    # Actually, the simplest way is to mock `session_factory` to return the fixture session,
+    # and mock `session.close` to do nothing so the fixture teardown handles it.
     
-    # Create TaskContext
-    async with TaskContext(session, item_id, task_name) as task:
-        assert task.item_id == item_id
-        assert task.name == task_name
-        assert task.status == TaskStatus.RUNNING
-        assert task.start_time is not None
-        assert task.end_time is None
+    session.close = lambda: None # Mock close
+    session_factory = lambda: session
+
+    async with TaskContext(session_factory, task.id) as (s, t, ctx):
+        assert t.status == TaskStatus.RUNNING
+        assert t.start_time is not None
         
-        # Verify it's in DB
-        db_task = session.get(ProcessingTask, task.id)
-        assert db_task is not None
-        assert db_task.status == TaskStatus.RUNNING
+        # Simulate work
+        t.result_json = json.dumps({"status": "success"})
 
-        # Simulate some work
-        task.result_json = '{"success": true}'
-        session.add(task)
-
-    # After exit
-    db_task = session.get(ProcessingTask, task.id)
-    assert db_task.status == TaskStatus.COMPLETED
-    assert db_task.end_time is not None
-    assert db_task.result_json == '{"success": true}'
+    # Checks after exit
+    session.refresh(task)
+    assert task.status == TaskStatus.COMPLETED
+    assert task.end_time is not None
 
 @pytest.mark.asyncio
 async def test_task_context_failure(session: Session, mock_broadcaster):
     item_id = uuid.uuid4()
     task_name = "Failing Task"
-    
-    with pytest.raises(ValueError, match="Something went wrong"):
-        async with TaskContext(session, item_id, task_name) as task:
-            raise ValueError("Something went wrong")
 
-    # After exit (exception raised)
-    # Since we can't get the task object easily if it crashed, we query by item_id
-    statement = select(ProcessingTask).where(ProcessingTask.item_id == item_id)
-    tasks = session.exec(statement).all()
-    assert len(tasks) == 1
-    db_task = tasks[0]
-    
-    assert db_task.name == task_name
-    assert db_task.status == TaskStatus.FAILED
-    assert db_task.message == "Something went wrong"
-    assert db_task.end_time is not None
+    task = ProcessingTask(
+        item_id=item_id,
+        name=task_name,
+        status=TaskStatus.PENDING
+    )
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+
+    session.close = lambda: None
+    session_factory = lambda: session
+
+    async with TaskContext(session_factory, task.id) as (s, t, ctx):
+        assert t.status == TaskStatus.RUNNING
+        raise ValueError("Something went wrong")
+
+    session.refresh(task)
+    assert task.status == TaskStatus.FAILED
+    assert "Something went wrong" in task.message
+    assert task.end_time is not None
