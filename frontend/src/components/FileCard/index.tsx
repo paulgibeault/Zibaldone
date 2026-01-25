@@ -10,6 +10,8 @@ import { FileCardContent } from './FileCardContent';
 import { FileCardFooter } from './FileCardFooter';
 import { RestartConfirmationModal } from './Modals/RestartConfirmationModal';
 import { SkillSelectionModal } from './Modals/SkillSelectionModal';
+import { TaskDetailModal } from '../TaskManager/TaskDetailModal';
+import { ProcessingTask } from '../../api/types';
 import './FileCard.css';
 
 type ViewMode = 'minimal' | 'standard' | 'fullscreen';
@@ -55,6 +57,7 @@ export const FileCard: React.FC<FileCardProps> = ({
     // Modal States
     const [pendingRestartTaskId, setPendingRestartTaskId] = useState<string | null>(null);
     const [showSkillModal, setShowSkillModal] = useState(false);
+    const [selectedDetailTasks, setSelectedDetailTasks] = useState<ProcessingTask[] | null>(null);
 
 
     useEffect(() => {
@@ -206,6 +209,10 @@ export const FileCard: React.FC<FileCardProps> = ({
         }
     };
 
+    const handleShowTaskDetails = (task: ProcessingTask) => {
+        setSelectedDetailTasks([task]);
+    };
+
 
     const renderMinimalView = () => {
         const sortedTags = [...(item.tags || [])].sort((a, b) => {
@@ -226,13 +233,28 @@ export const FileCard: React.FC<FileCardProps> = ({
                         const runningCount = item.tasks?.filter(isRunningTask).length || 0;
                         const pendingCount = item.tasks?.filter(isPendingTask).length || 0;
 
+
                         if (failedCount > 0) {
-                            return <FailedTaskBadge count={failedCount} />;
+                            return <FailedTaskBadge 
+                                count={failedCount} 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedDetailTasks(item.tasks!.filter(isTaskFailed));
+                                }}
+                            />;
                         }
 
                         if (runningCount > 0) {
                             return (
-                                <div className="running-task-container" title={`${runningCount} Running Tasks`} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <div 
+                                    className="running-task-container" 
+                                    title={`${runningCount} Running Tasks`} 
+                                    style={{ display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer' }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedDetailTasks(item.tasks!.filter(isRunningTask));
+                                    }}
+                                >
                                     <RunningTaskSpinner size={18} />
                                     {runningCount > 1 && <span className="count" style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-primary)' }}>{runningCount}</span>}
                                 </div>
@@ -240,7 +262,13 @@ export const FileCard: React.FC<FileCardProps> = ({
                         }
 
                         if (pendingCount > 0) {
-                            return <PendingTaskBadge count={pendingCount} />;
+                            return <PendingTaskBadge 
+                                count={pendingCount} 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedDetailTasks(item.tasks!.filter(isPendingTask));
+                                }}
+                            />;
                         }
 
                         return renderFileIcon();
@@ -301,6 +329,12 @@ export const FileCard: React.FC<FileCardProps> = ({
                     onTriggerSkill={handleTriggerSkill}
                 />
             )}
+            {selectedDetailTasks && (
+                <TaskDetailModal
+                    tasks={selectedDetailTasks}
+                    onClose={() => setSelectedDetailTasks(null)}
+                />
+            )}
 
             <FileCardHeader
                 item={displayItem}
@@ -316,6 +350,12 @@ export const FileCard: React.FC<FileCardProps> = ({
                 formatSize={formatSize}
                 isPinned={isPinned}
                 onTogglePin={onTogglePin ? (e) => onTogglePin(item.id, e!) : undefined}
+                onStatusClick={(e) => {
+                    e.stopPropagation();
+                    if (item.tasks && item.tasks.length > 0) {
+                        setSelectedDetailTasks(item.tasks);
+                    }
+                }}
             />
 
             <FileCardContent
@@ -334,6 +374,7 @@ export const FileCard: React.FC<FileCardProps> = ({
                 onRestartTask={handleRestartTask}
                 onLaunchTask={() => setShowSkillModal(true)}
                 onRequestTextContent={() => setForceLoadContent(true)}
+                onShowTaskDetails={handleShowTaskDetails}
             />
 
             <FileCardFooter
@@ -367,6 +408,12 @@ export const FileCard: React.FC<FileCardProps> = ({
                                 onTriggerSkill={handleTriggerSkill}
                             />
                         )}
+                        {selectedDetailTasks && (
+                            <TaskDetailModal
+                                tasks={selectedDetailTasks}
+                                onClose={() => setSelectedDetailTasks(null)}
+                            />
+                        )}
 
                         <FileCardHeader
                             item={displayItem}
@@ -382,6 +429,12 @@ export const FileCard: React.FC<FileCardProps> = ({
                             formatSize={formatSize}
                             isPinned={isPinned}
                             onTogglePin={onTogglePin ? (e) => onTogglePin(item.id, e!) : undefined}
+                            onStatusClick={(e) => {
+                                e.stopPropagation();
+                                if (item.tasks && item.tasks.length > 0) {
+                                    setSelectedDetailTasks(item.tasks);
+                                }
+                            }}
                         />
 
                         <FileCardContent
@@ -400,6 +453,7 @@ export const FileCard: React.FC<FileCardProps> = ({
                             onRestartTask={handleRestartTask}
                             onLaunchTask={() => setShowSkillModal(true)}
                             onRequestTextContent={() => setForceLoadContent(true)}
+                            onShowTaskDetails={handleShowTaskDetails}
                         />
 
                         <FileCardFooter

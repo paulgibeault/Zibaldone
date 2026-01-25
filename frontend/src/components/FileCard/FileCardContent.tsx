@@ -11,6 +11,7 @@ interface FileCardContentProps {
     item: ContentItem;
     activeTab: 'info' | 'preview' | 'metadata';
     metadata: Record<string, any>;
+
     metadataView: 'rendered' | 'raw';
     onMetadataViewChange: (view: 'rendered' | 'raw') => void;
     textContent: string | null;
@@ -22,7 +23,9 @@ interface FileCardContentProps {
     onVersionSelect?: (versionItem: ContentItem) => void;
     onRestartTask: (taskId: string) => void;
     onLaunchTask: () => void;
+
     onRequestTextContent?: () => void;
+    onShowTaskDetails: (task: any) => void;
 }
 
 export const FileCardContent: React.FC<FileCardContentProps> = ({
@@ -40,18 +43,13 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
     onVersionSelect,
     onRestartTask,
     onLaunchTask,
-    onRequestTextContent
+
+    onRequestTextContent,
+    onShowTaskDetails
 }) => {
-    const [selectedTaskId, setSelectedTaskId] = React.useState<string | null>(null);
     const [isEditing, setIsEditing] = React.useState(false);
     const [editMetadata, setEditMetadata] = React.useState<Record<string, any>>({});
     const [isSaving, setIsSaving] = React.useState(false);
-
-
-    const selectedTask = React.useMemo(() =>
-        item.tasks?.find(t => t.id === selectedTaskId),
-        [item.tasks, selectedTaskId]
-    );
 
     const handleStartEdit = () => {
         const { tags, ...rest } = metadata;
@@ -204,9 +202,9 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                             return (
                                                 <div
                                                     key={task.id}
-                                                    className={`history-item ${task.result_json ? 'clickable' : ''} ${effectiveStatus === 'FAILED' ? 'failed-task-item' : ''}`}
-                                                    onClick={() => task.result_json && setSelectedTaskId(task.id)}
-                                                    title={task.result_json ? "Click to view details" : ""}
+                                                    className="history-item clickable"
+                                                    onClick={() => onShowTaskDetails(task)}
+                                                    title="Click to view details"
                                                 >
                                                     <div className="history-status">
                                                         {effectiveStatus === 'COMPLETED' && <CheckCircle2 size={14} className="status-icon-completed" />}
@@ -271,21 +269,7 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                         </details>
                     </div>
 
-            {selectedTask && (
-                <div className="task-details-overlay fade-in" onClick={() => setSelectedTaskId(null)}>
-                    <div className="task-details-modal" onClick={e => e.stopPropagation()}>
-                        <div className="task-details-header">
-                            <h4>{selectedTask.name} Result</h4>
-                            <button className="close-btn" onClick={() => setSelectedTaskId(null)}>
-                                <XCircle size={16} />
-                            </button>
-                        </div>
-                        <div className="task-details-body">
-                            <JSONView data={selectedTask.result_json} />
-                        </div>
-                    </div>
-                </div>
-            )}
+
                 </div>
             )}
 

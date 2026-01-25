@@ -25,28 +25,31 @@ interface StatusBadgeProps {
     title?: string;
     children?: React.ReactNode;
     style?: React.CSSProperties;
+    onClick?: (e: React.MouseEvent) => void;
 }
 
-export const FailedTaskBadge: React.FC<StatusBadgeProps> = ({ count, className = "", title, style }) => {
+export const FailedTaskBadge: React.FC<StatusBadgeProps> = ({ count, className = "", title, style, onClick }) => {
     if (count <= 0) return null;
     return (
         <div 
             className={`status-badge failed ${className}`} 
             title={title || `${count} Failed Tasks`}
-            style={{ position: 'static', transform: 'none', ...style }}
+            style={{ position: 'static', transform: 'none', cursor: onClick ? 'pointer' : 'default', ...style }}
+            onClick={onClick}
         >
             {count}
         </div>
     );
 };
 
-export const PendingTaskBadge: React.FC<StatusBadgeProps> = ({ count, className = "", title, style }) => {
+export const PendingTaskBadge: React.FC<StatusBadgeProps> = ({ count, className = "", title, style, onClick }) => {
     if (count <= 0) return null;
     return (
         <div 
             className={`status-badge pending ${className}`} 
             title={title || `${count} Pending Tasks`}
-            style={{ position: 'static', transform: 'none', ...style }}
+            style={{ position: 'static', transform: 'none', cursor: onClick ? 'pointer' : 'default', ...style }}
+            onClick={onClick}
         >
             {count}
         </div>

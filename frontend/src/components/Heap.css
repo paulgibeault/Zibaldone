@@ -64,17 +64,23 @@
 
   .heap-sidebar-left {
       /* Keep tags at top */
+      order: 1;
+  }
+
+  .heap-sidebar-right {
+     /* Pinned items in middle on mobile */
+     order: 2;
+     border-top: none;
+     border-left: none;
+     padding-left: 0;
+     padding-top: 0;
+     margin-bottom: 2rem;
   }
 
   .heap-center {
       width: 100%;
+      order: 3;
       margin-bottom: 2rem;
-  }
-
-  .heap-sidebar-right {
-     /* Pinned items at bottom on mobile */
-     border-top: 1px solid var(--border-subtle);
-     padding-top: 1.5rem;
   }
   
   .files-grid-fixed {

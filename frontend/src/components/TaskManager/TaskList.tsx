@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, Play, XCircle, Trash2, ExternalLink, PauseCircle, PlayCircle } from 'lucide-react';
 import { fetchTasks, cancelTask, restartTask, deleteTask, pauseTaskProcessing, resumeTaskProcessing, getTaskProcessingStatus } from '../../api';
 import { ProcessingTask } from '../../api/types';
+import { TaskDetailModal } from './TaskDetailModal';
 import './TaskManager.css';
 
 interface TaskListProps {
@@ -15,6 +16,7 @@ export const TaskList: React.FC<TaskListProps> = ({ refreshTrigger, onOpenFile }
     const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
     const [isPaused, setIsPaused] = useState<boolean>(false);
     const [isProcessingAction, setIsProcessingAction] = useState(false);
+    const [selectedTasks, setSelectedTasks] = useState<ProcessingTask[] | null>(null);
 
 
     const loadTasks = useCallback(async () => {
@@ -237,6 +239,7 @@ export const TaskList: React.FC<TaskListProps> = ({ refreshTrigger, onOpenFile }
                                     onDelete={handleDelete}
                                     getDuration={getDuration}
                                     onOpenFile={onOpenFile}
+                                    onClick={() => setSelectedTasks([task])}
                                 />
                             ))
                         )}
@@ -245,6 +248,13 @@ export const TaskList: React.FC<TaskListProps> = ({ refreshTrigger, onOpenFile }
 
                 </table>
             </div>
+
+            {selectedTasks && (
+                <TaskDetailModal 
+                    tasks={selectedTasks} 
+                    onClose={() => setSelectedTasks(null)} 
+                />
+            )}
         </div>
     );
 };
@@ -256,18 +266,24 @@ interface TaskRowProps {
     onDelete: (id: string) => void;
     getDuration: (start: string, end?: string) => string;
     onOpenFile: (id: string) => void;
+    onClick: () => void;
 }
 
-const TaskRow: React.FC<TaskRowProps> = ({ task, onCancel, onRestart, onDelete, getDuration, onOpenFile }) => {
+const TaskRow: React.FC<TaskRowProps> = ({ task, onCancel, onRestart, onDelete, getDuration, onOpenFile, onClick }) => {
     return (
-        <tr className="task-row">
+        <tr className="task-row" onClick={(e) => {
+            // Prevent triggering if clicking on specific interactive elements handled elsewhere
+            // (Like the File Link or Action buttons, though they are usually stopPropagation-ed)
+            // But let's just put it on the row and rely on children stopPropagation
+            onClick();
+        }}>
             <td className="col-name">
                 <div style={{ fontWeight: 500 }}>{task.name}</div>
                 {/* Error message moved to tooltip on status, so we remove it from here matching user request */}
             </td>
             <td 
                 className="col-id clickable" 
-                onClick={() => onOpenFile(task.item_id)}
+                onClick={(e) => { e.stopPropagation(); onOpenFile(task.item_id); }}
                 title={`View '${task.item?.item_metadata?.title || task.item?.original_filename || task.item_id}'`}
             >
                 <div className="file-info-cell">
@@ -305,7 +321,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onCancel, onRestart, onDelete, 
                     {(task.status === 'RUNNING' || task.status === 'PENDING') && (
                         <button 
                             className="action-btn danger"
-                            onClick={() => onCancel(task.id)}
+                            onClick={(e) => { e.stopPropagation(); onCancel(task.id); }}
                             title="Cancel Task"
                         >
                             <XCircle size={20} />
@@ -314,7 +330,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onCancel, onRestart, onDelete, 
                     {(task.status === 'FAILED' || task.status === 'COMPLETED') && (
                         <button 
                             className="action-btn primary"
-                            onClick={() => onRestart(task.id)}
+                            onClick={(e) => { e.stopPropagation(); onRestart(task.id); }}
                             title="Restart Task"
                         >
                             <Play size={20} />
@@ -322,7 +338,7 @@ const TaskRow: React.FC<TaskRowProps> = ({ task, onCancel, onRestart, onDelete, 
                     )}
                     <button 
                         className="action-btn"
-                        onClick={() => onDelete(task.id)}
+                        onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
                         title="Delete Record"
                     >
                         <Trash2 size={20} />

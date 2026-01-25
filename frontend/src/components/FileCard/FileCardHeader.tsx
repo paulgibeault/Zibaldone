@@ -13,6 +13,7 @@ interface FileCardHeaderProps {
     formatSize: (bytes?: number) => string;
     isPinned?: boolean;
     onTogglePin?: (e?: React.MouseEvent) => void;
+    onStatusClick?: (e: React.MouseEvent) => void;
 }
 
 export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
@@ -25,7 +26,8 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
     getFileIcon,
     formatSize,
     isPinned,
-    onTogglePin
+    onTogglePin,
+    onStatusClick
 }) => {
     // Parse metadata safely (already parsed in parent usually, but for robustness)
     let size = 0;
@@ -40,7 +42,11 @@ export const FileCardHeader: React.FC<FileCardHeaderProps> = ({
         <div className="card-header-v2">
             <div className="header-main-content">
                 <div className="header-left">
-                    <div className="icon-wrapper">
+                    <div 
+                        className="icon-wrapper" 
+                        onClick={onStatusClick} 
+                        style={{ cursor: onStatusClick ? 'pointer' : 'default' }}
+                    >
                         {getFileIcon()}
                         <span className={`status-dot status-${item.status.toLowerCase()}`} title={`Status: ${item.status}`} />
                     </div>

@@ -345,3 +345,217 @@
     color: var(--text-muted);
     font-style: italic;
 }
+
+/* Task Detail Modal */
+.task-detail-modal {
+    display: flex; /* Override block if needed, though Modal.css handles flex content usually */
+    flex-direction: column;
+    min-width: 600px; /* Ensure reasonable size for small content */
+    max-width: 95vw; /* Ensure it respects viewport */
+    overflow: hidden; /* contain children */
+}
+
+.task-detail-modal .modal-header {
+    justify-content: flex-end !important;
+    margin-bottom: 0; /* Reduce gap since title is gone */
+    padding-bottom: 0;
+    /* Ensure header takes up no space flow if only containing absolute children */
+    height: 0; 
+    min-height: 0;
+}
+
+.task-detail-modal .modal-close-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+
+
+}
+
+.task-detail-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 1.5rem;
+    gap: 1.5rem;
+    overflow-y: auto;
+}
+
+.back-to-list-btn {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    opacity: 0.7;
+}
+
+.back-to-list-btn:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+.detail-header {
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 1rem;
+}
+
+.detail-title-row {
+    display: flex;
+    justify-content: flex-start;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.detail-title-row h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.detail-meta-row {
+    display: flex;
+    gap: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.detail-message {
+    padding: 1rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.detail-message.alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.detail-message.alert-info {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.detail-section h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+    border-left: 3px solid var(--primary);
+    padding-left: 0.6rem;
+}
+
+.detail-section .subsection {
+    margin-bottom: 1rem;
+}
+
+.detail-section h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+}
+
+.json-viewer-container {
+    width: 100%;
+    margin-top: 0.5rem;
+    min-width: 0; /* Prevent flex item expansion */
+}
+
+/* Remove max-width constraints if present in shared components for code blocks, 
+   but ensuring it fills the modal width */
+.json-viewer-container pre {
+    width: 100%;
+    margin: 0 !important;
+}
+
+/* Ensure copy button container fills space but respects boundaries */
+.json-viewer-container .copy-button-container {
+    width: 100%;
+    display: block; /* Override inline-block */
+    max-width: 100%;
+}
+
+.json-viewer-container pre {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 !important;
+    overflow-x: auto !important; /* Ensure scrolling happens inside */
+    white-space: pre !important; 
+}
+
+
+/* Task Selection List (Sidebar style) */
+.task-selection-list {
+    padding: 1.5rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.task-selection-list h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.task-list-items {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+}
+
+.task-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.task-list-item:last-child {
+    border-bottom: none;
+}
+
+.task-list-item:hover {
+    background: var(--bg-hover);
+}
+
+.task-list-item.selected {
+    background: rgba(var(--primary-rgb), 0.1); /* Assuming var exists */
+    border-left: 3px solid var(--primary);
+}
+
+.task-list-item .item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-list-item .item-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.task-list-item .item-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
