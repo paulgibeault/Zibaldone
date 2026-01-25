@@ -203,7 +203,10 @@ export const FileCardContent: React.FC<FileCardContentProps> = ({
                                                 <div
                                                     key={task.id}
                                                     className="history-item clickable"
-                                                    onClick={() => onShowTaskDetails(task)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        onShowTaskDetails(task);
+                                                    }}
                                                     title="Click to view details"
                                                 >
                                                     <div className="history-status">
