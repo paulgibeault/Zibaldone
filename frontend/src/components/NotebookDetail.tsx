@@ -420,7 +420,7 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
         )}
         
         {viewMode === 'PROJECT' && filteredAndSortedItems && (
-            <NotebookProject items={filteredAndSortedItems} />
+            <NotebookProject items={filteredAndSortedItems} notebookId={notebookId} />
         )}
       </div>
       

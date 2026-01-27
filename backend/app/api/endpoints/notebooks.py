@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from app.models import get_session, Notebook, ContentItem, ContentItemNotebookLink, User, NotebookTask
-from app.schemas import NotebookCreate, NotebookRead, NotebookUpdate, NotebookReadWithItems, NotebookAddItems, NotebookTaskCreate, NotebookTaskRead, NotebookTaskUpdate
+from app.schemas import NotebookCreate, NotebookRead, NotebookUpdate, NotebookReadWithItems, NotebookAddItems, NotebookTaskCreate, NotebookTaskRead, NotebookTaskUpdate, NotebookChatRequest, NotebookChatResponse
 from app.api.endpoints.auth import get_current_user
+from app.services.llm import LLMService
 
 router = APIRouter(
     prefix="/notebooks",
@@ -267,3 +268,45 @@ def delete_notebook_task(
     session.delete(db_task)
     session.commit()
     return {"ok": True}
+
+# --- Chat Endpoint ---
+
+@router.post("/{notebook_id}/chat", response_model=NotebookChatResponse)
+async def chat_notebook(
+    notebook_id: uuid.UUID,
+    payload: NotebookChatRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    db_notebook = session.get(Notebook, notebook_id)
+    if not db_notebook:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+    if db_notebook.owner_id != current_user.id:
+         raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Init LLM
+    llm = LLMService() 
+
+    # Fetch context items
+    context_item_dicts = []
+    if payload.context_item_ids:
+        for item_id in payload.context_item_ids:
+            item = session.get(ContentItem, item_id)
+            # Ensure item exists and user owns it
+            if item and (item.owner_id == current_user.id or item.owner_id is None): 
+                 context_item_dicts.append({
+                     "storage_path": item.storage_path,
+                     "original_filename": item.original_filename
+                 })
+    
+    # Message history
+    chat_messages = [{"role": msg.role, "content": msg.content} for msg in payload.chat_history]
+    # Add current message
+    chat_messages.append({"role": "user", "content": payload.message})
+    
+    try:
+        response_text = await llm.chat_with_context(chat_messages, context_item_dicts)
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    
+    return NotebookChatResponse(response=response_text)

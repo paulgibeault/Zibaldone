@@ -85,6 +85,20 @@ class NotebookReadWithItems(NotebookRead):
 class NotebookAddItems(SQLModel):
     item_ids: List[uuid.UUID]
 
+# --- Notebook Chat Schemas ---
+class ChatMessage(SQLModel):
+    role: str
+    content: str
+    
+class NotebookChatRequest(SQLModel):
+    message: str
+    context_item_ids: List[uuid.UUID]
+    chat_history: List[ChatMessage] = []
+
+class NotebookChatResponse(SQLModel):
+    response: str
+    suggested_title: Optional[str] = None
+
 # --- NotebookTask Schemas ---
 class NotebookTaskBase(SQLModel):
     name: str

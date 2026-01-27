@@ -1,5 +1,5 @@
 import { apiClient } from '../client';
-import { Notebook } from '../types';
+import { Notebook, ChatRequest, ChatResponse } from '../types';
 
 export const getNotebooks = async (): Promise<Notebook[]> => {
   const response = await apiClient.get<Notebook[]>('/notebooks');
@@ -54,4 +54,9 @@ export const updateNotebookTask = async (notebookId: string, taskId: string, upd
 
 export const deleteNotebookTask = async (notebookId: string, taskId: string): Promise<void> => {
   await apiClient.delete(`/notebooks/${notebookId}/tasks/${taskId}`);
+};
+
+export const chatNotebook = async (notebookId: string, payload: ChatRequest): Promise<ChatResponse> => {
+  const response = await apiClient.post<ChatResponse>(`/notebooks/${notebookId}/chat`, payload);
+  return response.data;
 };

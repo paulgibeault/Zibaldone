@@ -65,3 +65,19 @@ export interface SearchResponse {
     tags: Tag[];
     items: ContentItem[];
 }
+
+export interface ChatMessage {
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+}
+
+export interface ChatRequest {
+    message: string;
+    context_item_ids: string[];
+    chat_history: ChatMessage[];
+}
+
+export interface ChatResponse {
+    response: string;
+    suggested_title?: string;
+}

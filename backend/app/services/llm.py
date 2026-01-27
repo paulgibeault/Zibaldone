@@ -326,3 +326,96 @@ JSON Result:
         except Exception as e:
             print(f"LLM Tag Alignment Error: {e}")
             return new_tags
+
+    async def chat_with_context(self, messages: list[dict], context_items: list[dict]) -> str:
+        """
+        Chat with the LLM using a list of files as context.
+        context_items: List of dicts with 'storage_path' and 'original_filename' keys.
+        messages: List of {"role": "...", "content": "..."}
+        """
+        from app.services.storage import get_storage
+        storage = get_storage()
+        api_base = settings.LITELLM_URL
+        
+        # 1. Prepare Context Message (System/User)
+        context_parts = []
+        image_contents = []
+
+        for item in context_items:
+            storage_path = item.get("storage_path")
+            filename = item.get("original_filename", "unknown_file")
+            
+            if not storage_path:
+                continue
+
+            try:
+                # Use storage service to get content (bytes)
+                file_content_bytes = await storage.get_content(storage_path)
+                
+                path_obj = Path(filename)
+                ext = path_obj.suffix
+                file_type = self._get_type_for_extension(ext)
+                
+                if file_type == "image":
+                    b64 = base64.b64encode(file_content_bytes).decode('utf-8')
+                    image_contents.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:image/{ext.lstrip('.')};base64,{b64}"}
+                    })
+                    context_parts.append(f"Image Attachment: {filename}")
+                else:
+                    # Assume text
+                    text = file_content_bytes.decode('utf-8', errors='ignore')
+                    # Truncate?
+                    truncated_text = self._truncate_content("Context", text, self.model)
+                    context_parts.append(f"Document: {filename}\nContent:\n{truncated_text}\n---")
+            except Exception as e:
+                print(f"Failed to read context file {filename}: {e}")
+                context_parts.append(f"Document: {filename} (Read Error)")
+
+        # 2. Construct Messages
+        # We'll put context in the first user message or a system message if supported.
+        
+        system_instruction = "You are a helpful assistant. Use the provided documents/images as context to answer the user's request."
+        
+        context_text_block = "\n".join(context_parts)
+        
+        # Initial context message
+        initial_content = [{"type": "text", "text": f"{system_instruction}\n\nCONTEXT:\n{context_text_block}"}]
+        # Append images to the initial context message
+        initial_content.extend(image_contents)
+        
+        final_messages = [
+            {"role": "system", "content": system_instruction}, 
+            {"role": "user", "content": initial_content}
+        ]
+        
+        # Append conversation history
+        for msg in messages:
+             final_messages.append(msg)
+             
+        try:
+            if settings.ENABLE_LLM_LOGGING:
+                llm_logger.info(f"--- LLM CHAT REQUEST ---")
+                llm_logger.info(f"Context Items: {len(context_items)}")
+
+            response = await acompletion(
+                model=self.model,
+                api_base=api_base,
+                messages=final_messages,
+                custom_llm_provider="openai",
+                api_key="sk-1234"
+            )
+            
+            content = response.choices[0].message.content.strip()
+            
+            if settings.ENABLE_LLM_LOGGING:
+                llm_logger.info(f"--- LLM CHAT RESPONSE ---")
+                llm_logger.info(f"Response: {content[:200]}...")
+
+            return content
+            
+        except Exception as e:
+            llm_logger.error(f"LLM Chat Error: {e}")
+            raise ServiceUnavailable(f"LLM Chat failed: {e}")
+
