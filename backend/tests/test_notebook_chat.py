@@ -25,7 +25,7 @@ def client_with_auth(client, current_user):
 def test_notebook_chat(MockLLMService, client_with_auth, session: Session, current_user: User):
     # Setup Mock
     mock_llm_instance = MockLLMService.return_value
-    mock_llm_instance.chat_with_context = AsyncMock(return_value="Hello from LLM")
+    mock_llm_instance.chat_with_context = AsyncMock(return_value={"content": "Hello from LLM", "debug_info": {}})
     
     # Create notebook
     notebook = Notebook(title="Chat NB", owner_id=current_user.id)

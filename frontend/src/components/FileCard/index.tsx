@@ -78,7 +78,7 @@ export const FileCard: React.FC<FileCardProps> = ({
     // Update dependent variables to use currentItem
     const displayItem = currentItem;
 
-    const viewMode: ViewMode = isFullscreen ? 'fullscreen' : ((isSelected || forceExpanded) ? 'standard' : 'minimal');
+    const viewMode: ViewMode = isFullscreen ? 'fullscreen' : (((isSelected && variant !== 'micro') || forceExpanded) ? 'standard' : 'minimal');
 
     const metadata = useMemo(() => {
         try {

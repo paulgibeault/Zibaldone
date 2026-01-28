@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ContentItem, ChatMessage } from '../api/types';
-import { chatNotebook } from '../api/endpoints/notebooks';
+import { chatNotebook, addItemsToNotebook } from '../api/endpoints/notebooks';
+import { uploadFile } from '../api/endpoints/items';
 import { FileCard } from './FileCard';
-import { Send, Bot, Check, LayoutPanelLeft, Loader2 } from 'lucide-react';
+import { Send, Bot, Check, LayoutPanelLeft, Loader2, Code2, Search, ArrowUpDown, Trash2, Save, CheckSquare, Square, XCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -16,6 +17,9 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [sortBy, setSortBy] = useState<'date' | 'name'>('date');
+  const [filterText, setFilterText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -36,6 +40,55 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
     setSelectedItemIds(newSet);
   };
 
+  const handleSelectAll = (filteredItems: ContentItem[]) => {
+      if (selectedItemIds.size === filteredItems.length && filteredItems.length > 0) {
+          setSelectedItemIds(new Set());
+      } else {
+          setSelectedItemIds(new Set(filteredItems.map(i => i.id)));
+      }
+  };
+
+  const handleClearChat = () => {
+    if (window.confirm("Are you sure you want to clear the conversation?")) {
+        setMessages([]);
+    }
+  };
+
+  const handleSaveConversation = async () => {
+    if (messages.length === 0) return;
+    
+    // 1. Format content
+    const dateStr = new Date().toLocaleString();
+    let content = `# Chat Export - ${dateStr}\n\n`;
+    messages.forEach(msg => {
+        content += `### ${msg.role.toUpperCase()}\n\n${msg.content}\n\n---\n\n`;
+    });
+
+    try {
+        setLoading(true);
+        // 2. Create File object
+        const blob = new Blob([content], { type: 'text/markdown' });
+        const filename = `Chat Export ${new Date().toISOString().replace(/[:.]/g, '-')}.md`;
+        const file = new File([blob], filename, { type: 'text/markdown' });
+
+        // 3. Upload
+        const newItem = await uploadFile(file, { type: 'chat-export', notebookId });
+        
+        // 4. Link to Notebook
+        await addItemsToNotebook(notebookId, [newItem.id]);
+        
+        // 5. Notify/Reset
+        // Ideally trigger a refresh of items here, but that requires a prop callback or context
+        // For now, we assume the parent will refresh eventually or we just cleared it.
+        alert("Conversation saved to notebook resources.");
+    } catch (err) {
+        console.error("Failed to save conversation", err);
+        alert("Failed to save conversation.");
+    } finally {
+        setLoading(false);
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() && selectedItemIds.size === 0) return;
     if (loading) return;
@@ -52,7 +105,7 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
         chat_history: messages
       });
 
-      setMessages(prev => [...prev, { role: 'assistant', content: response.response }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: response.response, debug_info: response.debug_info }]);
     } catch (error) {
       console.error("Chat Failed:", error);
       setMessages(prev => [...prev, { role: 'assistant', content: "Error: Failed to get response." }]);
@@ -70,61 +123,158 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
         overflow: 'hidden'
     }}>
       
-      {/* Left Panel: Library */}
-      <div className="project-sidebar" style={{ 
-          width: '320px', 
-          display: 'flex', 
-          flexDirection: 'column',
-          background: 'var(--bg-secondary)',
-          borderRadius: '12px',
-          border: '1px solid var(--border-subtle)',
-          overflow: 'hidden'
-      }}>
-        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <LayoutPanelLeft size={18} />
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>Notebook Resources</h3>
-        </div>
-        <div className="resource-list" style={{ overflowY: 'auto', flex: 1, padding: '0.5rem' }}>
-            {items.map(item => (
-                <div 
-                    key={item.id} 
-                    onClick={() => toggleSelection(item.id)}
-                    style={{ 
-                        marginBottom: '0.5rem', 
-                        cursor: 'pointer',
-                        border: selectedItemIds.has(item.id) ? '2px solid var(--primary)' : '2px solid transparent',
-                        borderRadius: '8px',
-                        position: 'relative'
-                    }}
-                >
-                    <FileCard 
-                        item={item} 
-                        variant="micro" 
-                        onDelete={() => {}} 
-                        onRefresh={() => {}}
-                        isSelected={selectedItemIds.has(item.id)}
-                        onSelect={() => {}}
-                        onDeselect={() => {}} 
-                        // Disable interactions that conflict with selection
-                    />
-                    {selectedItemIds.has(item.id) && (
-                        <div style={{ 
-                            position: 'absolute', 
-                            top: '-5px', 
-                            right: '-5px', 
-                            background: 'var(--primary)', 
-                            color: 'white', 
-                            borderRadius: '50%', 
-                            padding: '2px' 
-                        }}>
-                            <Check size={12} />
-                        </div>
-                    )}
-                </div>
-            ))}
-            {items.length === 0 && <div style={{ padding: '1rem', color: 'var(--text-subtle)' }}>No items in notebook.</div>}
-        </div>
-      </div>
+
+      
+      {/* Derived Items for List */}
+      {(() => {
+          let filtered = items.filter(item => {
+              if (!filterText) return true;
+              return item.original_filename.toLowerCase().includes(filterText.toLowerCase());
+          });
+          
+          filtered.sort((a, b) => {
+              if (sortBy === 'date') {
+                  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+              } else {
+                  return a.original_filename.localeCompare(b.original_filename);
+              }
+          });
+
+          return (
+            /* Left Panel: Library */
+            <div className="project-sidebar" style={{ 
+                width: '320px', 
+                display: 'flex', 
+                flexDirection: 'column',
+                background: 'var(--bg-secondary)',
+                borderRadius: '12px', 
+                border: '1px solid var(--border-subtle)',
+                overflow: 'hidden'
+            }}>
+              <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <LayoutPanelLeft size={18} />
+                      <h3 style={{ margin: 0, fontSize: '1rem' }}>Notebook Resources</h3>
+                  </div>
+                  
+                  {/* Search, Sort, and Bulk Select Controls */}
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                          <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
+                          <input 
+                              type="text" 
+                              value={filterText}
+                              onChange={(e) => setFilterText(e.target.value)}
+                              placeholder="Filter..." 
+                              style={{ 
+                                  width: '100%', 
+                                  padding: '4px 8px 4px 28px', 
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--border-subtle)',
+                                  background: 'var(--bg-input)',
+                                  fontSize: '0.85rem'
+                              }}
+                          />
+                      </div>
+                      <button 
+                          onClick={() => {
+                              const allSelected = filtered.length > 0 && filtered.every(i => selectedItemIds.has(i.id));
+                              const newSet = new Set(selectedItemIds);
+                              if (allSelected) {
+                                  filtered.forEach(i => newSet.delete(i.id));
+                              } else {
+                                  filtered.forEach(i => newSet.add(i.id));
+                              }
+                              setSelectedItemIds(newSet);
+                          }}
+                          title={filtered.length > 0 && filtered.every(i => selectedItemIds.has(i.id)) ? "Deselect All" : "Select All"}
+                          style={{ 
+                              background: 'var(--bg-card)', 
+                              border: '1px solid var(--border-subtle)', 
+                              borderRadius: '6px',
+                              padding: '4px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              color: 'var(--text-subtle)',
+                              position: 'relative', // Ensure it sits above overlapping siblings
+                              zIndex: 20
+                          }}
+                      >
+                          {filtered.length > 0 && filtered.every(i => selectedItemIds.has(i.id)) ? <CheckSquare size={14} /> : <Square size={14} />}
+                      </button>
+                      <button 
+                          onClick={() => setSortBy(prev => prev === 'date' ? 'name' : 'date')}
+                          title={`Sort by ${sortBy === 'date' ? 'Name' : 'Date'}`}
+                          style={{ 
+                              background: 'var(--bg-card)', 
+                              border: '1px solid var(--border-subtle)', 
+                              borderRadius: '6px',
+                              padding: '4px 8px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center'
+                          }}
+                      >
+                          <ArrowUpDown size={14} />
+                      </button>
+                  </div>
+              </div>
+              <div className="resource-list" style={{ overflowY: 'auto', flex: 1, padding: '0.5rem' }}>
+                  {filtered.map(item => (
+                      <div 
+                          key={item.id} 
+                          onClick={() => toggleSelection(item.id)}
+                          style={{ 
+                              display: 'flex',
+                              alignItems: 'center', // Middle Align
+                              marginBottom: '0.5rem', 
+                              cursor: 'pointer',
+                              border: selectedItemIds.has(item.id) ? '2px solid var(--primary)' : '2px solid transparent',
+                              borderRadius: '8px',
+                              position: 'relative',
+                              paddingRight: '8px' // Space for checkmark
+                          }}
+                      >
+                          <div style={{ flex: 1 }}> {/* Wrap FileCard to constrain it */}
+                              <FileCard 
+                                  item={item} 
+                                  variant="micro" 
+                                  onDelete={() => {}} 
+                                  onRefresh={() => {}}
+                                  isSelected={selectedItemIds.has(item.id)}
+                                  onSelect={() => {}}
+                                  onDeselect={() => {}} 
+                                  // Disable interactions that conflict with selection
+                              />
+                          </div>
+                          {selectedItemIds.has(item.id) && (
+                              <div style={{ 
+                                  position: 'absolute', 
+                                  top: '50%',
+                                  right: '24px',
+                                  transform: 'translateY(-50%)',
+                                  background: 'var(--success-color, #22c55e)', // Green
+                                  color: 'white', 
+                                  borderRadius: '50%', 
+                                  width: '20px',
+                                  height: '20px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  border: '2px solid var(--bg-secondary)', // White border to separate
+                                  zIndex: 10
+                              }}>
+                                  <Check size={12} strokeWidth={4} />
+                              </div>
+                          )}
+                      </div>
+                  ))}
+                  {filtered.length === 0 && <div style={{ padding: '1rem', color: 'var(--text-subtle)', textAlign: 'center', fontSize: '0.9rem' }}>No matching items.</div>}
+              </div>
+            </div>
+          );
+      })()}
 
       {/* Right Panel: Workspace */}
       <div className="project-workspace" style={{ 
@@ -138,9 +288,59 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
       }}>
           
           {/* Active Context Header */}
-          <div className="workspace-header" style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-subtle)' }}>
-             <div style={{ fontSize: '0.85rem', color: 'var(--text-subtle)', marginBottom: '0.5rem' }}>
-                 ACTIVE CONTEXT ({selectedItemIds.size})
+          <div className="workspace-header" style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-subtle)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <div style={{ fontSize: '0.85rem', color: 'var(--text-subtle)' }}>
+                     ACTIVE CONTEXT ({selectedItemIds.size})
+                 </div>
+                 <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <button 
+                         onClick={handleClearChat}
+                         disabled={messages.length === 0}
+                         className="btn-icon" 
+                         title="Clear Conversation"
+                         style={{ 
+                             background: 'none', 
+                             border: 'none', 
+                             cursor: 'pointer', 
+                             color: 'var(--text-subtle)',
+                             padding: '4px',
+                             opacity: messages.length === 0 ? 0.3 : 1
+                         }}
+                     >
+                         <Trash2 size={16} />
+                     </button>
+                    <button 
+                         onClick={handleSaveConversation}
+                         disabled={messages.length === 0}
+                         className="btn-icon" 
+                         title="Save Conversation to Notebook"
+                         style={{ 
+                             background: 'none', 
+                             border: 'none', 
+                             cursor: 'pointer', 
+                             color: 'var(--text-subtle)',
+                             padding: '4px',
+                             opacity: messages.length === 0 ? 0.3 : 1
+                         }}
+                     >
+                         <Save size={16} />
+                     </button>
+                     <button 
+                         onClick={() => setShowDebug(!showDebug)}
+                         className={`btn-icon ${showDebug ? 'active' : ''}`} 
+                         title="Toggle Debug Mode"
+                         style={{ 
+                             background: 'none', 
+                             border: 'none', 
+                             cursor: 'pointer', 
+                             color: showDebug ? 'var(--primary)' : 'var(--text-subtle)',
+                             padding: '4px'
+                         }}
+                     >
+                         <Code2 size={16} />
+                     </button>
+                 </div>
              </div>
              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
                  {Array.from(selectedItemIds).map(id => {
@@ -197,6 +397,29 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
                           </div>
                       ) : (
                           msg.content
+                      )}
+                      
+                      {/* Debug Info Display */}
+                      {showDebug && msg.debug_info && (
+                          <div style={{ 
+                              marginTop: '1rem', 
+                              padding: '0.5rem', 
+                              background: 'rgba(0,0,0,0.2)', 
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              fontFamily: 'monospace',
+                              overflowX: 'auto'
+                          }}>
+                              <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-subtle)' }}>DEBUG INFO:</div>
+                              <details>
+                                  <summary style={{ cursor: 'pointer', color: 'var(--text-subtle)' }}>Raw Messages Sent</summary>
+                                  <pre style={{ margin: 0 }}>{JSON.stringify(msg.debug_info.raw_prompt_messages, null, 2)}</pre>
+                              </details>
+                              <details style={{ marginTop: '0.5rem' }}>
+                                  <summary style={{ cursor: 'pointer', color: 'var(--text-subtle)' }}>Raw Response</summary>
+                                  <pre style={{ margin: 0 }}>{typeof msg.debug_info.raw_response === 'string' ? msg.debug_info.raw_response : JSON.stringify(msg.debug_info.raw_response, null, 2)}</pre>
+                              </details>
+                          </div>
                       )}
                   </div>
               ))}

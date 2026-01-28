@@ -98,6 +98,7 @@ class NotebookChatRequest(SQLModel):
 class NotebookChatResponse(SQLModel):
     response: str
     suggested_title: Optional[str] = None
+    debug_info: Optional[Dict[str, Any]] = None
 
 # --- NotebookTask Schemas ---
 class NotebookTaskBase(SQLModel):

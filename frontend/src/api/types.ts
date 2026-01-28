@@ -69,6 +69,7 @@ export interface SearchResponse {
 export interface ChatMessage {
     role: 'user' | 'assistant' | 'system';
     content: string;
+    debug_info?: any;
 }
 
 export interface ChatRequest {
@@ -80,4 +81,5 @@ export interface ChatRequest {
 export interface ChatResponse {
     response: string;
     suggested_title?: string;
+    debug_info?: any;
 }

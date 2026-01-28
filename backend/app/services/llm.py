@@ -327,7 +327,7 @@ JSON Result:
             print(f"LLM Tag Alignment Error: {e}")
             return new_tags
 
-    async def chat_with_context(self, messages: list[dict], context_items: list[dict]) -> str:
+    async def chat_with_context(self, messages: list[dict], context_items: list[dict]) -> Dict[str, Any]:
         """
         Chat with the LLM using a list of files as context.
         context_items: List of dicts with 'storage_path' and 'original_filename' keys.
@@ -413,7 +413,13 @@ JSON Result:
                 llm_logger.info(f"--- LLM CHAT RESPONSE ---")
                 llm_logger.info(f"Response: {content[:200]}...")
 
-            return content
+            return {
+                "content": content,
+                "debug_info": {
+                    "raw_prompt_messages": final_messages,
+                    "raw_response": response.model_dump() if hasattr(response, 'model_dump') else str(response)
+                }
+            }
             
         except Exception as e:
             llm_logger.error(f"LLM Chat Error: {e}")

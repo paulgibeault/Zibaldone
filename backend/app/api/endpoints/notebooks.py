@@ -305,8 +305,10 @@ async def chat_notebook(
     chat_messages.append({"role": "user", "content": payload.message})
     
     try:
-        response_text = await llm.chat_with_context(chat_messages, context_item_dicts)
+        result = await llm.chat_with_context(chat_messages, context_item_dicts)
+        response_text = result["content"]
+        debug_info = result.get("debug_info")
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
     
-    return NotebookChatResponse(response=response_text)
+    return NotebookChatResponse(response=response_text, debug_info=debug_info)
