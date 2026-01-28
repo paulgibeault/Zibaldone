@@ -11,6 +11,7 @@ import { NotebookFeed } from './NotebookFeed';
 import { NotebookCalendar } from './NotebookCalendar';
 import { NotebookProject } from './NotebookProject';
 import { NotebookAutomationModal } from './NotebookAutomationModal';
+import { NotebookHeader } from './NotebookHeader';
 
 interface NotebookDetailProps {
   notebookId: string;
@@ -187,244 +188,144 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
   if (!notebook) return <div>Notebook not found.</div>;
 
   return (
-    <div className={`notebook-detail-container ${viewMode === 'PROJECT' ? 'project-mode' : ''}`}>
-      {viewMode === 'PROJECT' ? (
-          <div className="notebook-header compact">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <button onClick={onBack} className="btn btn-ghost btn-sm btn-icon" style={{ margin: 0 }}>
-                          <ArrowLeft size={18} />
-                      </button>
-                      <span style={{ fontWeight: 600, fontSize: '1rem' }}>{title}</span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      {/* Compact Toolbar */}
-                      <div className="flex-center gap-2">
-                          <div className="join">
-                              <button 
-                                  onClick={() => handleViewModeChange('GRID')}
-                                  className={`btn btn-sm btn-ghost ${viewMode === 'GRID' ? 'active text-primary' : ''}`}
-                                  title="Grid View"
-                              >
-                                  <Grid size={16} />
-                              </button>
-                              <button 
-                                  onClick={() => handleViewModeChange('FEED')}
-                                  className={`btn btn-sm btn-ghost ${viewMode === 'FEED' ? 'active text-primary' : ''}`}
-                                  title="Notebook View"
-                              >
-                                  <LayoutList size={16} />
-                              </button>
-                              <button 
-                                  onClick={() => handleViewModeChange('CALENDAR')}
-                                  className={`btn btn-sm btn-ghost ${viewMode === 'CALENDAR' ? 'active text-primary' : ''}`}
-                                  title="Calendar View"
-                              >
-                                  <Calendar size={16} />
-                              </button>
-                              <button 
-                                  onClick={() => handleViewModeChange('PROJECT')}
-                                  className={`btn btn-sm btn-ghost ${viewMode === 'PROJECT' ? 'active text-primary' : ''}`}
-                                  title="Project View"
-                              >
-                                   <Layout size={16} />
-                              </button>
-                          </div>
-                      
-                          <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary btn-sm gap-2">
-                              <Plus size={14} /> Add
-                          </button>
-                          <button onClick={() => setIsAutomationOpen(true)} className="btn btn-ghost btn-sm btn-icon" title="Automation">
-                              <Bot size={16} />
-                          </button>
-                      </div>
-                  </div>
-              </div>
-          </div>
-      ) : (
-      <div className="notebook-header">
-        <button onClick={onBack} className="btn btn-ghost gap-2 mb-4 pl-0">
-          <ArrowLeft size={20} />
-          Back
-        </button>
-        <div className="notebook-title-section">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
-                <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
-                     <EditableField 
-                        value={title}
-                        onSave={handleSaveTitle}
-                        className="notebook-title"
-                        style={{ color: 'var(--text-primary)' }}
-                     />
-                </div>
-
-
-                <div style={{ flex: 1 }}></div>
-
-                <div className="input-with-icon" style={{ marginRight: '1rem' }}>
-                    <Search size={16} className="input-icon" />
-                    <input
-                        type="text"
-                        placeholder="Search notebook..."
-                        value={filterText}
-                        onChange={(e) => setFilterText(e.target.value)}
-                        className="input input-sm"
-                        style={{ width: '200px', paddingLeft: '2.5rem' }}
+    <div className="notebook-detail-container">
+      <NotebookHeader
+        title={title}
+        onTitleChange={handleSaveTitle}
+        onBack={onBack}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        onAddFiles={() => setIsAddModalOpen(true)}
+        onToggleAutomation={() => setIsAutomationOpen(true)}
+        onDeleteNotebook={handleDeleteNotebook}
+      >
+        {viewMode !== 'PROJECT' && (
+            <>
+                <div className="notebook-description-container" style={{ margin: '0 0 1rem 0' }}>
+                    <EditableField 
+                        value={description}
+                        onSave={handleSaveDescription}
+                        multiline={true}
+                        placeholder="Add a description..."
+                        className="notebook-description"
+                        style={{ color: 'var(--text-secondary)', fontSize: '1rem', margin: 0 }}
                     />
-                    {filterText && (
-                        <button 
-                            className="input-clear-btn"
-                            onClick={() => setFilterText('')}
-                            title="Clear search"
-                        >
-                            <X size={14} />
-                        </button>
-                    )}
                 </div>
 
-                <button 
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="btn btn-primary btn-sm gap-2"
-                >
-                    <Plus size={14} /> Add Files
-                </button>
-            </div>
-             <button onClick={() => setIsAutomationOpen(true)} className="btn btn-ghost btn-sm btn-icon" title="Automation">
-                <Bot size={16} />
-            </button>
-             <button onClick={handleDeleteNotebook} className="btn btn-ghost btn-sm btn-icon text-danger" title="Delete Notebook">
-                <Trash2 size={16} />
-            </button>
-        </div>
-        
-        <div className="notebook-description-container" style={{ margin: '0 0 1rem 0' }}>
-            <div style={{ position: 'relative', maxWidth: '800px' }}>
-                <EditableField 
-                    value={description}
-                    onSave={handleSaveDescription}
-                    multiline={true}
-                    placeholder="Add a description..."
-                    className="notebook-description"
-                    style={{ color: 'var(--text-secondary)' }}
-                />
-            </div>
-        </div>
+                <div className="notebook-meta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+                    <span>Created: {new Date(notebook.created_at).toLocaleDateString()} · {filteredAndSortedItems.length} items</span>
+                    
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                         {/* Search Bar moved here */}
+                        <div className="input-with-icon">
+                            <Search size={14} className="input-icon" />
+                            <input
+                                type="text"
+                                placeholder="Search notebook..."
+                                value={filterText}
+                                onChange={(e) => setFilterText(e.target.value)}
+                                className="input input-sm"
+                                style={{ width: '200px', paddingLeft: '2.25rem' }}
+                            />
+                             {filterText && (
+                                <button 
+                                    className="input-clear-btn"
+                                    onClick={() => setFilterText('')}
+                                    title="Clear search"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
 
-        <div className="notebook-meta" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span>Created: {new Date(notebook.created_at).toLocaleDateString()} · {filteredAndSortedItems.length} items</span>
-            
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <div className="sort-btn-group" style={{ display: 'flex' }}>
-                        <button
-                        className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
-                        onClick={() => handleSortChange('alphabetical')}
-                        title="Sort A-Z"
-                    >
-                        {sortMode === 'alphabetical' && sortDirection === 'desc' ? <ArrowUpAZ size={18} /> : <ArrowDownAZ size={18} />}
-                    </button>
-                    <button
-                        className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
-                        onClick={() => handleSortChange('date')}
-                        title="Sort by Date"
-                    >
-                        <Calendar size={18} />
-                    </button>
+                        <div className="sort-btn-group" style={{ display: 'flex' }}>
+                                <button
+                                className={`sort-btn ${sortMode === 'alphabetical' ? 'active' : ''}`}
+                                onClick={() => handleSortChange('alphabetical')}
+                                title="Sort A-Z"
+                            >
+                                {sortMode === 'alphabetical' && sortDirection === 'desc' ? <ArrowUpAZ size={16} /> : <ArrowDownAZ size={16} />}
+                            </button>
+                            <button
+                                className={`sort-btn ${sortMode === 'date' ? 'active' : ''}`}
+                                onClick={() => handleSortChange('date')}
+                                title="Sort by Date"
+                            >
+                                <Calendar size={16} />
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            
-                {/* View Mode Selector */}
-                <div className="join">
-                    <button 
-                        onClick={() => handleViewModeChange('GRID')}
-                        className={`btn btn-sm btn-ghost ${viewMode === 'GRID' ? 'active text-primary' : ''}`}
-                        title="Grid View"
-                    >
-                        <Grid size={18} />
-                    </button>
-                    <button 
-                        onClick={() => handleViewModeChange('FEED')}
-                        className={`btn btn-sm btn-ghost ${viewMode === 'FEED' ? 'active text-primary' : ''}`}
-                        title="Notebook View"
-                    >
-                        <LayoutList size={18} />
-                    </button>
-                    <button 
-                        onClick={() => handleViewModeChange('CALENDAR')}
-                        className={`btn btn-sm btn-ghost ${viewMode === 'CALENDAR' ? 'active text-primary' : ''}`}
-                        title="Calendar View"
-                    >
-                        <Calendar size={18} />
-                    </button>
-                    <button 
-                        onClick={() => handleViewModeChange('PROJECT')}
-                        className={`btn btn-sm btn-ghost ${viewMode === 'PROJECT' ? 'active text-primary' : ''}`}
-                        title="Project View"
-                    >
-                         <Layout size={18} />
-                    </button>
-                </div>
-            </div>
-        </div>
-      </div>
-      )}
+            </>
+        )}
+      </NotebookHeader>
 
-      <div className={`notebook-content ${viewMode === 'PROJECT' ? 'full-height' : ''}`}>
+
+      <div className="notebook-content">
         {viewMode === 'GRID' && (
              selectedItemId ? (
-                 (() => {
-                    const item = notebook.items?.find(i => i.id === selectedItemId);
-                    if (!item) return null;
-                    return (
-                        <ExpandedFileView
-                            item={item}
-                            onBack={() => setSelectedItemId(null)}
-                            onDelete={(id, e) => handleRemoveItem(id, e)}
-                            onRefresh={fetchNotebook}
-                            isPinned={false}
-                            onTogglePin={undefined}
-                        />
-                    );
-                 })()
+                 <div className="scrollable-view-container">
+                    {(() => {
+                        const item = notebook.items?.find(i => i.id === selectedItemId);
+                        if (!item) return null;
+                        return (
+                            <ExpandedFileView
+                                item={item}
+                                onBack={() => setSelectedItemId(null)}
+                                onDelete={(id, e) => handleRemoveItem(id, e)}
+                                onRefresh={fetchNotebook}
+                                isPinned={false}
+                                onTogglePin={undefined}
+                            />
+                        );
+                    })()}
+                 </div>
              ) : (
-                 <div className="files-grid-fixed">
-                    {filteredAndSortedItems && filteredAndSortedItems.length > 0 ? (
-                        filteredAndSortedItems.map((item: ContentItem) => (
-                        <FileCard
-                            key={item.id}
-                            item={item}
-                            onDelete={(id, e) => handleRemoveItem(id, e)}
-                            onRefresh={fetchNotebook}
-                            isSelected={false}
-                            onSelect={() => setSelectedItemId(item.id)}
-                            onDeselect={() => setSelectedItemId(null)}
-                            isPinned={false}
-                            // onTogglePin explicitly undefined to hide pin icon
-                            onTogglePin={undefined}
-                        />
-                        ))
-                    ) : (
-                        <div className="empty-notebook">
-                        <p>This notebook is empty or no items match your search.</p>
-                        <p>Click "Add Files" to search and add content to this notebook.</p>
-                        </div>
-                    )}
+                 <div className="scrollable-view-container">
+                    <div className="files-grid-fixed">
+                        {filteredAndSortedItems && filteredAndSortedItems.length > 0 ? (
+                            filteredAndSortedItems.map((item: ContentItem) => (
+                            <FileCard
+                                key={item.id}
+                                item={item}
+                                onDelete={(id, e) => handleRemoveItem(id, e)}
+                                onRefresh={fetchNotebook}
+                                isSelected={false}
+                                onSelect={() => setSelectedItemId(item.id)}
+                                onDeselect={() => setSelectedItemId(null)}
+                                isPinned={false}
+                                // onTogglePin explicitly undefined to hide pin icon
+                                onTogglePin={undefined}
+                            />
+                            ))
+                        ) : (
+                            <div className="empty-notebook">
+                            <p>This notebook is empty or no items match your search.</p>
+                            <p>Click "Add Files" to search and add content to this notebook.</p>
+                            </div>
+                        )}
+                    </div>
                  </div>
              )
         )}
 
         {viewMode === 'FEED' && filteredAndSortedItems && (
-            <NotebookFeed 
-                items={filteredAndSortedItems} 
-                onRemoveItem={handleRemoveItem}
-                onRefresh={fetchNotebook}
-                selectedItemId={selectedItemId}
-                onSelect={(id) => setSelectedItemId(id)}
-                onDeselect={() => setSelectedItemId(null)}
-            />
+            <div className="scrollable-view-container">
+                <NotebookFeed 
+                    items={filteredAndSortedItems} 
+                    onRemoveItem={handleRemoveItem}
+                    onRefresh={fetchNotebook}
+                    selectedItemId={selectedItemId}
+                    onSelect={(id) => setSelectedItemId(id)}
+                    onDeselect={() => setSelectedItemId(null)}
+                />
+            </div>
         )}
         
         {viewMode === 'CALENDAR' && filteredAndSortedItems && (
-            <NotebookCalendar items={filteredAndSortedItems} />
+            <div className="scrollable-view-container">
+                <NotebookCalendar items={filteredAndSortedItems} />
+            </div>
         )}
         
         {viewMode === 'PROJECT' && filteredAndSortedItems && (
