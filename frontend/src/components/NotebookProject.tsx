@@ -115,13 +115,7 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
   };
 
   return (
-    <div className="notebook-project-container" style={{ 
-        display: 'flex', 
-        height: 'calc(100vh - 200px)', // adjust based on header
-        gap: '1rem',
-        padding: '1rem',
-        overflow: 'hidden'
-    }}>
+    <div className="notebook-project-split-container">
       
 
       
@@ -142,38 +136,24 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
 
           return (
             /* Left Panel: Library */
-            <div className="project-sidebar" style={{ 
-                width: '320px', 
-                display: 'flex', 
-                flexDirection: 'column',
-                background: 'var(--bg-secondary)',
-                borderRadius: '12px', 
-                border: '1px solid var(--border-subtle)',
-                overflow: 'hidden'
-            }}>
-              <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+            <div className="notebook-project-sidebar">
+              <div style={{ padding: '0.75rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <LayoutPanelLeft size={18} />
-                      <h3 style={{ margin: 0, fontSize: '1rem' }}>Notebook Resources</h3>
+                      <LayoutPanelLeft size={16} style={{ color: 'var(--text-subtle)' }} />
+                      <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Resources</h3>
                   </div>
                   
                   {/* Search, Sort, and Bulk Select Controls */}
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <div style={{ position: 'relative', flex: 1 }}>
-                          <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-subtle)' }} />
+                      <div className="input-with-icon" style={{ flex: 1 }}>
+                          <Search size={14} className="input-icon" style={{ top: '50%', transform: 'translateY(-50%)' }} />
                           <input 
                               type="text" 
                               value={filterText}
                               onChange={(e) => setFilterText(e.target.value)}
                               placeholder="Filter..." 
-                              style={{ 
-                                  width: '100%', 
-                                  padding: '4px 8px 4px 28px', 
-                                  borderRadius: '6px',
-                                  border: '1px solid var(--border-subtle)',
-                                  background: 'var(--bg-input)',
-                                  fontSize: '0.85rem'
-                              }}
+                              className="input input-sm"
+                              style={{ width: '100%', paddingLeft: '28px', background: 'var(--bg-canvas)' }}
                           />
                       </div>
                       <button 
@@ -188,39 +168,21 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
                               setSelectedItemIds(newSet);
                           }}
                           title={filtered.length > 0 && filtered.every(i => selectedItemIds.has(i.id)) ? "Deselect All" : "Select All"}
-                          style={{ 
-                              background: 'var(--bg-card)', 
-                              border: '1px solid var(--border-subtle)', 
-                              borderRadius: '6px',
-                              padding: '4px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              color: 'var(--text-subtle)',
-                              position: 'relative', // Ensure it sits above overlapping siblings
-                              zIndex: 20
-                          }}
+                          className="btn btn-sm btn-secondary btn-icon"
+                          style={{ position: 'relative', zIndex: 20 }}
                       >
                           {filtered.length > 0 && filtered.every(i => selectedItemIds.has(i.id)) ? <CheckSquare size={14} /> : <Square size={14} />}
                       </button>
                       <button 
                           onClick={() => setSortBy(prev => prev === 'date' ? 'name' : 'date')}
                           title={`Sort by ${sortBy === 'date' ? 'Name' : 'Date'}`}
-                          style={{ 
-                              background: 'var(--bg-card)', 
-                              border: '1px solid var(--border-subtle)', 
-                              borderRadius: '6px',
-                              padding: '4px 8px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center'
-                          }}
+                          className="btn btn-sm btn-secondary btn-icon"
                       >
                           <ArrowUpDown size={14} />
                       </button>
                   </div>
               </div>
-              <div className="resource-list" style={{ overflowY: 'auto', flex: 1, padding: '0.5rem' }}>
+              <div className="resource-list" style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '0.5rem' }}>
                   {filtered.map(item => (
                       <div 
                           key={item.id} 
@@ -277,18 +239,10 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
       })()}
 
       {/* Right Panel: Workspace */}
-      <div className="project-workspace" style={{ 
-          flex: 1, 
-          display: 'flex', 
-          flexDirection: 'column',
-          background: 'var(--bg-card)',
-          borderRadius: '12px',
-          border: '1px solid var(--border-subtle)',
-          overflow: 'hidden'
-      }}>
+      <div className="notebook-project-workspace">
           
           {/* Active Context Header */}
-          <div className="workspace-header" style={{ padding: '1rem', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-subtle)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div className="workspace-header" style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                  <div style={{ fontSize: '0.85rem', color: 'var(--text-subtle)' }}>
                      ACTIVE CONTEXT ({selectedItemIds.size})
@@ -297,32 +251,16 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
                     <button 
                          onClick={handleClearChat}
                          disabled={messages.length === 0}
-                         className="btn-icon" 
+                         className="btn btn-ghost btn-sm btn-icon" 
                          title="Clear Conversation"
-                         style={{ 
-                             background: 'none', 
-                             border: 'none', 
-                             cursor: 'pointer', 
-                             color: 'var(--text-subtle)',
-                             padding: '4px',
-                             opacity: messages.length === 0 ? 0.3 : 1
-                         }}
                      >
                          <Trash2 size={16} />
                      </button>
                     <button 
                          onClick={handleSaveConversation}
                          disabled={messages.length === 0}
-                         className="btn-icon" 
+                         className="btn btn-ghost btn-sm btn-icon" 
                          title="Save Conversation to Notebook"
-                         style={{ 
-                             background: 'none', 
-                             border: 'none', 
-                             cursor: 'pointer', 
-                             color: 'var(--text-subtle)',
-                             padding: '4px',
-                             opacity: messages.length === 0 ? 0.3 : 1
-                         }}
                      >
                          <Save size={16} />
                      </button>
@@ -372,9 +310,9 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
           </div>
 
           {/* Chat Area */}
-          <div className="chat-area" style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="chat-area" style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: 0 }}>
               {messages.length === 0 && (
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)' }}>
+                  <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-subtle)' }}>
                       <Bot size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                       <p>Start a conversation with your project context.</p>
                   </div>
@@ -432,8 +370,8 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
           </div>
 
           {/* Input Area */}
-          <div className="input-area" style={{ padding: '1rem', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-card)' }}>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="input-area" style={{ padding: '1rem', borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
                   <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
@@ -444,32 +382,20 @@ export const NotebookProject: React.FC<NotebookProjectProps> = ({ items, noteboo
                           }
                       }}
                       placeholder="Ask questions or generate content based on selected files..."
+                      className="input"
                       style={{ 
                           flex: 1, 
-                          padding: '0.8rem', 
-                          borderRadius: '8px', 
-                          border: '1px solid var(--border-subtle)',
-                          background: 'var(--bg-input)',
-                          color: 'var(--text-primary)',
                           resize: 'none',
                           minHeight: '44px',
-                          maxHeight: '150px'
+                          maxHeight: '150px',
+                          lineHeight: '1.5'
                       }}
                   />
                   <button 
                       onClick={handleSend}
                       disabled={loading || (!input.trim() && selectedItemIds.size === 0)}
-                      style={{ 
-                          background: 'var(--primary)', 
-                          color: 'white', 
-                          border: 'none', 
-                          borderRadius: '8px', 
-                          padding: '0 1.5rem',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                      }}
+                      className="btn btn-primary btn-icon"
+                      style={{ height: '44px', width: '44px' }}
                   >
                       <Send size={18} />
                   </button>

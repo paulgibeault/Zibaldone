@@ -26,6 +26,17 @@
 .file-card.card-micro {
     min-height: 0 !important; /* Override default min-height */
     height: auto;
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+}
+
+.file-card.card-micro:hover {
+    background: var(--bg-card-hover);
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border-subtle);
 }
 
 .file-card:hover {

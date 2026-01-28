@@ -72,7 +72,66 @@
     height: 100%;
     display: flex;
     flex-direction: column;
+    overflow: hidden; /* Ensure no double scrollbars */
 }
+
+/* Constrain height in Project Mode to prevent window expansion */
+.notebook-detail-container.project-mode {
+    height: calc(100vh - 140px); /* Account for header/tabs */
+    min-height: 500px;
+}
+
+.notebook-content.full-height {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    flex: 1;
+    overflow: hidden;
+    padding: 0 !important; /* Remove default padding for full height views */
+}
+
+/* Compact Header for Project View */
+.notebook-header.compact {
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.notebook-project-split-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg-surface);
+    /* Ensure the container itself can be sized down if nested */
+    min-height: 0;
+}
+
+.notebook-project-sidebar {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-subtle);
+    background: var(--bg-subtle-alt, #fafafa); /* Slightly distinct background */
+    min-height: 0; /* Critical for internal scrolling */
+}
+
+.notebook-project-workspace {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-surface);
+    position: relative;
+    overflow: hidden;
+    min-height: 0; /* Critical for internal scrolling */
+}
+
+/* Override existing heavy card styles for project view */
+.project-sidebar, .project-workspace {
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
 
 .notebook-header {
     background: var(--bg-surface);

@@ -187,9 +187,64 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
   if (!notebook) return <div>Notebook not found.</div>;
 
   return (
-    <div className="notebook-detail-container">
+    <div className={`notebook-detail-container ${viewMode === 'PROJECT' ? 'project-mode' : ''}`}>
+      {viewMode === 'PROJECT' ? (
+          <div className="notebook-header compact">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <button onClick={onBack} className="btn btn-ghost btn-sm btn-icon" style={{ margin: 0 }}>
+                          <ArrowLeft size={18} />
+                      </button>
+                      <span style={{ fontWeight: 600, fontSize: '1rem' }}>{title}</span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      {/* Compact Toolbar */}
+                      <div className="flex-center gap-2">
+                          <div className="join">
+                              <button 
+                                  onClick={() => handleViewModeChange('GRID')}
+                                  className={`btn btn-sm btn-ghost ${viewMode === 'GRID' ? 'active text-primary' : ''}`}
+                                  title="Grid View"
+                              >
+                                  <Grid size={16} />
+                              </button>
+                              <button 
+                                  onClick={() => handleViewModeChange('FEED')}
+                                  className={`btn btn-sm btn-ghost ${viewMode === 'FEED' ? 'active text-primary' : ''}`}
+                                  title="Notebook View"
+                              >
+                                  <LayoutList size={16} />
+                              </button>
+                              <button 
+                                  onClick={() => handleViewModeChange('CALENDAR')}
+                                  className={`btn btn-sm btn-ghost ${viewMode === 'CALENDAR' ? 'active text-primary' : ''}`}
+                                  title="Calendar View"
+                              >
+                                  <Calendar size={16} />
+                              </button>
+                              <button 
+                                  onClick={() => handleViewModeChange('PROJECT')}
+                                  className={`btn btn-sm btn-ghost ${viewMode === 'PROJECT' ? 'active text-primary' : ''}`}
+                                  title="Project View"
+                              >
+                                   <Layout size={16} />
+                              </button>
+                          </div>
+                      
+                          <button onClick={() => setIsAddModalOpen(true)} className="btn btn-primary btn-sm gap-2">
+                              <Plus size={14} /> Add
+                          </button>
+                          <button onClick={() => setIsAutomationOpen(true)} className="btn btn-ghost btn-sm btn-icon" title="Automation">
+                              <Bot size={16} />
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      ) : (
       <div className="notebook-header">
-        <button onClick={onBack} className="back-button">
+        <button onClick={onBack} className="btn btn-ghost gap-2 mb-4 pl-0">
           <ArrowLeft size={20} />
           Back
         </button>
@@ -214,8 +269,8 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                         placeholder="Search notebook..."
                         value={filterText}
                         onChange={(e) => setFilterText(e.target.value)}
-                        className="filter-input-subtle"
-                        style={{ width: '200px' }}
+                        className="input input-sm"
+                        style={{ width: '200px', paddingLeft: '2.5rem' }}
                     />
                     {filterText && (
                         <button 
@@ -230,16 +285,15 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
 
                 <button 
                     onClick={() => setIsAddModalOpen(true)}
-                    className="action-button-primary"
-                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem', flexShrink: 0 }}
+                    className="btn btn-primary btn-sm gap-2"
                 >
                     <Plus size={14} /> Add Files
                 </button>
             </div>
-             <button onClick={() => setIsAutomationOpen(true)} className="action-button-secondary" title="Automation" style={{ background: 'transparent', border: '1px solid var(--border-subtle)', borderRadius: '4px', padding: '0.3rem', cursor: 'pointer', color: 'var(--text-subtle)' }}>
+             <button onClick={() => setIsAutomationOpen(true)} className="btn btn-ghost btn-sm btn-icon" title="Automation">
                 <Bot size={16} />
             </button>
-             <button onClick={handleDeleteNotebook} className="delete-notebook-btn" title="Delete Notebook">
+             <button onClick={handleDeleteNotebook} className="btn btn-ghost btn-sm btn-icon text-danger" title="Delete Notebook">
                 <Trash2 size={16} />
             </button>
         </div>
@@ -279,79 +333,32 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
                 </div>
             
                 {/* View Mode Selector */}
-                <div className="view-mode-selector" style={{ 
-                    display: 'flex', 
-                    gap: '4px', 
-                    background: 'var(--bg-subtle)', 
-                    padding: '4px', 
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-subtle)'
-                }}>
+                <div className="join">
                     <button 
                         onClick={() => handleViewModeChange('GRID')}
-                        className={`view-mode-btn ${viewMode === 'GRID' ? 'active' : ''}`}
+                        className={`btn btn-sm btn-ghost ${viewMode === 'GRID' ? 'active text-primary' : ''}`}
                         title="Grid View"
-                        style={{ 
-                            padding: '6px', 
-                            borderRadius: '6px', 
-                            border: 'none', 
-                            background: viewMode === 'GRID' ? 'var(--bg-card-hover)' : 'transparent', 
-                            cursor: 'pointer', 
-                            display: 'flex',
-                            color: viewMode === 'GRID' ? 'var(--primary)' : 'var(--text-subtle)',
-                            transition: 'all 0.2s'
-                        }}
                     >
                         <Grid size={18} />
                     </button>
                     <button 
                         onClick={() => handleViewModeChange('FEED')}
-                        className={`view-mode-btn ${viewMode === 'FEED' ? 'active' : ''}`}
+                        className={`btn btn-sm btn-ghost ${viewMode === 'FEED' ? 'active text-primary' : ''}`}
                         title="Notebook View"
-                        style={{ 
-                            padding: '6px', 
-                            borderRadius: '6px', 
-                            border: 'none', 
-                            background: viewMode === 'FEED' ? 'var(--bg-card-hover)' : 'transparent', 
-                            cursor: 'pointer', 
-                            display: 'flex',
-                            color: viewMode === 'FEED' ? 'var(--primary)' : 'var(--text-subtle)',
-                            transition: 'all 0.2s'
-                        }}
                     >
                         <LayoutList size={18} />
                     </button>
                     <button 
                         onClick={() => handleViewModeChange('CALENDAR')}
-                        className={`view-mode-btn ${viewMode === 'CALENDAR' ? 'active' : ''}`}
+                        className={`btn btn-sm btn-ghost ${viewMode === 'CALENDAR' ? 'active text-primary' : ''}`}
                         title="Calendar View"
-                        style={{ 
-                            padding: '6px', 
-                            borderRadius: '6px', 
-                            border: 'none', 
-                            background: viewMode === 'CALENDAR' ? 'var(--bg-card-hover)' : 'transparent', 
-                            cursor: 'pointer', 
-                            display: 'flex',
-                            color: viewMode === 'CALENDAR' ? 'var(--primary)' : 'var(--text-subtle)',
-                            transition: 'all 0.2s'
-                        }}
                     >
                         <Calendar size={18} />
                     </button>
                     <button 
                         onClick={() => handleViewModeChange('PROJECT')}
-                        className={`view-mode-btn ${viewMode === 'PROJECT' ? 'active' : ''}`}
+                        className={`btn btn-sm btn-ghost ${viewMode === 'PROJECT' ? 'active text-primary' : ''}`}
                         title="Project View"
-                        style={{ 
-                            padding: '6px', 
-                            borderRadius: '6px', 
-                            border: 'none', 
-                            background: viewMode === 'PROJECT' ? 'var(--bg-card-hover)' : 'transparent', 
-                            cursor: 'pointer', 
-                            display: 'flex',
-                            color: viewMode === 'PROJECT' ? 'var(--primary)' : 'var(--text-subtle)',
-                            transition: 'all 0.2s'
-                        }}
                     >
                          <Layout size={18} />
                     </button>
@@ -359,8 +366,9 @@ export const NotebookDetail: React.FC<NotebookDetailProps> = ({ notebookId, onBa
             </div>
         </div>
       </div>
+      )}
 
-      <div className="notebook-content">
+      <div className={`notebook-content ${viewMode === 'PROJECT' ? 'full-height' : ''}`}>
         {viewMode === 'GRID' && (
              selectedItemId ? (
                  (() => {
