@@ -161,6 +161,10 @@ JSON Result:
             if settings.ENABLE_LLM_LOGGING:
                 llm_logger.info(f"--- LLM REQUEST: {Path(file_path).name} ---")
                 llm_logger.info(f"Model: {self.model}")
+                llm_logger.info(f"API Base: {api_base}")
+                # Mask API Key
+                masked_key = "sk-..." if "api_key" in locals() and locals().get("api_key") else "None"
+                llm_logger.info(f"API Key Used: {masked_key}")
                 llm_logger.info(f"Messages: {json.dumps(messages, indent=2)}")
 
             response = await acompletion(
@@ -168,7 +172,7 @@ JSON Result:
                 api_base=api_base,
                 messages=messages,
                 custom_llm_provider="openai",
-                api_key="sk-1234"
+                api_key="sk-1234" 
             )
         except Exception as e:
             # Fallback for vision failure (e.g. model doesn't support images)
@@ -199,6 +203,7 @@ JSON Result:
                 except Exception as ex:
                     raise ServiceUnavailable(f"LLM Service failed: {ex}")
             else:
+                llm_logger.error(f"LLM Service Failed for {file_path}: {e}", exc_info=True)
                 raise ServiceUnavailable(f"LLM Service failed: {e}")
         
         content = response.choices[0].message.content.strip()

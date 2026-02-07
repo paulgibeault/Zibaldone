@@ -25,6 +25,7 @@ class S3Storage(StorageInterface):
         )
         
         try:
+            print(f"Initializing S3 Client with Endpoint: {self.endpoint_url}, Region: {self.region}, Bucket: {self.bucket_name}")
             self.s3_client = boto3.client(
                 's3',
                 endpoint_url=self.endpoint_url,
@@ -35,6 +36,8 @@ class S3Storage(StorageInterface):
             )
         except Exception as e:
             print(f"Warning: Failed to initialize S3 client: {e}")
+            import traceback
+            traceback.print_exc()
             self.s3_client = None
 
         self.public_url = settings.S3_PUBLIC_URL
@@ -169,10 +172,12 @@ class S3Storage(StorageInterface):
              raise StorageUnavailableError("S3 client not initialized")
 
         try:
+            print(f"Attempting to download S3 Object: Bucket={self.bucket_name}, Key={storage_path}")
             response = self.s3_client.get_object(
                 Bucket=self.bucket_name,
                 Key=storage_path
             )
             return response['Body'].read()
         except (BotoCoreError, ClientError) as e:
+            print(f"S3 Download Failed for {storage_path}: {e}")
             raise StorageUnavailableError(f"Failed to get content from S3: {e}")

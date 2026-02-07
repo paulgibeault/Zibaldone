@@ -114,9 +114,12 @@ if [[ "$query_url" == *"host.docker.internal"* ]]; then
     query_url="${query_url/host.docker.internal/localhost}"
 fi
 
+# Get API Key if required
+API_KEY=$(get_litellm_key "$query_url")
+
 # Interactive Model Selection
 DEFAULT_MODEL="meta-llama-3.1-8b-instruct"
-USER_MODEL=$(select_model "$query_url" "$DEFAULT_MODEL")
+USER_MODEL=$(select_model "$query_url" "$DEFAULT_MODEL" "$API_KEY")
 
 # Prepend openai/ if needed for LiteLLM
 if [[ "$USER_MODEL" != openai/* ]]; then
@@ -125,7 +128,7 @@ else
     LITELLM_MODEL_CONFIG="$USER_MODEL"
 fi
 
-configure_litellm "$LITELLM_MODEL_CONFIG" "$LITELLM_API_BASE"
+configure_litellm "$LITELLM_MODEL_CONFIG" "$LITELLM_API_BASE" "$API_KEY"
 
 # Storage Configuration for Custom mode
 STORAGE_TYPE="s3"

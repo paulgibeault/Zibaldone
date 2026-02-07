@@ -237,7 +237,7 @@ async def execute_task(task_id: str):
                             name=tag_name, 
                             owner_id=item.owner_id,
                             is_autocreated=True,
-                            is_approved=False
+                            is_approved=True
                          )
                          session.add(tag)
                      

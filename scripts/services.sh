@@ -99,7 +99,9 @@ start_minio_local() {
 start_litellm_local() {
     log_info "Starting LiteLLM Proxy..."
     source backend/.venv/bin/activate
-    litellm --config litellm_config.yaml --host 0.0.0.0 --port 4000 > /dev/null 2>&1 &
+    # Export env vars specifically for litellm (needed for os.environ/LM_STUDIO_API_KEY)
+    export $(grep -v '^#' backend/.env | xargs)
+    litellm --config litellm_config.yaml --host 0.0.0.0 --port 4000 > litellm.log 2>&1 &
     PID_LITELLM=$!
 }
 
@@ -120,3 +122,31 @@ start_frontend_local() {
     PID_FRONTEND=$!
     cd ..
 }
+
+# Main execution only if run directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    case "$1" in
+        start_local)
+            start_minio_local
+            start_litellm_local
+            start_backend_local
+            start_frontend_local
+            log_success "Local services started."
+            ;;
+        stop_local)
+            stop_local_services
+            ;;
+        restart_local)
+            stop_local_services
+            start_minio_local
+            start_litellm_local
+            start_backend_local
+            start_frontend_local
+            log_success "Local services restarted."
+            ;;
+        *)
+            echo "Usage: $0 {start_local|stop_local|restart_local}"
+            exit 1
+            ;;
+    esac
+fi

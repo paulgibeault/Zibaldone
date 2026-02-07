@@ -10,6 +10,8 @@ services:
       - ./backend/.env
     depends_on:
       - litellm
+    networks:
+      - zibaldone-net
 
   frontend:
     build: ./frontend
@@ -17,6 +19,8 @@ services:
       - "3000:80"
     depends_on:
       - backend
+    networks:
+      - zibaldone-net
 
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
@@ -27,6 +31,8 @@ services:
     command: [ "--config", "/app/config.yaml", "--port", "4000", "--host", "0.0.0.0" ]
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - zibaldone-net
 
   minio:
     image: minio/minio
@@ -39,6 +45,8 @@ services:
       - MINIO_ROOT_USER=zibaldoneadmin
       - MINIO_ROOT_PASSWORD=zibaldonepassword
     command: server /data --console-address ":9001"
+    networks:
+      - zibaldone-net
 
   create-buckets:
     image: minio/mc
@@ -54,7 +62,13 @@ services:
       /usr/bin/mc mb --ignore-existing local/zibaldone-blobs;
       exit 0;
       "
+    networks:
+      - zibaldone-net
 
 volumes:
   data:
   minio_data:
+
+networks:
+  zibaldone-net:
+    driver: bridge
