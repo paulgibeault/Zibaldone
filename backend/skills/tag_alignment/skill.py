@@ -12,9 +12,10 @@ async def run(ctx: SkillContext) -> SkillResult:
     if not tags or not isinstance(tags, list):
         return ctx.no_change("No tags to align")
 
-    # 2. Get existing approved tags from DB (Sync -> Async wrap)
+    # 2. Get existing tags from DB (Sync -> Async wrap)
     def fetch_tags():
-        return crud.get_tags(ctx.session, owner_id=ctx.item.owner_id, approved_only=True)
+        # Get ALL tags, including unverified ones
+        return crud.get_tags(ctx.session, owner_id=ctx.item.owner_id, approved_only=False)
     
     all_tags = await asyncio.to_thread(fetch_tags)
     existing_tag_names = [t.name for t in all_tags]
@@ -36,7 +37,12 @@ async def run(ctx: SkillContext) -> SkillResult:
             
         def process_tag(t_name):
             tag = crud.get_tag_by_name(ctx.session, t_name, owner_id=ctx.item.owner_id)
-            if not tag:
+            if tag:
+                # If existing tag is selected by alignment but was unverified, verify it now
+                if not tag.is_approved:
+                     crud.approve_tag(ctx.session, tag.id)
+            else:
+                 # Create new unverified tag
                  tag = crud.create_tag(
                      ctx.session, 
                      name=t_name, 
