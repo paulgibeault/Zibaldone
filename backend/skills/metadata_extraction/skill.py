@@ -110,6 +110,7 @@ def extract_metadata(file_path: str, content_text: str = None):
             return {
                 "status": "success",
                 "metadata_patch": metadata,
+                "tags_to_add": metadata.get("keywords", []),
                 "events_to_emit": ["metadata_updated"],
                 "message": "Metadata extracted successfully via LLM"
             }
@@ -125,6 +126,7 @@ def extract_metadata(file_path: str, content_text: str = None):
         return {
             "status": "partial_success",
             "metadata_patch": metadata,
+            "tags_to_add": metadata.get("keywords", []),
             "message": f"LLM failed, using fallback. Error: {e}"
         }
 
