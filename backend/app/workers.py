@@ -24,7 +24,7 @@ from app.services.storage import get_storage
 from app.config import settings
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Initialize Skills
@@ -354,7 +354,7 @@ async def process_unprocessed_items():
         except Exception as e:
             logger.error(f"Worker Loop Error: {e}", exc_info=True)
         
-        # Wait for 2 seconds OR untill resumed if paused
+        logger.debug(f"Worker loop tick. Running tasks: {len(_running_tasks)}, Paused: {_is_paused}") # DEBUGOR untill resumed if paused
         if _is_paused:
              await _resume_event.wait()
         else:

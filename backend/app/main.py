@@ -10,6 +10,27 @@ from sqlmodel import Session
 from app.models import engine
 from app.exceptions import AppError
 import asyncio
+import logging
+import sys
+from pathlib import Path
+
+# Force global logging config
+log_dir = Path("logs")
+log_dir.mkdir(exist_ok=True)
+
+handlers = [
+    logging.StreamHandler(sys.stdout),
+    logging.FileHandler(log_dir / "app.log")
+]
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=handlers,
+    force=True
+)
+logger = logging.getLogger(__name__)
+logger.info("Global logging configured to DEBUG (File + Stdout)")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,6 +67,10 @@ async def lifespan(app: FastAPI):
 
     # 0. Cleanup stuck tasks from previous run
     await cleanup_stuck_tasks()
+
+    # Initialize LLM Logger to ensure file creation
+    from app.services.llm import llm_logger
+    llm_logger.info("LLM Logger initialized at startup")
 
     # Start the background worker
     asyncio.create_task(process_unprocessed_items())

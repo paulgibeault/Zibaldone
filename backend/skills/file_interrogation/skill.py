@@ -1,99 +1,91 @@
-import filetype
-import mimetypes
-from app.services.skill_sdk import SkillContext, SkillResult
-from app.services.storage import get_storage
+
+import sys
+import json
 import logging
+import mimetypes
+import os
 
+# Configure logging to stderr so stdout is reserved for JSON output
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logger = logging.getLogger("file_interrogation")
 
-logger = logging.getLogger(__name__)
-
-# Explicitly register markdown types to ensure consistency across environments
+# Explicitly register markdown types
 mimetypes.add_type("text/markdown", ".md")
 mimetypes.add_type("text/markdown", ".markdown")
 
-async def run(ctx: SkillContext) -> SkillResult:
-    item = ctx.item
-    storage = get_storage()
-    full_path = storage.get_path(item.storage_path)
-    
-    logger.info(f"Interrogating file: {full_path}")
-    
+def detect_file_type(file_path: str):
+    """
+    Detects mime type of a file using standard libraries and heuristics.
+    No database access required.
+    """
+    if not os.path.exists(file_path):
+        return {"error": f"File not found: {file_path}"}
+        
     detected_type = None
     method = "unknown"
-
-    # 1. Read file content (up to first 2KB for detection is usually enough, but we have helper for full)
-    # Since we need to support S3, we should not use open(full_path).
-    # Ideally, we should use a stream or range read, but for now read full content (or updated SDK method).
-    # Note: ctx.read_file_content calls storage.get_content()
     
+    # 1. Try filetype library (if available in sandbox)
+    # For now, we rely on standard lib + extension as the sandbox env might be minimal.
+    # If we install 'filetype' in the container image, we can use it.
     try:
-        content_bytes = await ctx.read_file_content(as_text=False)
-    except Exception as e:
-        logger.error(f"Failed to read file content: {e}")
-        return ctx.fail(f"Could not read file content: {e}")
-
-    # 1. Try filetype (header signature for binaries)
-    try:
-        kind = filetype.guess(content_bytes)
+        import filetype
+        kind = filetype.guess(file_path)
         if kind:
             detected_type = kind.mime
             method = "filetype_header"
+    except ImportError:
+        logger.warning("filetype library not installed")
     except Exception as e:
         logger.warning(f"Filetype guess failed: {e}")
 
-    # 2. If valid mime not found, check for text vs binary
+    # 2. Fallback to mimetypes
     if not detected_type:
-        try:
-             # Heuristic: Check first 1024 bytes
-            is_binary = False
-            chunk = content_bytes[:1024]
-            if b'\0' in chunk:
-                is_binary = True
-            
-            if not is_binary:
-                # It's text. Use mimetypes to refine
-                filename = item.original_filename or ""
-                mime_guess, encoding = mimetypes.guess_type(filename)
-                detected_type = mime_guess or "text/plain"
-                method = "mimetypes_fallback"
-            else:
-                detected_type = "application/octet-stream"
-                method = "binary_fallback"
-        except Exception as e:
-            logger.error(f"Fallback detection failed: {e}")
-            detected_type = "application/octet-stream"
-            method = f"fallback_error: {str(e)}"
+        mime_guess, encoding = mimetypes.guess_type(file_path)
+        if mime_guess:
+            detected_type = mime_guess
+            method = "mimetypes_extension"
+        else:
+            # 3. Binary vs Text Heuristic
+            try:
+                with open(file_path, 'rb') as f:
+                    chunk = f.read(1024)
+                    if b'\0' in chunk:
+                        detected_type = "application/octet-stream"
+                        method = "binary_fallback"
+                    else:
+                        detected_type = "text/plain"
+                        method = "text_fallback"
+            except Exception as e:
+                return {"error": f"Read failed: {e}"}
 
-    logger.info(f"Detected type: {detected_type} via {method}")
+    logger.info(f"Detected: {detected_type} via {method}")
     
-    # Update metadata
-    metadata_patch = {
-        "mime_type": detected_type,
-        "interrogation_method": method,
-        "detected_at": "now"
+    # Determine events to emit
+    events = []
+    if detected_type.startswith("text/") or detected_type in [
+        "application/json", "application/pdf", "application/javascript", 
+        "application/xml", "application/jsonlines", "application/x-yaml"]:
+        events.append("content_text_ready")
+    elif detected_type.startswith("image/") or detected_type.startswith("video/") or detected_type.startswith("audio/"):
+        events.append("content_media_ready")
+
+    return {
+        "metadata_patch": {
+            "mime_type": detected_type,
+            "interrogation_method": method,
+            "detected_at": "now" # In a real scenario, use isoformat date
+        },
+        "events_to_emit": events,
+        "tags_to_add": [detected_type],
+        "message": f"Detected {detected_type}"
     }
 
-    # Determine event to emit
-    events = []
-    
-    # Text-based formats
-    if detected_type.startswith("text/") or \
-       detected_type in ["application/json", "application/pdf", "application/javascript", 
-                         "application/xml", "application/jsonlines", "application/x-yaml"]:
-        events.append("content_text_ready")
-    
-    # Media formats
-    elif detected_type.startswith("image/") or \
-         detected_type.startswith("video/") or \
-         detected_type.startswith("audio/"):
-        events.append("content_media_ready")
-    
-    else:
-        logger.info(f"Unknown or unsupported type {detected_type} for automatic extraction pipeline.")
-
-    return ctx.create_result(
-        metadata=metadata_patch,
-        events=events,
-        tags=[detected_type],
-        message=f"Detected {detected_type}"
-    )
+if __name__ == "__main__":
+    # Expect input file path as first argument
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "No file path provided"}))
+        sys.exit(1)
+        
+    file_path = sys.argv[1]
+    result = detect_file_type(file_path)
+    print(json.dumps(result))

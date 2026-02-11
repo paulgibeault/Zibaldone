@@ -6,8 +6,11 @@ services:
     volumes:
       - ./data:/data
       - ./backend/logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - ./backend/.env
+    environment:
+      - PYTHONUNBUFFERED=1
     depends_on:
       - litellm
     networks:

@@ -1,4 +1,5 @@
 import os
+import json
 import yaml
 import importlib.util
 from typing import Dict, List, Optional, Any, TYPE_CHECKING
@@ -91,27 +92,46 @@ class SkillRegistry:
         return configs
 
     async def execute_skill(self, skill_name: str, context: 'SkillContext') -> 'SkillResult':
-        """Dynamically loads and executes the skill's run function."""
+        """
+        Executes the skill via the MCP server (which runs it in the sandbox).
+        """
         config = self.skills.get(skill_name)
         if not config:
             raise ValueError(f"Skill {skill_name} not found")
         
-        script_path = config.path / "skill.py"
-        if not script_path.exists():
-             raise FileNotFoundError(f"skill.py not found for {skill_name}")
-
+        # Determine parameters to send to MCP
+        # SkillContext contains everything needed.
+        # We pass it as a dict.
+        parameters = json.loads(context.to_json())
+        
         try:
-            # Dynamic import
-            spec = importlib.util.spec_from_file_location(f"skills.{skill_name.replace(' ', '_')}", script_path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+            from app.services.mcp_server import run_skill_in_sandbox
+            from app.services.skill_sdk import SkillResult
+
+            # Execute via MCP
+            # This returns the logs/stdout from the container
+            # We must pass the directory name, not the display name, so MCP can find the file.
+            skill_dir_name = config.path.name if config.path else skill_name.replace(" ", "_").lower()
+            logs = await run_skill_in_sandbox(skill_dir_name, parameters)
             
-            if not hasattr(module, 'run'):
-                 raise AttributeError(f"Skill {skill_name} missing 'run' function")
-                 
-            return await module.run(context)
+            # Parse Result
+            # expecting JSON on the last line
+            lines = logs.strip().split('\n')
+            last_line = lines[-1] if lines else "{}"
+            
+            try:
+                result_data = json.loads(last_line)
+                return SkillResult.from_json(result_data)
+            except json.JSONDecodeError:
+                # If valid JSON not found, treat as failure but return logs for debugging
+                logger.error(f"Skill {skill_name} did not return valid JSON. Logs provided in message.")
+                return SkillResult(
+                    status="failure",
+                    message=f"Skill execution failed to produce valid JSON output.\nLogs:\n{logs}"
+                )
+                
         except Exception as e:
-            logger.error(f"Error executing skill {skill_name}: {e}")
+            logger.error(f"Error executing skill {skill_name} via MCP: {e}")
             raise
 
 # Global instance

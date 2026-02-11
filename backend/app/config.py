@@ -23,11 +23,15 @@ class Settings(BaseSettings):
 
     # LLM
     LITELLM_URL: str = "http://localhost:4000"
-    ENABLE_LLM_LOGGING: bool = False
+    ENABLE_LLM_LOGGING: bool = True
     
     # Security
     SECRET_KEY: str = "zibaldone-secret-key"
     
+    # Skills & Sandbox
+    USER_SKILLS_DIR: Optional[str] = None
+    DOCKER_SOCKET_PATH: Optional[str] = None
+
     class Config:
         env_file = ".env"
         case_sensitive = True

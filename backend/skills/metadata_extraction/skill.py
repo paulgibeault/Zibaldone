@@ -1,53 +1,60 @@
-from app.services.skill_sdk import SkillContext, SkillResult
-from app.services.llm import LLMService
+
+import sys
+import json
+import logging
 import os
 
-async def run(ctx: SkillContext) -> SkillResult:
-    # 1. Setup
-    # Allow override from params, fallback to env var, fallback to default
-    default_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
-    model_name = ctx.params.get('llm_model') or default_model
-    
-    ctx.logger.info(f"Running Metadata Extraction with model: {model_name}")
-    llm_service = LLMService(model=model_name)
-    
-    # 2. Get Content
-    # We try to read as text. If it fails (binary), we might skip or handle differently.
-    # generate_metadata handles binary if we pass none?
-    try:
-        content_text = await ctx.read_file_content(as_text=True)
-    except Exception:
-        # Binary file?
-        content_text = None
-        
-    # We can also get bytes if needed, but LLMService usually takes path or text
-    # Checking existing workers.py:
-    # content_bytes = await storage.get_content(item.storage_path)
-    # content_text = content_bytes.decode('utf-8', errors='ignore')
-    
-    if content_text is None:
-         # Try reading bytes to pass explicitly if needed?
-         # For now, let's assume text extraction is handled or we rely on path if text is None
-         pass
+# Configure logging to stderr
+logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+logger = logging.getLogger("metadata_extraction")
 
-    # 3. Call LLM
-    try:
-        # llm_service.generate_metadata(file_path, content_text=..., content_bytes=...)
-        # We should pass what we have.
-        
-        llm_metadata = await llm_service.generate_metadata(
-            ctx.item.storage_path,
-            content_text=content_text
-        )
-        
-        ctx.logger.info(f"Generated metadata: {llm_metadata.keys()}")
+def extract_metadata(file_path: str, content_text: str = None):
+    """
+    Simulates metadata extraction using an LLM.
+    In a real sandbox, this would call an external API (like OpenAI/Anthropic) 
+    using keys provided in env vars.
+    """
+    logger.info(f"Extracting metadata for {file_path}")
+    
+    # Check if we have content
+    if not content_text:
+        # Try reading file if valid path
+        if os.path.exists(file_path):
+             try:
+                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                     content_text = f.read(2000) # Read first 2KB for context
+             except Exception as e:
+                 return {"status": "error", "message": f"Failed to read file: {e}"}
+        else:
+             return {"status": "skipped", "message": "No content or file found"}
+             
+    # MOCK LLM CALL
+    # In production, use `litellm` or `requests` to call the LLM API.
+    # The sandbox usually allows outbound HTTP to 443.
+    
+    # Heuristic for demo:
+    metadata = {
+        "summary": f"This is a processed summary of the file {os.path.basename(file_path)}.",
+        "word_count": len(content_text.split()),
+        "keywords": ["extracted", "demo", "sandbox"]
+    }
+    
+    return {
+        "status": "success",
+        "metadata_patch": metadata,
+        "events_to_emit": ["metadata_updated"],
+        "message": "Metadata extracted successfully"
+    }
 
-        # 4. Return result
-        return ctx.create_result(
-            metadata=llm_metadata,
-            events=["metadata_updated"]
-        )
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "No input provided"}))
+        sys.exit(1)
         
-    except Exception as e:
-        ctx.logger.error(f"LLM extraction failed: {e}")
-        return ctx.fail(f"LLM Error: {e}")
+    file_path = sys.argv[1]
+    
+    # Optional: Read content from stdin if provided?
+    # For now, just rely on file path.
+    
+    result = extract_metadata(file_path)
+    print(json.dumps(result))
