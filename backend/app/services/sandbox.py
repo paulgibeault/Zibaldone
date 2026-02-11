@@ -67,7 +67,8 @@ class MacDockerSandbox:
         env_vars: Dict[str, str] = {},
         volumes: Dict[str, Dict[str, str]] = {},
         files: Dict[str, Union[str, bytes]] = {}, # path inside container -> content (str or bytes)
-        working_dir: str = "/app"
+        working_dir: str = "/app",
+        extra_hosts: Optional[Dict[str, str]] = None
     ) -> str:
         """
         Runs a command in a Docker container and returns the output logs.
@@ -86,6 +87,7 @@ class MacDockerSandbox:
                 working_dir=working_dir,
                 network_mode="bridge",
                 mem_limit="512m",
+                extra_hosts=extra_hosts if extra_hosts else {},
                 # tty=True, # Maybe?
             )
             

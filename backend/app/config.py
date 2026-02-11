@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     DEFAULT_TASK_TIMEOUT: int = 300
 
     # LLM
-    LITELLM_URL: str = "http://localhost:4000"
+    LITELLM_URL: str = "http://10.0.0.52:1234"
+    LITELLM_API_KEY: str = "sk-lm-sNBXFWQg:Ud9Fkww6HdqbmJWxkkAH"
     ENABLE_LLM_LOGGING: bool = True
     
     # Security

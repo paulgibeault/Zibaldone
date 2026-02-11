@@ -139,7 +139,12 @@ async def run_skill_in_sandbox(name: str, parameters: Dict[str, Any] = {}) -> st
             command=cmd,
             volumes=volumes,
             files=files_to_inject,
-            working_dir="/app"
+            env_vars={
+                "LITELLM_URL": settings.LITELLM_URL,
+                "LITELLM_API_KEY": settings.LITELLM_API_KEY
+            },
+            working_dir="/app",
+            extra_hosts={"host.docker.internal": "host-gateway"}
         )
         
         return logs
