@@ -28,13 +28,19 @@ def get_current_user_optional(
     if not user_session.is_active:
         return None
         
-    # Update last_used_at
-    # optimized to avoid writing on every single read? 
-    # For now, let's just update it.
-    user_session.last_used_at = datetime.now(timezone.utc)
-    session.add(user_session)
-    session.commit()
-    session.refresh(user_session)
+    # Update last_used_at (Throttled to once every 5 minutes to avoid DB churn)
+    now = datetime.now(timezone.utc)
+    last_used = user_session.last_used_at
+    
+    # Handle potentially naive datetime from DB
+    if last_used and last_used.tzinfo is None:
+        last_used = last_used.replace(tzinfo=timezone.utc)
+        
+    if not last_used or (now - last_used).total_seconds() > 300:
+        user_session.last_used_at = now
+        session.add(user_session)
+        session.commit()
+        session.refresh(user_session)
     
     return user_session.user
 

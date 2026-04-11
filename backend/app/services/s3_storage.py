@@ -1,7 +1,7 @@
 import os
 import boto3
 from botocore.config import Config
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from app.services.storage import StorageInterface, StorageUnavailableError
 from botocore.exceptions import ClientError, BotoCoreError
 
@@ -60,7 +60,7 @@ class S3Storage(StorageInterface):
         else:
             self.signer_client = self.s3_client
 
-    async def save(self, file_content: bytes, original_filename: str) -> str:
+    async def save(self, file_content: Union[bytes, Any], original_filename: str) -> str:
         if not self.s3_client:
              raise StorageUnavailableError("S3 client not initialized")
 

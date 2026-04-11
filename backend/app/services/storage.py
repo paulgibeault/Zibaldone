@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import aiofiles
 import os
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Union
 from app.exceptions import ServiceUnavailable
 
 class StorageUnavailableError(ServiceUnavailable):
@@ -11,7 +11,7 @@ class StorageUnavailableError(ServiceUnavailable):
 
 class StorageInterface(ABC):
     @abstractmethod
-    async def save(self, file_content: bytes, original_filename: str) -> str:
+    async def save(self, file_content: Union[bytes, Any], original_filename: str) -> str:
         """Saves a file and returns its storage path or identifier."""
         pass
 
@@ -51,7 +51,7 @@ class FileSystemStorage(StorageInterface):
         self.storage_dir = storage_dir
         os.makedirs(self.storage_dir, exist_ok=True)
 
-    async def save(self, file_content: bytes, original_filename: str) -> str:
+    async def save(self, file_content: Union[bytes, Any], original_filename: str) -> str:
         file_ext = os.path.splitext(original_filename)[1]
         storage_filename = f"{uuid.uuid4()}{file_ext}"
         
@@ -63,8 +63,13 @@ class FileSystemStorage(StorageInterface):
         # Ensure directory exists
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         
-        async with aiofiles.open(full_path, 'wb') as out_file:
-            await out_file.write(file_content)
+        if isinstance(file_content, bytes):
+            async with aiofiles.open(full_path, 'wb') as out_file:
+                await out_file.write(file_content)
+        else:
+            import shutil
+            with open(full_path, 'wb') as out_file:
+                shutil.copyfileobj(file_content, out_file)
             
         return relative_path # Return relative path for database storage
 

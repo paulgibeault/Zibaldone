@@ -97,6 +97,13 @@ async def delete_item(item_id: uuid.UUID, session: Session = Depends(get_session
     item = crud.get_item(session, item_id, current_user.id)
     if not item:
         raise ResultNotFound("Item not found")
+        
+    if getattr(item, "storage_path", None):
+        import logging
+        try:
+            storage.delete(item.storage_path)
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to delete storage blob for item {item_id}: {e}")
     
     crud.delete_item(session, item)
     

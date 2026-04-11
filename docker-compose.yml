@@ -6,7 +6,7 @@ services:
     volumes:
       - ./data:/data
       - ./backend/logs:/app/logs
-      - /var/run/docker.sock:/var/run/docker.sock
+      # - /var/run/docker.sock:/var/run/docker.sock
     env_file:
       - ./backend/.env
     environment:
@@ -44,9 +44,8 @@ services:
       - "9001:9001"
     volumes:
       - minio_data:/data
-    environment:
-      - MINIO_ROOT_USER=zibaldoneadmin
-      - MINIO_ROOT_PASSWORD=zibaldonepassword
+    env_file:
+      - ./backend/.env
     command: server /data --console-address ":9001"
     networks:
       - zibaldone-net
@@ -55,10 +54,12 @@ services:
     image: minio/mc
     depends_on:
       - minio
+    env_file:
+      - ./backend/.env
     entrypoint: >
       /bin/sh -c "
       echo 'Waiting for MinIO...' &&
-      until /usr/bin/mc alias set local http://minio:9000 zibaldoneadmin zibaldonepassword > /dev/null 2>&1; do
+      until /usr/bin/mc alias set local http://minio:9000 $${MINIO_ROOT_USER} $${MINIO_ROOT_PASSWORD} > /dev/null 2>&1; do
         sleep 1;
       done;
       echo 'MinIO is ready.';

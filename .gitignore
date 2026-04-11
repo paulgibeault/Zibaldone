@@ -31,6 +31,6 @@ backend/data/*
 litellm_config.yaml
 backend/.env
 .zibaldone.conf
-backend/logs/llm.log
-litellm.log
-backend_repro.log
+logs/
+backend/logs/
+*.log

@@ -22,12 +22,12 @@ class Settings(BaseSettings):
     DEFAULT_TASK_TIMEOUT: int = 300
 
     # LLM
-    LITELLM_URL: str = "http://10.0.0.52:1234"
-    LITELLM_API_KEY: str = "sk-lm-sNBXFWQg:Ud9Fkww6HdqbmJWxkkAH"
+    LITELLM_URL: Optional[str] = None
+    LITELLM_API_KEY: Optional[str] = None
     ENABLE_LLM_LOGGING: bool = True
     
     # Security
-    SECRET_KEY: str = "zibaldone-secret-key"
+    SECRET_KEY: str
     
     # Skills & Sandbox
     USER_SKILLS_DIR: Optional[str] = None

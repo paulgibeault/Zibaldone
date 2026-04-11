@@ -1,0 +1,7 @@
+# To enable Sandbox mode (WARNING: Doing this gives the backend root-equivalent host access),
+# copy this file to 'docker-compose.override.yml' and docker-compose will automatically use it.
+
+services:
+  backend:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
