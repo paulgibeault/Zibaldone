@@ -20,12 +20,21 @@ apiClient.interceptors.request.use(request => {
     if (token) {
         request.headers.Authorization = `Bearer ${token}`;
     }
-    console.log('Starting Request', request);
+    
+    if (import.meta.env.DEV) {
+        const headersLog = { ...request.headers };
+        if (headersLog.Authorization) {
+            headersLog.Authorization = 'Bearer [REDACTED]';
+        }
+        console.log(`[API] ${request.method?.toUpperCase()} ${request.url}`, { ...request, headers: headersLog });
+    }
     return request;
 });
 
 apiClient.interceptors.response.use(response => {
-    console.log('Response:', response);
+    if (import.meta.env.DEV) {
+        console.log(`[API] Response ${response.status} ${response.config.url}`);
+    }
     return response;
 }, error => {
     console.error('API Error:', error);

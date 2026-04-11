@@ -34,6 +34,12 @@ logger.info("Global logging configured to DEBUG (File + Stdout)")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.config import settings
+    if settings.SECRET_KEY == "zibaldone-secret-key":
+        logger.critical("SECURITY ALERT: Using default SECRET_KEY 'zibaldone-secret-key'. "
+                        "Please set a strong SECRET_KEY in your .env file or environment.")
+        sys.exit(1)
+
     create_db_and_tables()
     
     with Session(engine) as session:

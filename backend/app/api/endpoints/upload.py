@@ -35,6 +35,8 @@ async def finalize_upload(
         session, original_filename, storage_path, current_user.id, metadata, content_type, checksum, resolution
     )
 
+from app.config import settings
+
 @router.post("/upload", response_model=schemas.ContentItemRead)
 async def upload_content(
     file: UploadFile = File(...), 
@@ -43,10 +45,24 @@ async def upload_content(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user)
 ):
-    content = await file.read()
-    checksum = calculate_checksum(content)
+    MAX_UPLOAD_SIZE = getattr(settings, "MAX_UPLOAD_SIZE", 50 * 1024 * 1024)
     
-    storage_path = await storage.save(content, file.filename)
+    import hashlib
+    hasher = hashlib.sha256()
+    size = 0
+    
+    while chunk := await file.read(8192):
+        size += len(chunk)
+        if size > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="File too large. Please use /upload/params for direct uploads.")
+        hasher.update(chunk)
+        
+    checksum = hasher.hexdigest()
+    
+    # Reset file pointer for storage to read from beginning
+    await file.seek(0)
+    
+    storage_path = await storage.save(file.file, file.filename)
     
     return await item_service.finalize_upload(
         session, file.filename, storage_path, current_user.id, metadata, file.content_type, checksum, resolution
